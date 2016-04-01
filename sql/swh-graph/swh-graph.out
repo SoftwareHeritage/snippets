@@ -1,0 +1,112 @@
+Timing is on.
+create temporary view counts as
+    select relname as tbl, reltuples::bigint as tuples
+    from pg_class
+    where relnamespace = 'public'::regnamespace
+    and relkind = 'r'  
+    order by relname;
+CREATE VIEW
+Time: 160,458 ms
+create temporary table nodes (
+    description  text,
+    tuples       bigint not null
+);
+CREATE TABLE
+Time: 35,787 ms
+create temporary table edges (like nodes);
+CREATE TABLE
+Time: 11,709 ms
+insert into nodes
+    select 'content', sum(tuples)
+    from counts
+    where tbl in ('content', 'skipped_content');
+INSERT 0 1
+Time: 4,890 ms
+insert into nodes
+    select 'revision', tuples
+    from counts
+    where tbl = 'revision';
+INSERT 0 1
+Time: 2,040 ms
+insert into nodes
+    select 'release', tuples
+    from counts
+    where tbl = 'release';
+INSERT 0 1
+Time: 7,646 ms
+insert into nodes
+    select 'directory', tuples
+    from counts
+    where tbl = 'directory';
+INSERT 0 1
+Time: 64,765 ms
+insert into edges
+    select 'revision->revision', tuples
+    from counts
+    where tbl = 'revision_history';
+INSERT 0 1
+Time: 51,195 ms
+insert into edges
+    select 'revision->directory', tuples
+    from counts
+    where tbl = 'revision';
+INSERT 0 1
+Time: 42,475 ms
+insert into edges
+    select 'release->revision', tuples
+    from counts
+    where tbl = 'release';
+INSERT 0 1
+Time: 21,419 ms
+insert into edges
+    with edges as (
+        select sum(coalesce(cardinality(dir_entries), 0))  as dir_edges,
+               sum(coalesce(cardinality(file_entries), 0)) as file_edges,
+               sum(coalesce(cardinality(rev_entries), 0))  as rev_edges
+        from directory tablesample bernoulli (1.0)
+        )
+    select 'directory->directory' as description,
+           dir_edges * 100 as tuples
+    from edges
+    union
+    select 'directory->file' as description,
+           file_edges * 100 as tuples
+    from edges
+    union
+    select 'directory->revision' as description,
+           rev_edges * 100 as tuples
+    from edges;
+INSERT 0 3
+Time: 2081001,866 ms
+select * from nodes;
+ description |   tuples   
+-------------+------------
+ content     | 2036196307
+ revision    |  468546912
+ release     |    4093895
+ directory   | 1770988032
+(4 rows)
+
+Time: 14,725 ms
+select * from edges;
+     description      |   tuples    
+----------------------+-------------
+ revision->revision   |   483681056
+ revision->directory  |   468546912
+ release->revision    |     4093895
+ directory->directory | 13324743100
+ directory->file      | 20863659500
+ directory->revision  |   132739100
+(6 rows)
+
+Time: 2,515 ms
+select 'nodes' as feat, sum(tuples) as card from nodes
+union
+select 'edges' as feat, sum(tuples) as card from edges;
+ feat  |    card     
+-------+-------------
+ edges | 35277463563
+ nodes |  4279825146
+(2 rows)
+
+Time: 36,392 ms
