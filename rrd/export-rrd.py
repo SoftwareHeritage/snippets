@@ -35,7 +35,7 @@ ENTITIES=[
 ]
 
 
-def compute_cmd(dirpath):
+def compute_cmd(dirpath, with_avg=True, with_min=True, with_max=True):
     """Compute the command to execute to retrieve the needed data.
 
     Returns:
@@ -48,10 +48,17 @@ def compute_cmd(dirpath):
         filepath = os.path.join(dirpath, filename)
 
         if os.path.exists(filepath):
-            cmd += ''' DEF:out-%s1="%s":%s:AVERAGE XPORT:out-%s1:"%s-avg" DEF:out-%s2="%s":%s:MIN XPORT:out-%s2:"%s-min" DEF:out-%s3="%s":%s:MAX XPORT:out-%s3:"%s-max"''' % (
-                 entity, filepath, DS, entity, entity,
-                 entity, filepath, DS, entity, entity,
-                 entity, filepath, DS, entity, entity)
+            if with_avg:
+                cmd += ' DEF:out-%s1="%s":%s:AVERAGE XPORT:out-%s1:"%s-avg"' % (
+                    entity, filepath, DS, entity, entity)
+
+            if with_min:
+                cmd += ' DEF:out-%s2="%s":%s:MIN XPORT:out-%s2:"%s-min"' % (
+                    entity, filepath, DS, entity, entity)
+
+            if with_max:
+                cmd += ' DEF:out-%s3="%s":%s:MAX XPORT:out-%s3:"%s-max"' % (
+                    entity, filepath, DS, entity, entity)
 
     # 31536000 = (* 60 60 24 365) - 1 year back from now in seconds
     # return 'rrdtool xport --json --start -31536000 %s' % (cmd, )
@@ -114,10 +121,13 @@ def prepare_data(data):
 
 
 @click.command()
-@click.option('--dirpath', default=DIRPATH)
-def main(dirpath):
+@click.option('--dirpath', default=DIRPATH, help="Default path to look for rrd files.")
+@click.option('--avg/--noavg', default=True, help="Compute the average values (default to True).")
+@click.option('--min/--nomin', default=False, help="Compute the min values (default to False).")
+@click.option('--max/--nomax', default=False, help="Compute the max values (default to False).")
+def main(dirpath, avg, min, max):
     # Delegate the execution to the system
-    run_cmd = compute_cmd(dirpath)
+    run_cmd = compute_cmd(dirpath, with_avg=avg, with_min=min, with_max=max)
     data = retrieve_json(run_cmd)
 
     # Format data
