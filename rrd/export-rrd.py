@@ -8,6 +8,7 @@ import click
 import json
 import os
 import subprocess
+import time
 
 
 DIRPATH='/var/lib/munin/softwareheritage.org/'
@@ -52,7 +53,13 @@ def compute_cmd(dirpath):
                  entity, filepath, DS, entity, entity,
                  entity, filepath, DS, entity, entity)
 
-    return 'rrdtool xport --json --start 1431436580 --step 86400 %s' % (cmd, )
+    # 31536000 = (* 60 60 24 365) - 1 year back from now in seconds
+    # return 'rrdtool xport --json --start -31536000 %s' % (cmd, )
+    # 1434499200 == 2015-05-12T16:51:25+0200, the starting date
+
+    starting_date_ts = int(time.mktime(
+        time.strptime('2015-05-12T16:51:25Z', '%Y-%m-%dT%H:%M:%SZ')))
+    return 'rrdtool xport --json --start %s %s' % (starting_date_ts, cmd, )
 
 
 def retrieve_json(cmd):
@@ -77,7 +84,33 @@ def retrieve_json(cmd):
         data += line
 
     cmdpipe.stdout.close()
-    return data
+    return json.loads(data)
+
+
+def prepare_data(starting_ts, data):
+    """Prepare the data with x,y coordinate.
+
+    x is the time, y is the actual value.
+    """
+
+    step = data['meta']['step']  # nb of seconds
+    start_ts = min(data['meta']['start'], starting_ts)  # starting ts
+
+    legends = data['meta']['legend']
+
+    # The legends, something like
+    # ["content-avg", "content-min", "content-max", "directory_entry_dir-avg", ...]
+    r = {}
+    day_ts = start_ts
+    for day, values in enumerate(data['data']):
+        day_ts += step
+        for col, value in enumerate(values):
+            legend_col = legends[col]
+            l = r.get(legend_col, [])
+            l.append((day_ts, value if value else 0))
+            r[legend_col] = l
+
+    return r
 
 
 @click.command()
@@ -85,11 +118,12 @@ def retrieve_json(cmd):
 def main(dirpath):
     # Delegate the execution to the system
     run_cmd = compute_cmd(dirpath)
-    json_data = retrieve_json(run_cmd)
+    data = retrieve_json(run_cmd)
 
-    # to make sure the json is well-formed
-    data = json.loads(json_data)
-    # TODO: prepare the json appropriately here
+    # Format data
+    data = prepare_data(starting_ts=1434499200,
+                        data=data)
+
     print(json.dumps(data))
 
 
