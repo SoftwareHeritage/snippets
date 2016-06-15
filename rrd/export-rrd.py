@@ -87,14 +87,14 @@ def retrieve_json(cmd):
     return json.loads(data)
 
 
-def prepare_data(starting_ts, data):
+def prepare_data(data):
     """Prepare the data with x,y coordinate.
 
     x is the time, y is the actual value.
     """
     # javascript has a ratio of 1000...
     step = data['meta']['step'] * 1000  # nb of milliseconds
-    start_ts = min(data['meta']['start'], starting_ts) * 1000  # starting ts
+    start_ts = data['meta']['start'] * 1000  # starting ts
 
     legends = data['meta']['legend']
 
@@ -121,8 +121,7 @@ def main(dirpath):
     data = retrieve_json(run_cmd)
 
     # Format data
-    data = prepare_data(starting_ts=1434499200,
-                        data=data)
+    data = prepare_data(data)
 
     print(json.dumps(data))
 
