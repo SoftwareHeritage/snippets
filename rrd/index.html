@@ -51,8 +51,7 @@
             });
 
             // Add the Flot version string to the footer
-            $("#footer").prepend("Flot " + $.plot.version + " &ndash; ");
-
+            $("#footer").append(" &ndash; Flot " + $.plot.version);
          },
          error: function(e) {
             console.log(e);
@@ -63,7 +62,7 @@
   <body>
 
     <div id="header">
-      <h2>Time Axes</h2>
+      <h2>Software Heritage Objects</h2>
     </div>
 
     <div id="content">
@@ -75,7 +74,7 @@
     </div>
 
     <div id="footer">
-      Copyright &copy; 2007 - 2014 IOLA and Ole Laursen
+      Copyright &copy; 2016 Software Heritage
     </div>
 
   </body>
