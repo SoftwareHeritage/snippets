@@ -45,7 +45,7 @@ def main(dirpath):
                  entity, filepath, DS, entity, entity,
                  entity, filepath, DS, entity, entity)
 
-    run_cmd = 'rrdtool xport --json %s' % (cmd, )
+    run_cmd = 'rrdtool xport --json --start 1431436580 --step 86400 %s' % (cmd, )
 
     subprocess.check_call(run_cmd, shell=True)
 
