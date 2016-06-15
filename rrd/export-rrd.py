@@ -92,9 +92,9 @@ def prepare_data(starting_ts, data):
 
     x is the time, y is the actual value.
     """
-
-    step = data['meta']['step']  # nb of seconds
-    start_ts = min(data['meta']['start'], starting_ts)  # starting ts
+    # javascript has a ratio of 1000...
+    step = data['meta']['step'] * 1000  # nb of milliseconds
+    start_ts = min(data['meta']['start'], starting_ts) * 1000  # starting ts
 
     legends = data['meta']['legend']
 
