@@ -35,7 +35,11 @@ ENTITIES=[
 ]
 
 
-def compute_cmd(dirpath, with_avg=True, with_min=True, with_max=True):
+def compute_cmd(dirpath,
+                step=86400,
+                with_avg=True,
+                with_min=True,
+                with_max=True):
     """Compute the command to execute to retrieve the needed data.
 
     Returns:
@@ -66,7 +70,8 @@ def compute_cmd(dirpath, with_avg=True, with_min=True, with_max=True):
 
     starting_date_ts = int(time.mktime(
         time.strptime('2015-05-12T16:51:25Z', '%Y-%m-%dT%H:%M:%SZ')))
-    return 'rrdtool xport --json --start %s %s' % (starting_date_ts, cmd, )
+    return 'rrdtool xport --json --start %s --step %s %s' % (
+        starting_date_ts, step, cmd)
 
 
 def retrieve_json(cmd):
@@ -122,6 +127,7 @@ def prepare_data(data):
 
 @click.command()
 @click.option('--dirpath', default=DIRPATH, help="Default path to look for rrd files.")
+@click.option('--step', default=86400, help="Compute the data step (default to 86400).")
 @click.option('--avg/--noavg', default=True, help="Compute the average values (default to True).")
 @click.option('--min/--nomin', default=False, help="Compute the min values (default to False).")
 @click.option('--max/--nomax', default=False, help="Compute the max values (default to False).")
