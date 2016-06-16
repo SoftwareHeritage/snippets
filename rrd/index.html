@@ -9,48 +9,47 @@
     <script language="javascript" type="text/javascript" src="../../jquery.flot.js"></script>
     <script language="javascript" type="text/javascript" src="../../jquery.flot.time.js"></script>
     <script type="text/javascript">
-      /* Load the graph with the dictionary data */
-      var load_graph = function(granularity) {
-          return function(data) {
-            console.log(granularity)
-            datasets = []
-            for (var legend in data) {
-              dataset = {
-                'label': legend,
-                'data': data[legend],
-              }
-              datasets.push(dataset)
+      var legends = {'origin': 'Data Sources', 'revision': 'Revisions', 'content': 'Files'}
+
+      /* Plot the graph from the dictionary data */
+      var plot_graph = function(data) {
+        objtypes = ['content', 'revision', 'origin']
+        for (i in objtypes) {
+          objtype = objtypes[i]
+          datasets = [{
+          'label': legends[objtype],
+          'data': data[objtype],
+          }]
+
+        var plot_id = "#placeholder-" + objtype
+
+        $.plot(plot_id, datasets, {
+            xaxis: {
+              mode: "time",
+              minTickSize: [1, "day"],
+              color: "black",
+              position: "bottom",
+              axisLabel: "Time",
+              axisLabelUseCanvas: true,
+              axisLabelFontSizePixels: 12,
+              axisLabelFontFamily: 'Verdana, Arial',
+              axisLabelPadding: 0
+            },
+            yaxis: {
+              color: "black",
+              axisLabel: "Quantity",
+              axisLabelUseCanvas: true,
+              axisLabelFontSizePixels: 12,
+              axisLabelFontFamily: 'Verdana, Arial',
+              axisLabelPadding: 0
             }
-
-            var plot_id = "#placeholder-" + granularity
-
-            $.plot(plot_id, datasets, {
-                xaxis: {
-                  mode: "time",
-                  minTickSize: [1, "day"],
-                  color: "black",
-                  position: "bottom",
-                  axisLabel: "Time",
-                  axisLabelUseCanvas: true,
-                  axisLabelFontSizePixels: 12,
-                  axisLabelFontFamily: 'Verdana, Arial',
-                  axisLabelPadding: 0
-                },
-                yaxis: {
-                  color: "black",
-                  axisLabel: "Quantity",
-                  axisLabelUseCanvas: true,
-                  axisLabelFontSizePixels: 12,
-                  axisLabelFontFamily: 'Verdana, Arial',
-                  axisLabelPadding: 0
-                }
-            });
-          }
+          });
+        }
       }
 
-      var plot_graph = function (granularity) {
-        console.log('plot graph')
-        url = 'http://127.0.0.1:6543/api/1/stat/history/' + granularity + '/'
+      /* Load the data and then plot the graphs */
+      var load_data_and_plot_graph = function () {
+        url = 'http://127.0.0.1:6543/api/1/stat/history/'
         /* Do the actual query to retrieve the data dictionary */
         $.ajax({
           type: 'GET',
@@ -59,7 +58,7 @@
           jsonpCallback: 'swhdata',
           contentType: "application/json",
           dataType: 'jsonp',
-          success: load_graph(granularity),
+          success: plot_graph,
           error: function(e) {
             console.log(e);
           }
@@ -67,14 +66,7 @@
       }
 
       // Actual graphs
-//      granularities = ['day', 'week', 'month', 'year']
-//      for (i in granularities) {
-//        granularity = granularities[i]
-//        console.log(granularity)
-//        plot_graph(granularity)
-//      }
-
-      plot_graph('year')
+      load_data_and_plot_graph();
 
       // Add the Flot version string to the footer
       $("#footer").append(" &ndash; Flot " + $.plot.version);
@@ -89,16 +81,13 @@
 
     <div id="content">
       <div class="demo-container">
-        <div id="placeholder-year" class="demo-placeholder"></div>
+        <div id="placeholder-content" class="demo-placeholder"></div>
       </div>
       <div class="demo-container">
-	<div id="placeholder-month" class="demo-placeholder"></div>
+	<div id="placeholder-revision" class="demo-placeholder"></div>
       </div>
       <div class="demo-container">
-	<div id="placeholder-week" class="demo-placeholder"></div>
-      </div>
-      <div class="demo-container">
-	<div id="placeholder-day" class="demo-placeholder"></div>
+	<div id="placeholder-origin" class="demo-placeholder"></div>
       </div>
     </div>
 
