@@ -9,10 +9,10 @@
     <script language="javascript" type="text/javascript" src="../../jquery.flot.js"></script>
     <script language="javascript" type="text/javascript" src="../../jquery.flot.time.js"></script>
     <script type="text/javascript">
-      url = 'http://127.0.0.1:6543/api/1/stat/history/'
-
       /* Load the graph with the dictionary data */
-      var load_graph = function(data) {
+      var load_graph = function(granularity) {
+          return function(data) {
+            console.log(granularity)
             datasets = []
             for (var legend in data) {
               dataset = {
@@ -22,7 +22,9 @@
               datasets.push(dataset)
             }
 
-            $.plot("#placeholder", datasets, {
+            var plot_id = "#placeholder-" + granularity
+
+            $.plot(plot_id, datasets, {
                 xaxis: {
                   mode: "time",
                   minTickSize: [1, "day"],
@@ -43,23 +45,40 @@
                   axisLabelPadding: 0
                 }
             });
+          }
+      }
 
-            // Add the Flot version string to the footer
-            $("#footer").append(" &ndash; Flot " + $.plot.version);
-         }
-
-      /* Do the actual query to retrieve the data dictionary */
-      $.ajax({
-        type: 'GET',
-         url: url,
-         jsonpCallback: 'swhdata',
-         contentType: "application/json",
-         dataType: 'jsonp',
-         success: load_graph,
-         error: function(e) {
+      var plot_graph = function (granularity) {
+        console.log('plot graph')
+        url = 'http://127.0.0.1:6543/api/1/stat/history/' + granularity + '/'
+        /* Do the actual query to retrieve the data dictionary */
+        $.ajax({
+          type: 'GET',
+          url: url,
+          async: true,
+          jsonpCallback: 'swhdata',
+          contentType: "application/json",
+          dataType: 'jsonp',
+          success: load_graph(granularity),
+          error: function(e) {
             console.log(e);
-         }
-     });
+          }
+        });
+      }
+
+      // Actual graphs
+//      granularities = ['day', 'week', 'month', 'year']
+//      for (i in granularities) {
+//        granularity = granularities[i]
+//        console.log(granularity)
+//        plot_graph(granularity)
+//      }
+
+      plot_graph('year')
+
+      // Add the Flot version string to the footer
+      $("#footer").append(" &ndash; Flot " + $.plot.version);
+
       </script>
   </head>
   <body>
@@ -69,11 +88,18 @@
     </div>
 
     <div id="content">
-
       <div class="demo-container">
-	<div id="placeholder" class="demo-placeholder"></div>
+        <div id="placeholder-year" class="demo-placeholder"></div>
       </div>
-
+      <div class="demo-container">
+	<div id="placeholder-month" class="demo-placeholder"></div>
+      </div>
+      <div class="demo-container">
+	<div id="placeholder-week" class="demo-placeholder"></div>
+      </div>
+      <div class="demo-container">
+	<div id="placeholder-day" class="demo-placeholder"></div>
+      </div>
     </div>
 
     <div id="footer">
