@@ -18,20 +18,20 @@ DS=42
 
 ENTITIES=[
     "content",
-    "directory_entry_dir",
-    "directory_entry_file",
-    "directory_entry_rev",
-    "directory",
-    # "entity",
-    "occurrence_history",
     "origin",
-    "person",
-    # "project",
-    "release",
     "revision",
-    "revision_history",
-    "skipped_content",
-    "visit",
+    # "directory_entry_dir",
+    # "directory_entry_file",
+    # "directory_entry_rev",
+    # "directory",
+    # "entity",
+    # "occurrence_history",
+    # "person",
+    # "project",
+    # "release",
+    # "revision_history",
+    # "skipped_content",
+    # "visit",
 ]
 
 
