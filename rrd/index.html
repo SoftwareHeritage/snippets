@@ -2,23 +2,17 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Flot Examples: Time Axes</title>
+    <title>SWH Objects history</title>
     <link href="../examples.css" rel="stylesheet" type="text/css">
     <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="../../excanvas.min.js"></script><![endif]-->
     <script language="javascript" type="text/javascript" src="../../jquery.js"></script>
     <script language="javascript" type="text/javascript" src="../../jquery.flot.js"></script>
     <script language="javascript" type="text/javascript" src="../../jquery.flot.time.js"></script>
     <script type="text/javascript">
-      url = 'http://127.0.0.1:6543/api/1/stat/history/?callback=swhdata'
+      url = 'http://127.0.0.1:6543/api/1/stat/history/'
 
-      $.ajax({
-        type: 'GET',
-         url: url,
-         async: false,
-         jsonpCallback: 'swhdata',
-         contentType: "application/json",
-         dataType: 'jsonp',
-         success: function(data) {
+      /* Load the graph with the dictionary data */
+      var load_graph = function(data) {
             datasets = []
             for (var legend in data) {
               dataset = {
@@ -52,7 +46,16 @@
 
             // Add the Flot version string to the footer
             $("#footer").append(" &ndash; Flot " + $.plot.version);
-         },
+         }
+
+      /* Do the actual query to retrieve the data dictionary */
+      $.ajax({
+        type: 'GET',
+         url: url,
+         jsonpCallback: 'swhdata',
+         contentType: "application/json",
+         dataType: 'jsonp',
+         success: load_graph,
          error: function(e) {
             console.log(e);
          }
