@@ -42,17 +42,17 @@ def compute_cmd(dirpath,
         The command as string.
 
     """
-    cmd=''
+    cmd = ['rrdtool', 'xport', '--json', '--start', str(start), '--end', 'now-1d',
+           '--step', str(step)]
     for entity in ENTITIES:
         filename = FILENAME_PATTERN.replace('###', entity)
         filepath = os.path.join(dirpath, filename)
 
         if os.path.exists(filepath):
-            cmd += ' DEF:out-%s1="%s":%s:AVERAGE XPORT:out-%s1:"%s"' % (
-                   entity, filepath, DS, entity, entity)
+            cmd.extend(['DEF:out-%s1=%s:%s:AVERAGE' % (entity, filepath, DS),
+                        'XPORT:out-%s1:%s' % (entity, entity)])
 
-    return 'rrdtool xport --json --start %s --end now-1d --step %s %s' % (
-        start, step, cmd)
+    return cmd
 
 
 def retrieve_json(cmd):
@@ -64,7 +64,7 @@ def retrieve_json(cmd):
     Returns:
         The desired result as json string.
     """
-    cmdpipe = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    cmdpipe = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     data = ''
     while True:
         line = cmdpipe.stdout.readline()
