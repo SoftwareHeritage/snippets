@@ -98,9 +98,11 @@ def prepare_data(data):
     for day, values in enumerate(data['data']):
         day_ts += step
         for col, value in enumerate(values):
+            if value is None:
+                continue
             legend_col = legends[col]
             l = r.get(legend_col, [])
-            l.append((day_ts, value if value else 0))
+            l.append((day_ts, value))
             r[legend_col] = l
 
     return r
