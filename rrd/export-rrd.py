@@ -70,7 +70,7 @@ def retrieve_json(cmd):
         line = cmdpipe.stdout.readline()
         if not line:
             break
-        # Hack: the json outputd is not well-formed...
+        # Hack: the json output is not well-formed...
         line = line.replace('\'', '"')
         line = line.replace('about: ', '"about": ')
         line = line.replace('meta:', '"meta": ')
