@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Script to execute the export of softwareheritage's rrds data.
 
@@ -65,19 +65,19 @@ def retrieve_json(cmd):
         The desired result as json string.
     """
     cmdpipe = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    data = ''
+    data = b''
     while True:
         line = cmdpipe.stdout.readline()
         if not line:
             break
         # Hack: the json output is not well-formed...
-        line = line.replace('\'', '"')
-        line = line.replace('about: ', '"about": ')
-        line = line.replace('meta:', '"meta": ')
+        line = line.replace(b'\'', b'"')
+        line = line.replace(b'about: ', b'"about": ')
+        line = line.replace(b'meta:', b'"meta": ')
         data += line
 
     cmdpipe.stdout.close()
-    return json.loads(data)
+    return json.loads(data.decode('utf-8'))
 
 
 def prepare_data(data):
