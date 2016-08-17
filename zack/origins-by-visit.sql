@@ -1,5 +1,8 @@
 -- compute the number of visits that each SWH origin went through
 -- report them grouped by number of visits, in decreasing order
+--
+-- DB: softwareheritage
+
 with origin_visits as (
      select origin, count(visit) as visits
      from origin_visit
