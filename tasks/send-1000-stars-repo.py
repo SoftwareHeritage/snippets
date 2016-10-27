@@ -2,7 +2,6 @@
 
 import click
 import logging
-import json
 import time
 
 import requests
@@ -78,7 +77,7 @@ def list_repositories(start_page=None, last_page=None):
               help="Destination queue to send results")
 @click.option('--start-page', default=None, help='Starting page to read from')
 @click.option('--last-page', default=None, help='Ending page')
-@click.option('--dump-repositories', default='/tmp/repositories',
+@click.option('--dump-repositories', default=None,
               help='Default path to keep the list of repositories')
 def main(queue, start_page, last_page, dump_repositories):
     logging.basicConfig(
