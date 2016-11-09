@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# No up-to-date listing about the recognized licenses is found for fossology.
+# So using the source to determine that.
+
+# Work has been done with current branch master for
+# src/nomos/agent/parse.c
+# (https://github.com/fossology/fossology/blob/f601a0e6b14a590a213809687da4bee1eafa9998/src/nomos/agent/parse.c)
+
+# parse.c defines 3 macros:
+#
+# LOWINTEREST: It's not really interesting (deal with empty case is
+# defined in code but through use, it's not used) -> No_license_found
+# is returned on empty file...
+#
+# MEDINTEREST: Seems to define the proprietary ones
+#
+# INTERESTING: Seems to be the real FLOSS licenses
+#
+# Those macros takes 2 parameters, the license name and its weight of some kind
+# Grepping for those patterns to extract the licenses.
+
+# simple one
+grep INTERESTING parse.c | grep -v '?' | grep '("' | sed -e 's/INTERESTING(\(.*\));/\1/g' | awk '{print $1}' | sort | uniq > licenses
+# complicated one
+grep INTERESTING parse.c | grep '?' | sed -e 's/INTERESTING(lDebug.*: \(.*\));/\1/g' | grep -v cp | awk '{print $1}' | sort | uniq >> licenses
+
+# simple one
+grep MEDINTEREST parse.c | grep -v '?' | grep '("' | sed -e 's/MEDINTEREST(\(.*\));/\1/g' | awk '{print $1}' | sort | uniq >> licenses
+# complicated one (ternary operation)
+grep MEDINTEREST parse.c | grep '?' | sed -e 's/MEDINTEREST(lDebug.*: \(.*\));/\1/g' | grep -v cp | awk '{print $1}' | sort | uniq >> licenses
+
+sed -e 's/LS_NOSUM/No_license_found/g' -i licenses
+sed -e 's/LS_UNCL/UnclassifiedLicense/g' -i licenses
+sed -e 's/LS_NOT_PD/NOT-public-domain/g' -i licenses
+sed -e 's/LS_PD_CLM/Public-domain/g' -i licenses
+sed -e 's/LS_PD_CPRT/Public-domain(C)/g' -i licenses
+sed -e 's/LS_PD_ONLY/Public-domain-ref/g' -i licenses
+sed -e 's/LS_CPRTONLY/Misc-Copyright/g' -i licenses
+sed -e 's/LS_TDMKONLY/Trademark-ref/g' -i licenses
+sed -e 's/LS_LICRONLY/License-ref/g' -i licenses
+sed -e 's/LS_PATRONLY/Patent-ref/g' -i licenses
+sed -e 's/"\(.*\)"/\1/g' -i licenses
+
+# Remove noise and redundant information
+cat licenses | sort | uniq | grep -v 'INTERES' | grep -v '?' | sponge licenses
