@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Use: cat /srv/storage/space/mirrors/code.google.com/sources/INDEX.svndump | list-svndump-urls
+
+# sample output:
+# /srv/storage/space/mirrors/code.google.com/sources/v2/apache-extras.org/c/cassandra-gui/cassandra-gui-repo.svndump.gz http://cassandra-gui.googlecode.com/svn/
+# /srv/storage/space/mirrors/code.google.com/sources/v2/apache-extras.org/c/click-calendar/click-calendar-repo.svndump.gz http://click-calendar.googlecode.com/svn/
+# /srv/storage/space/mirrors/code.google.com/sources/v2/apache-extras.org/c/continuouslava/continuouslava-repo.svndump.gz http://continuouslava.googlecode.com/svn/
+
+while read f
+do
+    project_name=$(basename $(dirname $f))
+    echo $f http://$project_name.googlecode.com/svn/
+done
