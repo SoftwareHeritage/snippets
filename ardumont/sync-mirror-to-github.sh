@@ -47,9 +47,6 @@ DATA_REPO=$(curl -d api.token=$FORGE_API_TOKEN \
                  -d "constraints[callsigns][0]=$FORGE_REPO_CALLSIGN" \
                  https://forge.softwareheritage.org/api/diffusion.repository.search 2>/dev/null)
 
-# Retrieve the repository's id
-FORGE_REPO_ID=$(echo $DATA_REPO | jq '.result.data[].id' | sed -e 's/"//gi')
-
 # Retrieve the repository's phid
 FORGE_REPO_PHID=$(echo $DATA_REPO | jq '.result.data[].phid' | sed -e 's/"//gi')
 
