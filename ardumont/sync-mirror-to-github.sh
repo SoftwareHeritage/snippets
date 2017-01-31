@@ -76,7 +76,7 @@ curl -H "Authorization: token $GITHUB_USER_TOKEN" \
      -d @${TMP_FILE} \
      https://api.github.com/orgs/SoftwareHeritage/repos
 
-clean up
+# clean up
 [ -f $TMP_FILE ] && rm $TMP_FILE
 
 #### phabricator
