@@ -86,10 +86,11 @@ KEY_PHID=$(curl -d "api.token=$FORGE_API_TOKEN" \
                | jq '.result.data[].phid' | sed -e 's/"//gi')
 
 # Create the uri to associate with the repository with the following options:
-# - github uri
-# - i/o: Mirror" in the ui is 'i/o': read in the api
+# - uri: github uri
+# - i/o: mirror
 # - display: hidden
-# - credentials: set the credential to the wanted credential (id passed as input)
+# - credentials: set the credential to the wanted credential (id
+# - passed as input in this script)
 curl https://forge.softwareheritage.org/api/diffusion.uri.edit \
                 -d api.token=$FORGE_API_TOKEN \
                 -d transactions[0][type]=repository \
