@@ -101,15 +101,15 @@ class BrowseUserBehavior(BaseUserBehavior):
 
     @task(1)
     def base_index(self):
-        self.client.get('/', auth=self.auth)
+        self.client.get('/')
 
     @task(1)
     def api_index(self):
-        self.client.get('/api/', auth=self.auth)
+        self.client.get('/api/')
 
     @task(1)
     def api_1_index(self):
-        self.client.get('/api/1/', auth=self.auth)
+        self.client.get('/api/1/')
 
 
 class APIUserBehavior(BaseUserBehavior):
