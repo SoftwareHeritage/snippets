@@ -9,7 +9,6 @@ swh_data.read_all_data()
 
 class BaseUserBehavior(TaskSet):
     headers = {}
-    auth = (os.getenv('SWH_USER'), os.getenv('SWH_PASS'))
     base_name = 'base'
 
     @staticmethod
@@ -17,7 +16,6 @@ class BaseUserBehavior(TaskSet):
         return random.choice(swh_data.DATA[data_type])
 
     def get(self, *args, **kwargs):
-        kwargs['auth'] = self.auth
         kwargs['headers'] = self.headers
         if 'name' in kwargs:
             kwargs['name'] = '%s:%s' % (self.base_name,
