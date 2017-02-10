@@ -18,7 +18,9 @@ def load_repository_from_mapping(root_repositories_dir, origin_date,
     """Load a repository from a specific rootdir.
     """
     for line in sys.stdin:
-        origin_url, relative_repo_on_disk = line.strip().split(' ')
+        line = line.strip().split(' ')
+        origin_url = line[0]
+        relative_repo_on_disk = ' '.join(line[1:])
 
         # initiate task
         task = get_task('swh.loader.git.tasks.LoadDiskGitRepository')
