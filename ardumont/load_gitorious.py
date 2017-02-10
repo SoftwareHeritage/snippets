@@ -31,10 +31,9 @@ def load_repository_from_mapping(root_repositories_dir, origin_date,
             root_repositories_dir, relative_repo_on_disk)
         date = origin_date
 
-        if dry_run:
-            print('Would have send: {origin_url: %s, repo: %s, date: %s}' % (
-                origin_url, directory_path, date))
-        else:
+        print('{origin_url: %s, repo: %s, date: %s}' % (
+              origin_url, directory_path, date))
+        if not dry_run:
             task.delay(origin_url=origin_url,
                        directory=directory_path,
                        date=date)
