@@ -37,7 +37,7 @@ def load_repository_from_mapping(
         else:
             task.delay(origin_url=origin_url,
                        directory=directory_path,
-                       date=None)
+                       date=date)
 
 
 @click.command()
