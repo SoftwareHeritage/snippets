@@ -13,10 +13,8 @@ import sys
 from swh.scheduler.utils import get_task
 
 
-def load_repository_from_mapping(
-        root_repositories_dir, origin_date,
-        queue_name='swh_loader_git_express',
-        dry_run=False):
+def load_repository_from_mapping(root_repositories_dir, origin_date,
+                                 queue_name, dry_run=False):
     """Load a repository from a specific rootdir.
     """
     for line in sys.stdin:
@@ -46,12 +44,16 @@ def load_repository_from_mapping(
 @click.option('--origin-date',
               default='Wed, 30 Mar 2016 09:40:04 +0200',
               help='Origin date to use.')
+@click.option('--queue-name',
+              default='swh_loader_git_express',
+              help='Origin date to use.')
 @click.option('--dry-run/--no-dry-run',
               help='Do nothing but print.')
-def run(root_repositories, origin_date, dry_run):
+def run(root_repositories, origin_date, queue_name, dry_run):
     load_repository_from_mapping(
         root_repositories_dir=root_repositories,
         origin_date=origin_date,
+        queue_name=queue_name,
         dry_run=dry_run)
 
 
