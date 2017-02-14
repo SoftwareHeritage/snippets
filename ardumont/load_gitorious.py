@@ -47,7 +47,8 @@ def load_repository_from_mapping(root_repositories_dir, origin_date,
               help='Origin date to use.')
 @click.option('--queue-name',
               default='swh_loader_git_express',
-              help='Origin date to use.')
+              help='''Queue name to use for message,
+                      potentially overwriting default one.''')
 @click.option('--dry-run/--no-dry-run',
               help='Do nothing but print.')
 def run(root_repositories, origin_date, queue_name, dry_run):
