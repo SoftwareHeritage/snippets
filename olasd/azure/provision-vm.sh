@@ -12,9 +12,6 @@ IP=$(ip a | grep 192 | awk '{print $2}' | awk -F/ '{print $1}')
 apt-get update
 apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 
-deluser testadmin || true
-rm -rf /home/testadmin
-
 echo $HOSTNAME > /etc/hostname
 hostnamectl set-hostname $HOSTNAME
 cat >> /etc/hosts << EOF
@@ -85,6 +82,6 @@ EOF
 
 rm -rf /root/.ssh
 
-puppet agent --test || true
+puppet agent --test && deluser testadmin && rm -rf /home/testadmin || true
 
 reboot
