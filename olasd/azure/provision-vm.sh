@@ -40,21 +40,51 @@ EOF
 apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nfs-common
 mount -a
 
+### puppet from backport
 
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install puppet
+cat >/etc/apt/sources.list.d/backports.list <<EOF
+# This file is managed by Puppet. DO NOT EDIT.
+# backports
+deb http://deb.debian.org/debian/ jessie-backports main
+EOF
+
+cat >/etc/apt/preferences.d/puppet.pref <<EOF
+# This file is managed by Puppet. DO NOT EDIT.
+Explanation: Pin puppet dependencies to backports
+Package: facter hiera puppet puppet-common puppetmaster puppetmaster-common puppetmaster-passenger ruby-deep-merge
+Pin: release n=jessie-backports
+Pin-Priority: 990
+EOF
+
+apt-get update
+
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install augeas-tools
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -t jessie-backports install puppet
+
+# FIXME: Is this useful?
+augtool << "EOF"
+set /files/etc/puppet/puppet.conf/main/pluginsync true
+set /files/etc/puppet/puppet.conf/main/server pergamon.internal.softwareheritage.org
+save
+EOF
+
+mkdir -p /etc/facter/facts.d
+echo location=azure_euwest > /etc/facter/facts.d/location.txt
+
 service puppet stop
 systemctl disable puppet.service
 puppet agent --enable
 
-cat > /etc/puppet/puppet.conf << EOF
-[agent]
-server=pergamon.internal.softwareheritage.org
-report            = true
-pluginsync        = true
+augtool << "EOF"
+set /files/etc/puppet/puppet.conf/agent/server pergamon.internal.softwareheritage.org
+set /files/etc/puppet/puppet.conf/agent/report true
+set /files/etc/puppet/puppet.conf/agent/pluginsync true
+save
 EOF
 
-rm -r /root/.ssh
+rm -rf /root/.ssh
 
-puppet agent -t
+puppet agent --test || true
 
 reboot
