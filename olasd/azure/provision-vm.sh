@@ -24,18 +24,7 @@ EOF
 
 mkdir -p /etc/resolvconf/resolv.conf.d
 echo search internal.softwareheritage.org > /etc/resolvconf/resolv.conf.d/tail
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install resolvconf
-
-mkdir -p /srv/storage/space
-mkdir -p /srv/softwareheritage/objects
-
-cat >> /etc/fstab << EOF
-
-uffizi:/srv/storage/space /srv/storage/space nfs rw,soft,intr,rsize=8192,wsize=8192,noauto,x-systemd.automount,x-systemd.device-timeout=10 0 0
-uffizi:/srv/softwareheritage/objects /srv/softwareheritage/objects nfs rw,soft,intr,rsize=8192,wsize=8192,noauto,x-systemd.automount,x-systemd.device-timeout=10 0 0
-EOF
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nfs-common
-mount -a
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install resolvconf nfs-common
 
 ### puppet from backport
 
