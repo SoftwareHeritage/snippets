@@ -71,6 +71,9 @@ EOF
 
 rm -rf /root/.ssh
 
-puppet agent --test && deluser testadmin && rm -rf /home/testadmin || true
+deluser testadmin
+rm -rf /home/testadmin
+
+puppet agent --test || true
 
 reboot
