@@ -13,15 +13,18 @@ do
     POSITION=$(($NUMBER_CONTENTS * $START))
 
     echo "Sending $NUMBER_CONTENTS new contents from $POSITION"
-    gzip -dc /srv/storage/space/lists/azure-rehash/contents-sha1-to-rehash.txt.gz | \
-        tail -n +$POSITION | \
-        head -${NUMBER_CONTENTS} | \
+    python3 ./read_from_archive.py \
+            --archive-path /srv/storage/space/lists/azure-rehash/contents-sha1-to-rehash.txt.gz \
+            --start-position $POSITION \
+            --read-lines $NUMBER_CONTENTS | \
         SWH_WORKER_INSTANCE=swh_indexer_orchestrator python3 -m swh.indexer.producer \
                            --batch $BATCH_SIZE
+                           # --task-name rehash \
+                           # --dict-with-key sha1
     START=$((START + 1))
-    echo $START > position_indexer
 
     echo "Waiting for computations to be done"
     echo
     sleep $SLEEP_TIME
+    echo $START > position_indexer
 done
