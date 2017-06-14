@@ -18,6 +18,7 @@ from playhouse.sqlite_ext import SqliteExtDatabase
 
 
 MIRROR = 'http://ftp.fr.debian.org/debian'
+SOURCES = 'http://sources.debian.net'
 RELEASE = 'jessie'
 BASE_URL = '{mirror}/dists/{release}'.format(mirror=MIRROR,
                                                     release=RELEASE)
@@ -71,39 +72,26 @@ class Tag(BaseModel):
     tag = TextField(unique=True)
 
 
-class ReadmeFile(BaseModel):
-    sha1 = CharField(unique=True)
-
-
-class ReadmeTag(BaseModel):
-    readme = ForeignKeyField(ReadmeFile)
-    tag = ForeignKeyField(Tag)
-
-    class Meta:
-        indexes = ((('readme', 'tag'), True),)
-
-
 class Package(BaseModel):
     name = TextField(unique=True)
 
-    # this should be a manytomany...
-    #readme = ForeignKeyField(ReadmeFile, related_name='packages')
+
+class PackageTag(BaseModel):
+    package = ForeignKeyField(Package)
+    tag = ForeignKeyField(Tag)
+
+    class Meta:
+        indexes = ((('package', 'tag'), True),)
+
+
+class Readme(BaseModel):
+    name = TextField()
+    sha256 = CharField(max_length=256)
+    package = ForeignKeyField(Package, related_name='readmes')
 
 
 db.connect()
-db.create_tables([Tag, ReadmeFile, ReadmeTag, Package], safe=True)
-
-
-def sha1file(path):
-    BUF_SIZE = 2 ** 22
-    sha1 = hashlib.sha1()
-    with path.open('rb') as f:
-        while True:
-            data = f.read(BUF_SIZE)
-            if not data:
-                break
-            sha1.update(data)
-    return sha1.digest()
+db.create_tables([Tag, Package, PackageTag, Readme], safe=True)
 
 
 async def communicate(cmdline, data=None, **kwargs):
@@ -137,43 +125,51 @@ async def pkg_list(session, group):
     PKG_LIST.update(await getdeb822(session, packages, cls=Packages))
 
 
-def handle_file(pkgname, f, tags):
+def handle_file(pkgname, readme_name, sha256, tags):
     tags = (t.strip() for t in tags.split(','))
     tags_entries = [Tag.get_or_create(tag=tagname)[0] for tagname in tags]
 
-    sha1 = sha1file(f)
-    readme, _ = ReadmeFile.get_or_create(sha1=sha1)
-
+    package, _ = Package.get_or_create(name=pkgname)
     for te in tags_entries:
-        rt, _ = ReadmeTag.get_or_create(tag=te, readme=readme)
+        pt, _ = PackageTag.get_or_create(tag=te, package=package)
 
-    package, _ = Package.get_or_create(name=pkgname)#, readme=readme)
+    readme, _ = Readme.get_or_create(name=readme_name, sha256=sha256, package=package)
 
 
-async def handle_package(package_name, sem):
+async def handle_package(package_name, session, sem):
     pkg = PKG_LIST[package_name]
 
     src = SRC_LIST[pkg['Source'].split()[0] if 'Source' in pkg else package_name]
-    dsc = next(x for x in src['Files'] if x['name'].endswith('.dsc'))['name']
-    directory = src['Directory']
-    url_dsc = '{mirror}/{directory}/{dsc}'.format(mirror=MIRROR,
-                                                  directory=directory, dsc=dsc)
+    url_index = '{sources}/api/src/{package}/{version}/'.format(
+        sources=SOURCES, package=src['Package'], version=src['Version'])
     async with sem:
-        with tempfile.TemporaryDirectory(prefix='debianreadme',
-                                         dir='/srv/hdd/tmp') as tdir:
-            await communicate(['dget', url_dsc], cwd=tdir)
-            extract_root = Path(tdir)
-            source_folder = next((d for d in extract_root.iterdir()
-                                  if d.is_dir()), None)
-            if source_folder is not None:
-                for f in source_folder.iterdir():
-                    if f.is_file() and f.name in README_FILES:
-                        await asyncio.get_event_loop().run_in_executor(None,
-                            handle_file, package_name, f, pkg['Tag'])
+        data = await session.get(url_index)
+        index = await data.json()
+
+        # Bug with non-ascii file paths
+        if 'error' in index and index['error'] == 500:
+            tqdm.tqdm.write('error 500 with package {}'.format(package_name))
+            return
+
+        for f in index['content']:
+            if f['type'] == 'file' and f['name'] in README_FILES:
+                url_content = '{url_index}{fname}/'.format(url_index=url_index,
+                                                           fname=f['name'])
+                content = await (await session.get(url_content)).json()
+
+                # Broken symlink
+                if 'error' in content and content['error'] == 404:
+                    tqdm.tqdm.write('broken symlink for {} in {}'.format(
+                        f['name'], package_name))
+                    continue
+
+                await asyncio.get_event_loop().run_in_executor(
+                    None, handle_file, package_name, f['name'],
+                    content['checksum'], pkg['Tag'])
 
 
-async def handle_package_pg(package_name, sem, pbar):
-    await handle_package(package_name, sem)
+async def handle_package_pg(package_name, session, sem, pbar):
+    await handle_package(package_name, session, sem)
     pbar.update(1)
 
 
@@ -191,10 +187,11 @@ async def main():
             and not Package.select().where(Package.name == k).exists()]
     print('done.')
 
-    semaphore = asyncio.BoundedSemaphore(64)
+    semaphore = asyncio.BoundedSemaphore(10)
     pbar = tqdm.tqdm(total=len(todo))
-    tasks = [handle_package_pg(pkg, semaphore, pbar) for pkg in todo]
-    await asyncio.gather(*tasks)
+    with aiohttp.ClientSession() as session:
+        tasks = [handle_package_pg(pkg, session, semaphore, pbar) for pkg in todo]
+        await asyncio.gather(*tasks)
 
 
 if __name__ == '__main__':
