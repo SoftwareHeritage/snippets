@@ -14,6 +14,7 @@ import requests
 PAYLOAD_REQUESTS = {
   "from": 0,
   "_source": [
+    "swh_logging_args_args",
     "swh_logging_args_exc",
     "swh_logging_args_kwargs"
   ],
@@ -28,7 +29,7 @@ PAYLOAD_REQUESTS = {
         {
           "match": {
             "systemd_unit": {
-              "query": "swh-worker@swh_loader_git_disk.service",
+              "query": "swh-worker@swh_loader_svn.service",
               "type": "phrase"
             }
           }
@@ -74,6 +75,7 @@ def retrieve_data(server, indexes, types, size, start=None):
         payload['search_after'] = [start]
 
     url = '%s/%s/%s/_search' % (server, indexes, types)
+
     r = requests.post(url, json=payload)
     if r.ok:
         return r.json()
@@ -81,17 +83,48 @@ def retrieve_data(server, indexes, types, size, start=None):
 
 def format_result(json):
     """Format result from the server's response"""
+    if not json:
+        return {}
+
+    hits = json.get('hits')
+    if not hits:
+        return {}
+
+    total_hits = hits.get('total')
+    if not total_hits:
+        return {}
+
+    hits = hits.get('hits')
+    if not hits:
+        return {}
+
     all_data = []
-    total_hits = json['hits']['total']
-    for data in json['hits']['hits']:
+    last_sort_time = None
+    for data in hits:
         last_sort_time = data['sort'][0]
         source = data['_source']
-        all_data.append({
-            'args': ast.literal_eval(source['swh_logging_args_kwargs']),
-            'exception': source['swh_logging_args_exc']
-        })
+        _data = {}
 
-    return all_data, last_sort_time, total_hits
+        swh_logging_args_args = source.get('swh_logging_args_args')
+        if swh_logging_args_args:
+            _data['args'] = ast.literal_eval(swh_logging_args_args)
+
+        swh_logging_args_kwargs = source.get('swh_logging_args_kwargs')
+        if swh_logging_args_kwargs:
+            _data['kwargs'] = ast.literal_eval(swh_logging_args_kwargs)
+
+        exception = source.get('swh_logging_args_exc')
+        if exception:
+            _data['exception'] = exception
+
+        if _data:
+            all_data.append(_data)
+
+    return {
+        'all': all_data,
+        'last_sort_time': last_sort_time,
+        'total_hits': total_hits
+    }
 
 
 def query_log_server(server, indexes, types, size):
@@ -102,9 +135,13 @@ def query_log_server(server, indexes, types, size):
     while count < total_hits:
         response = retrieve_data(server, indexes, types, size,
                                  start=last_sort_time)
-        all_data, last_sort_time, total_hits = format_result(response)
+        data = format_result(response)
+        if not data:
+            break
 
-        for row in all_data:
+        total_hits = data['total_hits']
+
+        for row in data['all']:
             count += 1
             yield row
 

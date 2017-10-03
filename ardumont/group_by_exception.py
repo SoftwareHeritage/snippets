@@ -17,19 +17,30 @@ import sys
 from collections import defaultdict, OrderedDict
 
 
+LOADER_TYPES = ['git', 'svn']
+
+
 def work_on_exception_msg(exception):
     return exception[0:50]
 
 
-def group_by(origin_types):
+def group_by(origin_types, loader_type):
     group = {ori_type: defaultdict(list) for ori_type in origin_types}
+
+    if loader_type == 'svn':
+        # args = ('path-to-archive', 'some-origin-url')
+        origin_key_to_lookup = 1
+    elif loader_type == 'git':
+        # args = {'origin_url: 'some-origin-url}
+        origin_key_to_lookup = 'origin_url'
 
     for line in sys.stdin:
         origin_type = None
         line = line.strip()
         data = ast.literal_eval(line)
         for ori_type in origin_types:
-            if ori_type in data['args']['origin_url']:
+            args = data['args']
+            if ori_type in args[origin_key_to_lookup]:
                 origin_type = ori_type
                 break
 
@@ -45,8 +56,13 @@ def group_by(origin_types):
 @click.command()
 @click.option('--origin-types', default=['gitorious', 'googlecode'],
               help='Default types of origin to lookup')
-def main(origin_types):
-    group = group_by(origin_types)
+@click.option('--loader-type', default='svn',
+              help="Type of loader (git, svn)")
+def main(origin_types, loader_type):
+    if loader_type not in LOADER_TYPES:
+        raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
+
+    group = group_by(origin_types, loader_type)
 
     result = {}
     for ori_type in origin_types:
