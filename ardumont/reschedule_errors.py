@@ -15,8 +15,9 @@ from swh.scheduler.utils import get_task
 
 
 _MAP_ORIGIN_QUEUE = {
-    'gitorious': 'swh.loader.git.tasks.LoadDiskGitRepository',
-    'googlecode': 'swh.loader.git.tasks.UncompressAndLoadDiskGitRepository',
+    'git-gitorious': 'swh.loader.git.tasks.LoadDiskGitRepository',
+    'git-googlecode': 'swh.loader.git.tasks.UncompressAndLoadDiskGitRepository',
+    'svn-googlecode': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk'
 }
 
 
@@ -25,15 +26,21 @@ _BLACK_LISTED_EXCEPTIONS = [
     "ValueError('Failed to uncompress archive /srv/stor",
 ]
 
+"""Loader types"""
+LOADER_TYPES = ['git', 'svn']
+
 
 def work_on_exception_msg(exception):
     return exception[0:40]
 
 
 @click.command()
-@click.option('--origins', default=['gitorious', 'googlecode'])
+@click.option('--origins',
+              help='Origin concerned by scheduling back',
+              default=['gitorious', 'googlecode'])
+@click.option('--loader-type', )
 @click.option('--dry-run/--no-dry-run', help='Do nothing but print.')
-def main(origins, dry_run):
+def main(origins, loader_type, dry_run):
     if dry_run:
         print('*** DRY RUN ***')
 
@@ -41,6 +48,13 @@ def main(origins, dry_run):
 
     black_listed_exceptions = list(map(work_on_exception_msg,
                                        _BLACK_LISTED_EXCEPTIONS))
+
+    if loader_type == 'svn':
+        # args = ('path-to-archive', 'some-origin-url')
+        origin_key_to_lookup = 1
+    elif loader_type == 'git':
+        # args = {'origin_url: 'some-origin-url}
+        origin_key_to_lookup = 'origin_url'
 
     for line in sys.stdin:
         line = line.rstrip()
@@ -53,8 +67,9 @@ def main(origins, dry_run):
 
         ori_type = None
         for ori in origins:
-            if ori in args['origin_url']:
-                ori_type = ori
+            url = args[origin_key_to_lookup]
+            if ori in url:
+                ori_type = '-'.join([loader_type, ori])
                 break
 
         if not ori_type:
@@ -65,7 +80,10 @@ def main(origins, dry_run):
         if dry_run:
             continue
 
-        tasks[ori_type].delay(**data['args'])
+        if loader_type == 'svn':
+            tasks[ori_type].delay(*data['args'])
+        else:
+            tasks[ori_type].delay(**data['args'])
 
 
 if __name__ == '__main__':

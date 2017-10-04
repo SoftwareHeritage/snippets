@@ -12,6 +12,7 @@ import ast
 import click
 import json
 import operator
+import re
 import sys
 
 from collections import defaultdict, OrderedDict
@@ -21,7 +22,12 @@ LOADER_TYPES = ['git', 'svn']
 
 
 def work_on_exception_msg(exception):
-    return exception[0:50]
+    exception_msg = None
+    if exception.startswith('['):
+        exception_msg = re.sub('\[.*\]', '', exception).lstrip()
+    else:
+        exception_msg = exception
+    return exception_msg[0:50]
 
 
 def group_by(origin_types, loader_type):
@@ -40,12 +46,12 @@ def group_by(origin_types, loader_type):
         data = ast.literal_eval(line)
         for ori_type in origin_types:
             args = data['args']
-            if ori_type in args[origin_key_to_lookup]:
+            if args and ori_type in args[origin_key_to_lookup]:
                 origin_type = ori_type
                 break
 
         if not origin_type:
-            continue
+            origin_type = 'unknown'
 
         reworked_exception_msg = work_on_exception_msg(data['exception'])
         group[origin_type][reworked_exception_msg].append(data['args'])
@@ -62,6 +68,7 @@ def main(origin_types, loader_type):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
 
+    origin_types = origin_types + ['unknown']
     group = group_by(origin_types, loader_type)
 
     result = {}

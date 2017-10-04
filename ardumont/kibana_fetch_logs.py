@@ -14,6 +14,7 @@ import requests
 PAYLOAD_REQUESTS = {
   "from": 0,
   "_source": [
+    "message",
     "swh_logging_args_args",
     "swh_logging_args_exc",
     "swh_logging_args_kwargs"
@@ -117,6 +118,15 @@ def format_result(json):
         if exception:
             _data['exception'] = exception
 
+        if not _data:
+            message = source.get('message')
+            if message:
+                _data = {
+                    'args': {},
+                    'kwargs': {},
+                    'exception': message
+                }
+
         if _data:
             all_data.append(_data)
 
@@ -140,6 +150,7 @@ def query_log_server(server, indexes, types, size):
             break
 
         total_hits = data['total_hits']
+        last_sort_time = data['last_sort_time']
 
         for row in data['all']:
             count += 1
