@@ -26,27 +26,11 @@ mkdir -p /etc/resolvconf/resolv.conf.d
 echo search internal.softwareheritage.org > /etc/resolvconf/resolv.conf.d/tail
 apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install resolvconf nfs-common
 
-### puppet from backport
-
-cat >/etc/apt/sources.list.d/backports.list <<EOF
-# This file is managed by Puppet. DO NOT EDIT.
-# backports
-deb http://deb.debian.org/debian/ jessie-backports main
-EOF
-
-cat >/etc/apt/preferences.d/puppet.pref <<EOF
-# This file is managed by Puppet. DO NOT EDIT.
-Explanation: Pin puppet dependencies to backports
-Package: facter hiera puppet puppet-common puppetmaster puppetmaster-common puppetmaster-passenger ruby-deep-merge
-Pin: release n=jessie-backports
-Pin-Priority: 990
-EOF
-
 apt-get update
 
 apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install augeas-tools
-apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -t jessie-backports install puppet
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install augeas-tools puppet
+
 
 # FIXME: Is this useful?
 augtool << "EOF"

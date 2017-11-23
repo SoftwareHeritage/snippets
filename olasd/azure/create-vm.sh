@@ -4,7 +4,7 @@ worker=${1-worker01}
 zone=westeurope
 resource_prefix=euwest
 resource_group="${resource_prefix}-workers"
-image=credativ:Debian:8:latest
+image=credativ:Debian:9:latest
 # pub_key=~/.ssh/id-rsa-swhworker.pub
 pub_key=~/.ssh/id_rsa.inria.pub
 
