@@ -37,21 +37,34 @@ def group_by(origin_types, loader_type):
         # args = ('path-to-archive', 'some-origin-url')
         origin_key_to_lookup = 1
     elif loader_type == 'git':
-        # args = {'origin_url: 'some-origin-url}
         origin_key_to_lookup = 'origin_url'
 
+    seen = set()
     for line in sys.stdin:
         origin_type = None
+        origin_url = None
         line = line.strip()
         data = ast.literal_eval(line)
+        args = data['args']
         for ori_type in origin_types:
-            args = data['args']
-            if args and ori_type in args[origin_key_to_lookup]:
-                origin_type = ori_type
+            try:
+                if args and ori_type in args[origin_key_to_lookup]:
+                    origin_type = ori_type
+                    origin_url = args[origin_key_to_lookup]
+                    break
+            except IndexError:  # when something is wrong, just be the unknown
+                                # origin_type
                 break
 
-        if not origin_type:
+        if not origin_type:  # corner case when we don't have the
+                             # input parameters
             origin_type = 'unknown'
+
+        if origin_url:
+            if origin_url in seen:
+                continue
+
+            seen.add(origin_url)
 
         reworked_exception_msg = work_on_exception_msg(data['exception'])
         group[origin_type][reworked_exception_msg].append(data['args'])
