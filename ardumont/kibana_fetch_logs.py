@@ -45,6 +45,30 @@ PAYLOAD_REQUESTS = {
         {
           "match": {
             "message": {
+              "query": "[.*] Uneventful visit. Detail: file",
+              "type": "phrase"
+            }
+          }
+        },
+        {
+          "match": {
+            "message": {
+              "query": ".*Failed to mount the svn dump.*",
+              "type": "phrase"
+            }
+          }
+        },
+        {
+          "match": {
+            "message": {
+              "query": "[.*] Loading failure, updating to `partial`",
+              "type": "phrase"
+            }
+          }
+        },
+        {
+          "match": {
+            "message": {
               "query": "[.*] consumer: Cannot connect to amqp.*",
               "type": "phrase"
             }
