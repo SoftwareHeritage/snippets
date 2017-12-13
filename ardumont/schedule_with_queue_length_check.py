@@ -10,6 +10,8 @@ import click
 import sys
 import time
 
+from swh.model.hashutil import hash_to_hex
+
 try:
     from swh.indexer.producer import gen_sha1
 except ImportError:
@@ -57,18 +59,30 @@ def stdin_to_index_tasks():
         }
 
 
+def print_last_hash(d):
+    """Given a dict of arguments, take the sha1s list, print the last
+       element as hex hash.
+
+    """
+    l = d['args']
+    if l:
+        print(hash_to_hex(l[0][-1]))
+
+
 QUEUES = {
     'svndump': {  # for svn, we use the same queue for length checking
                   # and scheduling
         'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk',
         # to_task the function to use to transform the input in task
-        'task_fn_generator': stdin_to_svn_tasks,
+        'task_generator_fn': stdin_to_svn_tasks,
+        'print_fn': print,
     },
     'indexer': {  # for indexer, we schedule using the orchestrator's queue
                   # we check the length on the mimetype queue though
         'task_name': 'swh.indexer.tasks.SWHOrchestratorAllContentsTask',
         'queue_to_check': 'swh.indexer.tasks.SWHContentMimetypeTask',
-        'task_fn_generator': stdin_to_index_tasks,
+        'task_generator_fn': stdin_to_index_tasks,
+        'print_fn': print_last_hash,
     }
 }
 
@@ -112,7 +126,7 @@ def main(queue_name, threshold, waiting_time, app=main_app):
 
         if nb_tasks_to_send > 0:
             count = 0
-            task_fn = queue_information['task_fn_generator']
+            task_fn = queue_information['task_generator_fn']
             for _task in task_fn():
                 pending_tasks.append(_task)
                 count += 1
@@ -128,11 +142,12 @@ def main(queue_name, threshold, waiting_time, app=main_app):
                     # if no more data, we break to exit
                     break
 
+            print_fn = queue_information.get('print_fn', print)
             for _task in pending_tasks:
                 args = _task['arguments']['args']
                 kwargs = _task['arguments']['kwargs']
                 scheduling_task.delay(*args, **kwargs)
-                print(_task['arguments'])
+                print_fn(_task['arguments'])
 
         if throttled:
             time.sleep(waiting_time)
