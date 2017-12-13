@@ -25,9 +25,15 @@ MAX_NUM_TASKS = 10000
 MAX_WAITING_TIME = 10
 
 
-def stdin_to_svn_tasks():
+def stdin_to_svn_tasks(batch_size):
     """Generates from stdin the proper task argument for the loader-svn
        worker.
+
+    Args:
+        batch_size (int): Not used
+
+    Yields:
+        expected dictionary of 'arguments' key
 
     """
     for line in sys.stdin:
@@ -46,11 +52,17 @@ def stdin_to_svn_tasks():
         }
 
 
-def stdin_to_index_tasks():
+def stdin_to_index_tasks(batch_size=1000):
     """Generates from stdin the proper task argument for the orchestrator.
 
+    Args:
+        batch_size (int): Number of sha1s to group together
+
+    Yields:
+        expected dictionary of 'arguments' key
+
     """
-    for sha1s in gen_sha1(batch=1000):
+    for sha1s in gen_sha1(batch=batch_size):
         yield {
             'arguments': {
                 'args': [sha1s],
@@ -92,10 +104,13 @@ QUEUES = {
 @click.option('--threshold', help='Threshold for the queue',
               type=click.INT,
               default=MAX_NUM_TASKS)
+@click.option('--batch-size', help='Batch size if batching is possible',
+              type=click.INT,
+              default=1000)
 @click.option('--waiting-time', help='Waiting time between checks',
               type=click.INT,
               default=MAX_WAITING_TIME)
-def main(queue_name, threshold, waiting_time, app=main_app):
+def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     if queue_name not in QUEUES:
         raise ValueError("Unsupported %s, possible values: %s" % (
             queue_name, QUEUES))
@@ -127,7 +142,7 @@ def main(queue_name, threshold, waiting_time, app=main_app):
         if nb_tasks_to_send > 0:
             count = 0
             task_fn = queue_information['task_generator_fn']
-            for _task in task_fn():
+            for _task in task_fn(batch_size):
                 pending_tasks.append(_task)
                 count += 1
 
