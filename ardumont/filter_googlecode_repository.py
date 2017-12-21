@@ -5,6 +5,8 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+# use sample:
+# grep -v '.json' /srv/storage/space/mirrors/code.google.com/sources/INDEX.filesystem | grep -v 'svndump' | ~/bin/filter_googlecode_repository.py --filter-repository-type hg > INDEX-hg
 
 import click
 import os
@@ -63,7 +65,7 @@ def project_info(project_metadata_filepath, filter_repository_type):
         project_metadata_filepath, filter_repository_type)
 
     if name:
-        url = 'https://%s.googlecode.com' % name
+        url = 'https://%s.googlecode.com/%s/' % (name, filter_repository_type)
         return {
             'url': url,
             'name': name,
