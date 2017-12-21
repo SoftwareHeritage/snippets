@@ -25,6 +25,31 @@ MAX_NUM_TASKS = 10000
 MAX_WAITING_TIME = 10
 
 
+def stdin_to_mercurial_tasks(batch_size):
+    """Generates from stdin the proper task argument for the
+       loader-mercurial worker.
+
+    Args:
+        batch_size (int): Not used
+
+    Yields:
+        expected dictionary of 'arguments' key
+
+    """
+    for line in sys.stdin:
+        line = line.rstrip()
+        values = line.split(' ')
+        origin_url = values[0]
+        archive_path = values[1]
+        visit_date = 'Tue, 3 May 2016 17:16:32 +0200'
+        yield {
+            'arguments': {
+                'args': [origin_url, archive_path, visit_date],
+                'kwargs': {},
+             },
+        }
+
+
 def stdin_to_svn_tasks(batch_size):
     """Generates from stdin the proper task argument for the loader-svn
        worker.
@@ -87,6 +112,13 @@ QUEUES = {
         'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk',
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_svn_tasks,
+        'print_fn': print,
+    },
+    'mercurial': {  # for mercurial, we use the same queue for length
+                    # checking and scheduling
+        'task_name': 'swh.loader.mercurial.tasks.LoadArchiveMercurialTsk',
+        # to_task the function to use to transform the input in task
+        'task_generator_fn': stdin_to_mercurial_tasks,
         'print_fn': print,
     },
     'indexer': {  # for indexer, we schedule using the orchestrator's queue
