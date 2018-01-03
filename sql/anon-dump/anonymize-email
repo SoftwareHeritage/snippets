@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+
+import csv
+import hashlib
+import random
+import string
+import sys
+
+
+SALT_LENGTH = 2
+CSV_DELIMITER = ','
+CSV_QUOTECHAR = '"'
+
+
+def anonymize_email(email):
+    salt = ''
+    for i in range(0, 2):
+        salt += random.choice(string.printable)
+
+    return hashlib.sha1((salt + email).encode('ascii')).hexdigest()
+
+
+def main():
+    dump_in = csv.reader(sys.stdin,
+                         delimiter=CSV_DELIMITER, quotechar=CSV_QUOTECHAR)
+    dump_out = csv.writer(sys.stdout,
+                          delimiter=CSV_DELIMITER, quotechar=CSV_QUOTECHAR)
+    for (person_id, name, email) in dump_in:
+        anon_email = anonymize_email(email)
+        dump_out.writerow([person_id, name, anon_email])
+
+
+if __name__ == '__main__':
+    main()
