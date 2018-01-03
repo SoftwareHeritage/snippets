@@ -1,5 +1,5 @@
 \timing on
-set bytea_output='escape';
+set bytea_output='hex';
 
 \copy content (sha1, sha1_git, sha256, blake2s256, length, ctime, status) to program 'pigz -c > content.csv.gz' (format csv);
 \copy skipped_content (sha1, sha1_git, sha256, blake2s256, length, ctime, status, reason) to program 'pigz -c > skipped_content.csv.gz' (format csv);
