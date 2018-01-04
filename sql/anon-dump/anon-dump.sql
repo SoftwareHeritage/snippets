@@ -11,6 +11,6 @@ set bytea_output='hex';
 
 \copy revision (id, date, date_offset, committer_date, committer_date_offset, type, directory, message, author, committer, synthetic, metadata, date_neg_utc_offset, committer_date_neg_utc_offset) to program 'pigz -c > revision.csv.gz' (format csv);
 \copy revision_history (id, parent_id, parent_rank) to program 'pigz -c > revision_history.csv.gz' (format csv);
-\copy release (id, target, date, date_offset, name, comment, author, synthetic, target_type, date_neg_utc_offset); to program 'pigz -c > release.csv.gz' (format csv);
+\copy release (id, target, date, date_offset, name, comment, author, synthetic, target_type, date_neg_utc_offset) to program 'pigz -c > release.csv.gz' (format csv);
 
 \copy person (id, name, email) to program './anonymize-email | pigz -c > person.csv.gz' (format csv);
