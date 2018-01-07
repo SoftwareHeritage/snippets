@@ -15,6 +15,7 @@ import rabin
 import sys
 
 from hashlib import sha1
+from multiprocessing import Process, Queue
 from psycopg2.extras import execute_values
 
 from swh.model.hashutil import hash_to_bytes
@@ -31,6 +32,7 @@ RABIN_PARAMS = {
     # 'avg_block_size':  8 * 1024,  # bytes
     # 'max_block_size': 64 * 1024,  # bytes
 }
+NUM_WORKERS = 4
 
 
 def rabin_init(params):
@@ -110,27 +112,61 @@ def dedup(db_conn, content_id, content):
     r.clear()
 
 
-def main():
-    rabin_init(RABIN_PARAMS)
-    objs = ObjStorage(OBJS_ROOT, OBJS_SLICING)
-    db_conn = psycopg2.connect('service=%s' % DB_SERVICE)
+def dedup_worker(task_queue, result_queue, obj_storage):
+    db_conn = psycopg2.connect('service=%s' % DB_SERVICE)  # persistent conn.
 
-    obj_count = 0
-    for line in sys.stdin:
-        content_id = line.rstrip()
-        # print('object', content_id)
+    while True:
+        content_id = task_queue.get()
+        if content_id is None:  # no more tasks
+            break
+
         try:
             dedup(db_conn, hash_to_bytes(content_id),
-                  objs.get_stream(content_id))
+                  obj_storage.get_stream(content_id))
+            result_queue.put((content_id, True))
         except ObjNotFoundError:
             logging.warning('cannot find object "%s", skipping' % content_id)
+            result_queue.put((content_id, False))
 
+
+def progress_monitor(result_queue):
+    obj_count = 0
+    while True:
+        (content_id, _success) = result_queue.get()
         obj_count += 1
         if obj_count % 1000 == 0:
             logging.info('processed %d objects, currently at %s' %
                          (obj_count, content_id))
 
-    print_summary(db_conn)
+
+def main():
+    rabin_init(RABIN_PARAMS)
+    obj_storage = ObjStorage(OBJS_ROOT, OBJS_SLICING)
+    task_queue = Queue()
+    result_queue = Queue()
+
+    workers = []
+    for i in range(0, NUM_WORKERS):
+        p = Process(target=dedup_worker,
+                    args=(task_queue, result_queue, obj_storage))
+        workers.append(p)
+        p.start()
+
+    monitor = Process(target=progress_monitor, args=(result_queue,))
+    monitor.start()
+
+    for line in sys.stdin:  # schedule tasks
+        content_id = line.rstrip()
+        task_queue.put(content_id)
+    for i in range(0, NUM_WORKERS):  # tell workers we're done
+        task_queue.put(None)
+
+    for p in workers:  # wait for completion
+        p.join()
+    monitor.terminate()
+
+    with psycopg2.connect('service=%s' % DB_SERVICE) as db_conn:
+        print_summary(db_conn)
 
 
 if __name__ == '__main__':
