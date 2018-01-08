@@ -26,11 +26,11 @@ OBJS_ROOT = '/srv/softwareheritage/objects'
 OBJS_SLICING = '0:2/2:4'
 DB_SERVICE = 'swh-dedup'  # postgres service name
 RABIN_PARAMS = {
-    # 'prime': 3,
-    # 'window_size': 48,  # bytes
-    # 'min_block_size':  2 * 1024,  # bytes
-    # 'avg_block_size':  8 * 1024,  # bytes
-    # 'max_block_size': 64 * 1024,  # bytes
+    'prime': 3,
+    'window_size': 48,  # bytes
+    'min_block_size':          512,  # bytes
+    'average_block_size': 1 * 1024,  # bytes
+    'max_block_size':     8 * 1024,  # bytes
 }
 NUM_WORKERS = 4
 
@@ -42,8 +42,8 @@ def rabin_init(params):
         rabin.set_window_size(params['window_size'])
     if 'min_block_size' in params:
         rabin.set_min_block_size(params['min_block_size'])
-    if 'avg_block_size' in params:
-        rabin.set_avg_block_size(params['avg_block_size'])
+    if 'average_block_size' in params:
+        rabin.set_average_block_size(params['average_block_size'])
     if 'max_block_size' in params:
         rabin.set_max_block_size(params['max_block_size'])
 
