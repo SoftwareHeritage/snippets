@@ -74,16 +74,17 @@ def print_summary(db_conn):
         c.execute('SELECT count(*) FROM chunk')
         print('chunks:', c.fetchone()[0])
 
+        c.execute('SELECT avg(length) FROM chunk')
+        print('average chunk size: %.2f' % float(c.fetchone()[0]))
+
         c.execute('SELECT sum(length) FROM content')
         content_size = int(c.fetchone()[0])
         print('total content size:', content_size)
 
         c.execute('SELECT sum(length) FROM chunk')
         chunk_size = int(c.fetchone()[0])
-        print('total chunk size:', chunk_size)
-
-        print('compression gain: %.2f%%' %
-              (100 - float(chunk_size) / content_size * 100))
+        print('total chunk size: %d (%.2f%%)' %
+              (chunk_size, float(chunk_size) / content_size * 100))
 
 
 def dedup(db_conn, content_id, content):
