@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2017  The Software Heritage developers
+# Copyright (C) 2017-2018  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -19,8 +19,6 @@ except ImportError:
 
 from swh.scheduler.celery_backend.config import app as main_app
 
-# Max batch size for tasks
-MAX_NUM_TASKS = 10000
 
 MAX_WAITING_TIME = 10
 
@@ -110,6 +108,7 @@ QUEUES = {
     'svndump': {  # for svn, we use the same queue for length checking
                   # and scheduling
         'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk',
+        'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_svn_tasks,
         'print_fn': print,
@@ -117,6 +116,7 @@ QUEUES = {
     'mercurial': {  # for mercurial, we use the same queue for length
                     # checking and scheduling
         'task_name': 'swh.loader.mercurial.tasks.LoadArchiveMercurialTsk',
+        'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_mercurial_tasks,
         'print_fn': print,
@@ -124,18 +124,68 @@ QUEUES = {
     'indexer': {  # for indexer, we schedule using the orchestrator's queue
                   # we check the length on the mimetype queue though
         'task_name': 'swh.indexer.tasks.SWHOrchestratorAllContentsTask',
-        'queue_to_check': 'swh.indexer.tasks.SWHContentMimetypeTask',
+        'threshold': 1000,
+        'queues_to_check': [{
+                'task_name': 'swh.indexer.tasks.SWHContentMimetypeTask',
+                'threshold': 1000,
+            }, {
+                'task_name': 'swh.indexer.tasks.SWHContentFossologyLicenseTask',  # noqa
+                'threshold': 200,
+            }
+        ],
         'task_generator_fn': stdin_to_index_tasks,
         'print_fn': print_last_hash,
     }
 }
 
 
+def queue_length_get(app, queue_name):
+    """Read the queue's current length.
+
+    Args:
+        app: Application
+        queue_name: fqdn queue name to retrieve queue length from
+
+    Returns:
+        queue_name's length
+
+    """
+    return app.get_queue_length(app.tasks[queue_name].task_queue)
+
+
+def send_new_tasks(app, queues_to_check):
+    """Can we send new tasks for scheduling?  To answer this, we check the
+    queues_to_check's current number of scheduled tasks.
+
+    If any of queues_to_check sees its threshold reached, we cannot
+    send new tasks so this return False.  Otherwise, we can send new
+    tasks so this returns True.
+
+    Args:
+        app: Application
+        queues_to_check ([dict]): List of dict with keys 'task_name',
+                                  'threshold'.
+
+    Returns:
+        True if we can send new tasks, False otherwise
+
+    """
+    for queue_to_check in queues_to_check:
+        queue_name = queue_to_check['task_name']
+        threshold = queue_to_check['threshold']
+
+        _queue_length = queue_length_get(app, queue_name)
+        if _queue_length >= threshold:
+            return False
+
+    return True
+
+
 @click.command(help='Read from stdin and send message to queue ')
 @click.option('--queue-name', help='Queue concerned')
 @click.option('--threshold', help='Threshold for the queue',
               type=click.INT,
-              default=MAX_NUM_TASKS)
+              default=None)
 @click.option('--batch-size', help='Batch size if batching is possible',
               type=click.INT,
               default=1000)
@@ -154,22 +204,25 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     task_name = queue_information['task_name']
     scheduling_task = app.tasks[task_name]
 
-    queue_to_check = queue_information.get('queue_to_check', task_name)
-    checking_task = app.tasks[queue_to_check]
-    checking_queue_name = checking_task.task_queue
+    if not threshold:
+        threshold = queue_information['threshold']
+
+    # Retrieve the queues to check for current threshold limit reached
+    # or not.  If none is provided (default case), we use the
+    # scheduling queue as checking queue
+    queues_to_check = queue_information.get('queues_to_check', [task_name])
 
     while True:
         throttled = False
         remains_data = False
         pending_tasks = []
 
-        queue_length = app.get_queue_length(checking_queue_name)
-
-        if queue_length < threshold:
+        if send_new_tasks(app, queues_to_check):
+            # we can send new tasks, compute how many we can send
+            queue_length = queue_length_get(app, task_name)
             nb_tasks_to_send = threshold - queue_length
-        else:     # queue_length >= threshold
+        else:
             nb_tasks_to_send = 0
-            throttled = True
 
         if nb_tasks_to_send > 0:
             count = 0
@@ -195,6 +248,9 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
                 kwargs = _task['arguments']['kwargs']
                 scheduling_task.delay(*args, **kwargs)
                 print_fn(_task['arguments'])
+
+        else:
+            throttled = True
 
         if throttled:
             time.sleep(waiting_time)
