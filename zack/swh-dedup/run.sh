@@ -1,6 +1,6 @@
 #!/bin/bash
 
-db_name=swh-dedup2
+db_name=swh-dedup
 db_service=$db_name
 
 sudo -u postgres dropdb -p 5433 $db_name
