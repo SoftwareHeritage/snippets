@@ -210,7 +210,10 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     # Retrieve the queues to check for current threshold limit reached
     # or not.  If none is provided (default case), we use the
     # scheduling queue as checking queue
-    queues_to_check = queue_information.get('queues_to_check', [task_name])
+    queues_to_check = queue_information.get('queues_to_check', [{
+        'task_name': task_name,
+        'threshold': threshold,
+    }])
 
     while True:
         throttled = False
