@@ -42,8 +42,12 @@ def stdin_to_mercurial_tasks(batch_size):
         visit_date = 'Tue, 3 May 2016 17:16:32 +0200'
         yield {
             'arguments': {
-                'args': [origin_url, archive_path, visit_date],
-                'kwargs': {},
+                'args': [],
+                'kwargs': {
+                    'origin_url': origin_url,
+                    'archive_path': archive_path,
+                    'visit_date': visit_date,
+                },
              },
         }
 
