@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict, OrderedDict
 
 
-LOADER_TYPES = ['git', 'svn']
+LOADER_TYPES = ['git', 'svn', 'hg']
 
 
 def work_on_exception_msg(exception):
@@ -36,7 +36,7 @@ def group_by(origin_types, loader_type):
     if loader_type == 'svn':
         # args = ('path-to-archive', 'some-origin-url')
         origin_key_to_lookup = 1
-    elif loader_type == 'git':
+    elif loader_type in ['git', 'hg']:
         origin_key_to_lookup = 'origin_url'
 
     seen = set()
@@ -46,6 +46,9 @@ def group_by(origin_types, loader_type):
         line = line.strip()
         data = ast.literal_eval(line)
         args = data['args']
+        if not args:  # possibly the input is different for that loader
+            args = data['kwargs']
+
         for ori_type in origin_types:
             try:
                 if args and ori_type in args[origin_key_to_lookup]:
@@ -56,8 +59,9 @@ def group_by(origin_types, loader_type):
                                 # origin_type
                 break
 
-        if not origin_type:  # corner case when we don't have the
-                             # input parameters
+        # corner case when we don't have the input parameters (both
+        # args and kwargs to None)
+        if not origin_type:
             origin_type = 'unknown'
 
         if origin_url:
@@ -76,7 +80,7 @@ def group_by(origin_types, loader_type):
 @click.option('--origin-types', default=['gitorious', 'googlecode'],
               help='Default types of origin to lookup')
 @click.option('--loader-type', default='svn',
-              help="Type of loader (git, svn)")
+              help="Type of loader (%s)" % ', '.join(LOADER_TYPES))
 def main(origin_types, loader_type):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
@@ -89,9 +93,9 @@ def main(origin_types, loader_type):
         _map = {}
         total = 0
         for k, v in group[ori_type].items():
-            l = len(v)
-            _map[k] = l
-            total += l
+            _len = len(v)
+            _map[k] = _len
+            total += _len
 
         out = sorted(_map.items(), key=operator.itemgetter(1),
                      reverse=True)
