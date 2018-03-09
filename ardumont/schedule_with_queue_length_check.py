@@ -36,23 +36,20 @@ def stdin_to_mercurial_tasks(batch_size):
     """
     for line in sys.stdin:
         line = line.rstrip()
-        values = line.split(' ')
-        origin_url = values[0]
-        archive_path = values[1]
-        visit_date = 'Tue, 3 May 2016 17:16:32 +0200'
+        origin_url, archive_path = line.split(' ')
         yield {
             'arguments': {
                 'args': [],
                 'kwargs': {
                     'origin_url': origin_url,
                     'archive_path': archive_path,
-                    'visit_date': visit_date,
+                    'visit_date': 'Tue, 3 May 2016 17:16:32 +0200',
                 },
              },
         }
 
 
-def stdin_to_svn_tasks(batch_size):
+def stdin_to_svn_tasks(batch_size, type='svn'):
     """Generates from stdin the proper task argument for the loader-svn
        worker.
 
@@ -65,16 +62,24 @@ def stdin_to_svn_tasks(batch_size):
     """
     for line in sys.stdin:
         line = line.rstrip()
-        values = line.split(' ')
-        origin = values[0]
-        path = values[1]
-        visit_date = 'Tue, 3 May 2016 17:16:32 +0200'
+        origin_url, path = line.split(' ')
+        kwargs = {
+            'visit_date': 'Tue, 3 May 2016 17:16:32 +0200',
+            'start_from_scratch': True,
+        }
+        if type == 'svn':
+            kwargs.update({
+                'svn_url': origin_url,
+            })
+        else:
+            kwargs.update({
+                'archive_path': path,
+                'origin_url': origin_url,
+            })
         yield {
             'arguments': {
-                'args': [path, origin, visit_date],
-                'kwargs': {
-                    'start_from_scratch': True,
-                }
+                'args': [],
+                'kwargs': kwargs,
             },
         }
 
@@ -112,6 +117,14 @@ QUEUES = {
     'svndump': {  # for svn, we use the same queue for length checking
                   # and scheduling
         'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk',
+        'threshold': 1000,
+        # to_task the function to use to transform the input in task
+        'task_generator_fn': (lambda b: stdin_to_svn_tasks(b, type='dump')),
+        'print_fn': print,
+    },
+    'svn': {  # for svn, we use the same queue for length checking
+                  # and scheduling
+        'task_name': 'swh.loader.svn.tasks.LoadSWHSvnRepositoryTsk',
         'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_svn_tasks,
