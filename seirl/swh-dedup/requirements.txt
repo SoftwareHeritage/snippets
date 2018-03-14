@@ -1,0 +1,3 @@
+borgbackup
+pyrabin
+python-magic
