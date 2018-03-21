@@ -27,7 +27,7 @@ def work_on_exception_msg(exception):
         exception_msg = re.sub('\[.*\]', '', exception).lstrip()
     else:
         exception_msg = exception
-    return exception_msg[0:50]
+    return exception_msg[-50:]
 
 
 def group_by(origin_types, loader_type):
