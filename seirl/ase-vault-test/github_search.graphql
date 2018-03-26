@@ -1,0 +1,28 @@
+{
+  search(query: "language:c size:5000..12000 created:>=2010-01-01", type: REPOSITORY, first: 100) {
+    repositoryCount
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    edges {
+      node {
+        ... on Repository {
+          name
+          url
+          ref(qualifiedName: "master") {
+            target {
+              ... on Commit {
+                tree {
+                  oid
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
