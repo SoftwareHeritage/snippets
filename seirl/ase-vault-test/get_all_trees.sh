@@ -9,7 +9,9 @@ github_query() {
 }
 
 extract_trees () {
-    jq  --raw-output '.data.search.edges[].node.ref.target.tree.oid // empty'
+    jq  --raw-output '.data.search.edges[].node.ref.target.tree.oid // empty' \
+        | sort | uniq
+
 }
 
 cd "$( dirname $0 )"
@@ -17,18 +19,18 @@ cd "$( dirname $0 )"
 tmpf=$( mktemp --suffix github-graphql-search )
 cursor=""
 
-for i in $( seq 1 5 ); do
+for i in $( seq 1 10 ); do
     echo >&2 "Requesting page $i..."
     cat github_search.graphql \
         | sed 's/\(search(.\+\))/\1'"$cursor)/" \
-        | github_query \
+        | tee /dev/null | github_query | tee /dev/null \
         > "$tmpf"
     extract_trees < "$tmpf"
     hasNext=$( jq --raw-output '.data.search.pageInfo.hasNextPage' "$tmpf" )
     if [ "$hasNext" != "true" ]; then
         break;
     fi
-    cursor=$( jq --raw-output '.data.search.pageInfo.startCursor' "$tmpf" )
+    cursor=$( jq --raw-output '.data.search.pageInfo.endCursor' "$tmpf" )
     cursor=", after:\"$cursor\""
 done
 
