@@ -3,8 +3,8 @@ CREATE DOMAIN sha1 AS bytea CHECK (length(value) = 20);
 CREATE TABLE content (
     id                  sha1    PRIMARY KEY,  -- SHA1 checksum
     length              integer,
-    compressed_length   integer
-    file_type           text,
+    compressed_length   integer,
+    file_type           text
 );
 
 CREATE TABLE chunk (
@@ -21,7 +21,7 @@ CREATE TABLE chunking_method (
     min_block_size      integer,
     average_block_size  integer,
     max_block_size      integer,
-    window_size         integer,
+    window_size         integer
 );
 
 CREATE TABLE chunked_content (
@@ -30,6 +30,8 @@ CREATE TABLE chunked_content (
     method_id  integer REFERENCES chunking_method(id),
     position   integer
 );
+
+CREATE UNIQUE INDEX ON chunking_method (algo, min_block_size, average_block_size, max_block_size, window_size);
 
 CREATE INDEX        ON chunked_content (content_id);
 CREATE INDEX        ON chunked_content (method_id);

@@ -18,15 +18,12 @@ from psycopg2.extras import execute_values, RealDictCursor
 from swh.objstorage import PathSlicingObjStorage as ObjStorage
 from deduper.chunkers import chunk
 
-OBJS_ROOT = '/srv/softwareheritage/objects'
-OBJS_SLICING = '0:2/2:4'
-DB_SERVICE = 'swh-dedup'  # postgres service name
-
 
 class Deduper:
-    def __init__(self):
-        self.db_conn = psycopg2.connect('service=%s' % DB_SERVICE)
-        self.obj_storage = ObjStorage(OBJS_ROOT, OBJS_SLICING)
+    def __init__(self, db_service, objs_root, objs_slicing):
+        self.db_conn = psycopg2.connect('service=%s' % db_service)
+        self.db_conn.autocommit = True
+        self.obj_storage = ObjStorage(objs_root, objs_slicing)
 
     def dedup(self, content_id):
         content = self.obj_storage.get(content_id)
@@ -37,12 +34,14 @@ class Deduper:
             c.execute("""SELECT id, algo, min_block_size, average_block_size,
                                 max_block_size, window_size
                       FROM chunking_method
-                      LEFT JOIN chunked_content
-                      ON method_id = chunking_method.id
-                      WHERE content_id = %s AND method_id IS NULL""",
+                      WHERE NOT EXISTS (
+                        SELECT 1 FROM chunked_content
+                        WHERE content_id = %s
+                      )""",
                       (content_id,))
             methods = c.fetchall()
 
+        chunked_content_queue = []
         for method in methods:
             method_id = method['id']
             algo = method['algo']
@@ -53,7 +52,8 @@ class Deduper:
                 'window_size': method['window_size'],
             }
             chunks = list(chunk(algo, params, content))
-            self._insert_chunks(content_id, method_id, chunks)
+            chunked_content_queue.append((content_id, method_id, chunks))
+        self._insert_chunks(chunked_content_queue)
 
     def _insert_content(self, content_id, content):
         size = len(content)
@@ -67,13 +67,14 @@ class Deduper:
                         ON CONFLICT DO NOTHING""",
                         (content_id, size, compressed_size, ftype))
 
-    def _insert_chunks(self, content_id, method_id, chunks):
+    def _insert_chunks(self, chunked_content_queue):
         chunk_values = []
         chunked_content_values = []
-        for (chunk_id, position, length, compressed_length) in chunks:
-            chunk_values.append((chunk_id, length, compressed_length))
-            chunked_content_values.append((content_id, chunk_id, method_id,
-                                           position))
+        for content_id, method_id, chunks in chunked_content_queue:
+            for (chunk_id, position, length, compressed_length) in chunks:
+                chunk_values.append((chunk_id, length, compressed_length))
+                chunked_content_values.append((content_id, chunk_id, method_id,
+                                               position))
         with self.db_conn.cursor() as cur:
             execute_values(cur, """INSERT INTO chunk
                                     (id, length, compressed_length)

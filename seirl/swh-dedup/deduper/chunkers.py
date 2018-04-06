@@ -1,5 +1,6 @@
 import borg.chunker
 import io
+import logging
 import math
 import rabin
 import zlib
@@ -18,12 +19,8 @@ def buzhash_chunk(content, params):
 
     chunker = borg.chunker.Chunker(**args)
 
-    buf = bytearray()
-    for data in content:
-        buf.extend(data)
-
     pos = 0
-    for chunk in chunker.chunkify(io.BytesIO(buf)):
+    for chunk in chunker.chunkify(io.BytesIO(content)):
         yield pos, len(chunk)
         pos += len(chunk)
 
@@ -35,18 +32,15 @@ def rabin_chunk(content, params):
         rabin.set_window_size(params['window_size'])
     if 'min_block_size' in params:
         rabin.set_min_block_size(params['min_block_size'])
-    if 'average_block_size' in params:
-        rabin.set_average_block_size(params['average_block_size'])
     if 'max_block_size' in params:
         rabin.set_max_block_size(params['max_block_size'])
+    if 'average_block_size' in params:
+        rabin.set_average_block_size(params['average_block_size'])
 
     r = rabin.Rabin()
-    buf = bytearray()
-    for data in content:
-        buf.extend(data)  # TODO avoid loading the entire content in memory
-        r.update(data)
+    r.update(content)
 
-    if buf:  # r.fingerprints() invoked on empty objects segfaults :-(
+    if content:  # r.fingerprints() invoked on empty objects segfaults :-(
         for position, length, _fpr in r.fingerprints():
             yield position, length
 
@@ -60,6 +54,7 @@ ALGOS = {
 
 
 def chunk(algo, params, content):
+    logging.debug('Chunking with algo %s, params %s', algo, repr(params))
     f = ALGOS[algo]
     for position, length in f(content, params):
         chunk = content[position:(position+length)]
