@@ -37,16 +37,22 @@ class DB_connection:
 
 
 def origin_scan(min_batch, max_batch, file_name):
+    """Retrieve origins between range [min_batch, max_batch[ whose last
+       visit resulted in a directory holding a filename matching the pattern
+       `filename`.
+
+    """
+    limit = max_batch - min_batch
     return """
         WITH last_visited AS (
                SELECT o.url url, ov.snapshot_id snp, date
            FROM origin o
            INNER JOIN origin_visit ov on o.id = ov.origin
-           WHERE 0 <= o.id AND
-             o.id < 1000 AND
+           WHERE %s <= o.id AND
+             o.id < %s AND
              ov.visit = (select max(visit) FROM origin_visit
                  where origin=o.id)
-             order by o.id limit 10000;
+             order by o.id limit %s;
             ), head_branch_revision AS (
             SELECT lv.url url, s.id snp_sha1, sb.target revision_sha1,
                    lv.date date
@@ -61,7 +67,8 @@ def origin_scan(min_batch, max_batch, file_name):
         INNER JOIN revision rev on hbr.revision_sha1 = rev.id
         INNER JOIN directory dir on rev.directory = dir.id
         INNER JOIN directory_entry_file def on def.id = any(dir.file_entries)
-        WHERE def.name='%s'""" % (min_batch, max_batch, file_name)
+        WHERE def.name='%s'""" % (min_batch, max_batch, limit, file_name)
+
 
 def main():
     db = DB_connection()
