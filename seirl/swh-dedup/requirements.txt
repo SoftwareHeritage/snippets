@@ -1,3 +1,4 @@
 borgbackup
 pyrabin
 python-magic
+psycopg2-binary

@@ -25,14 +25,24 @@ CREATE TABLE chunking_method (
 );
 
 CREATE TABLE chunked_content (
-    content_id sha1    REFERENCES content(id),
-    chunk_id   sha1    REFERENCES chunk(id),
-    method_id  integer REFERENCES chunking_method(id),
-    position   integer
+    id          serial     PRIMARY KEY,
+    content_id  sha1    REFERENCES content(id),
+    method_id   integer REFERENCES chunking_method(id),
+    duration_us integer
+);
+
+CREATE TABLE chunked_content_chunk (
+    chunked_content_id integer REFERENCES chunked_content,
+    chunk_id           sha1    REFERENCES chunk(id),
+    position           integer
 );
 
 CREATE UNIQUE INDEX ON chunking_method (algo, min_block_size, average_block_size, max_block_size, window_size);
 
 CREATE INDEX        ON chunked_content (content_id);
 CREATE INDEX        ON chunked_content (method_id);
-CREATE UNIQUE INDEX ON chunked_content (content_id, chunk_id, method_id, position);
+CREATE UNIQUE INDEX ON chunked_content (content_id, method_id);
+
+CREATE INDEX        ON chunked_content_chunk (chunked_content_id);
+CREATE INDEX        ON chunked_content_chunk (chunk_id);
+CREATE UNIQUE INDEX ON chunked_content_chunk (chunked_content_id, chunk_id, position);

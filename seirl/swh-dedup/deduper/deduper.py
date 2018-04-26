@@ -1,23 +1,13 @@
-#!/usr/bin/python3
-
-"""compute Rabin fingerprints of Software Heritage content objects
-
-Read a list of Software Heritage content object IDs on standard input, fetch
-each of them from a (local) object storage and apply Rabin fingerprinting to
-its content. Store in a (postgres) DB the mapping between content objects and
-(Rabin-delimited) chunks.
-
-"""
-
 import magic
 import psycopg2
+import random
+import time
 import zlib
 
 from psycopg2.extras import execute_values, RealDictCursor
 
 from swh.objstorage import PathSlicingObjStorage as ObjStorage
 from deduper.chunkers import chunk
-
 
 class Deduper:
     def __init__(self, db_service, objs_root, objs_slicing):
@@ -39,7 +29,10 @@ class Deduper:
                         WHERE content_id = %s
                       )""",
                       (content_id,))
-            methods = c.fetchall()
+            methods = list(c.fetchall())
+
+        random.shuffle(methods)
+        _ = max(content) # Force read and cache content  # noqa
 
         chunked_content_queue = []
         for method in methods:
@@ -51,14 +44,22 @@ class Deduper:
                 'max_block_size': method['max_block_size'],
                 'window_size': method['window_size'],
             }
+            t0 = int(time.monotonic() * 1000000)
             chunks = list(chunk(algo, params, content))
-            chunked_content_queue.append((content_id, method_id, chunks))
+            t = int(time.monotonic() * 1000000)
+            duration = t - t0
+
+            chunked_content_queue.append(
+                (content_id, method_id, duration, chunks))
         self._insert_chunks(chunked_content_queue)
 
     def _insert_content(self, content_id, content):
         size = len(content)
         compressed_size = len(zlib.compress(content))
-        ftype = magic.from_buffer(content)
+        try:
+            ftype = magic.from_buffer(content)
+        except:
+            ftype = ''
 
         with self.db_conn.cursor() as cur:
             cur.execute("""INSERT INTO content
@@ -68,20 +69,37 @@ class Deduper:
                         (content_id, size, compressed_size, ftype))
 
     def _insert_chunks(self, chunked_content_queue):
-        chunk_values = []
         chunked_content_values = []
-        for content_id, method_id, chunks in chunked_content_queue:
-            for (chunk_id, position, length, compressed_length) in chunks:
-                chunk_values.append((chunk_id, length, compressed_length))
-                chunked_content_values.append((content_id, chunk_id, method_id,
-                                               position))
+        for content_id, method_id, duration, chunks in chunked_content_queue:
+            chunked_content_values.append((content_id, method_id, duration))
+
         with self.db_conn.cursor() as cur:
+            execute_values(cur, """INSERT INTO chunked_content
+                                    (content_id, method_id, duration_us)
+                                VALUES %s
+                           RETURNING id, content_id, method_id""",
+                           chunked_content_values)
+            chunked_content_ids = {
+                (bytes(content_id), method_id): id
+                for id, content_id, method_id in cur.fetchall()
+            }
+
+            chunk_values = []
+            chunked_content_chunks_values = []
+            for content_id, method_id, _, chunks in chunked_content_queue:
+                for (chunk_id, position, length, compressed_length) in chunks:
+                    chunk_values.append((chunk_id, length, compressed_length))
+                    chunked_content_id = chunked_content_ids[
+                        (content_id, method_id)]
+                    chunked_content_chunks_values.append(
+                        (chunked_content_id, chunk_id, position))
+
             execute_values(cur, """INSERT INTO chunk
                                     (id, length, compressed_length)
                                 VALUES %s
                                 ON CONFLICT DO NOTHING""",
                            chunk_values)
-            execute_values(cur, """INSERT INTO chunked_content
-                                    (content_id, chunk_id, method_id, position)
+            execute_values(cur, """INSERT INTO chunked_content_chunk
+                                    (chunked_content_id, chunk_id, position)
                                 VALUES %s""",
-                           chunked_content_values)
+                           chunked_content_chunks_values)
