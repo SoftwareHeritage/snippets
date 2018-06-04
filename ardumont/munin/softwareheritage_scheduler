@@ -1,0 +1,99 @@
+#!/usr/bin/perl
+# -*- cperl -*-
+#
+# Copyright (C) 2015 Nicolas Dandrimont <nicolas@dandrimont.eu>
+#               2016 Stefano Zacchiroli <zack@upsilon.cc>
+#               2018 Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; version 2 dated June,
+# 1991.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA.
+
+=head1 NAME
+
+softwareheritage_scheduler - Plugin to monitor the number of scheduled tasks for the softwareheritage archive.
+
+=head1 CONFIGURATION
+
+Configuration is done through libpq environment variables, for example
+PGUSER, PGDATABASE, etc. For more information, see L<Munin::Plugin::Pgsql>.
+
+=head1 SEE ALSO
+
+L<Munin::Plugin::Pgsql>
+
+=head1 MAGIC MARKERS
+
+ #%# family=auto
+ #%# capabilities=autoconf suggest
+
+=head1 AUTHOR
+
+Stefano Zacchiroli <zack@upsilon.cc>
+
+=head1 COPYRIGHT/License
+
+Nicolas Dandrimont <nicolas@dandrimont.eu>
+
+All rights reserved. This program is free software; you can
+redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation; version 2
+dated June, 1991.
+
+=cut
+
+use strict;
+use warnings;
+
+use Munin::Plugin::Pgsql;
+
+my $pg = Munin::Plugin::Pgsql->new(
+    defaultdb   => 'softwareheritage-scheduler',
+    category    => 'SoftwareHeritage',
+    title       => 'Software Heritage Scheduled tasks',
+    info        => 'Count the scheduled tasks in the Software Heritage Scheduler database',
+    vlabel      => 'scheduled tasks',
+    basequery   => "select type ||' '|| policy ||' '|| status as type_policy_status, count(*) as count from task group by 1 order by 1",
+    configquery => "VALUES
+        ('load_deb_package_oneshot_completed', 'Deb ld oneshot completed'),
+        ('load_deb_package_oneshot_disabled', 'Deb ld oneshot disabled'),
+        ('load_deb_package_oneshot_next_run_scheduled', 'Deb ld oneshot scheduled'),
+        ('origin_load_archive_hg_oneshot_disabled', 'Hg ld oneshot disabled'),
+        ('origin_load_archive_hg_oneshot_next_run_scheduled', 'Hg ld oneshot scheduled'),
+        ('origin_update_git_oneshot_completed', 'Git ld oneshot completed'),
+        ('origin_update_git_oneshot_disabled', 'Git ld oneshot disabled'),
+        ('origin_update_git_oneshot_next_run_not_scheduled', 'Git ld oneshot not scheduled'),
+        ('origin_update_git_oneshot_next_run_scheduled', 'Git ld oneshot scheduled'),
+        ('origin_update_git_recurring_disabled', 'Git ld recurring disabled'),
+        ('origin_update_git_recurring_next_run_not_scheduled', 'Git ld recurring not scheduled'),
+        ('origin_update_git_recurring_next_run_scheduled', 'Git ld recurring scheduled'),
+        ('swh_deposit_archive_checks_oneshot_disabled', 'Deposit check oneshot disabled'),
+        ('swh_deposit_archive_checks_oneshot_next_run_scheduled', 'Deposit check oneshot scheduled'),
+        ('swh_deposit_archive_loading_oneshot_disabled', 'Deposit ld oneshot disabled'),
+        ('swh_deposit_archive_loading_oneshot_next_run_scheduled', 'Deposit ld oneshot scheduled'),
+        ('swh_lister_debian_recurring_next_run_not_scheduled', 'Deb lst recurring not scheduled'),
+        ('swh_lister_debian_recurring_next_run_scheduled', 'Deb lst recurring scheduled'),
+        ('swh_lister_github_full_recurring_next_run_not_scheduled', 'Full Ghb lst recurring not scheduled'),
+        ('swh_lister_github_incremental_recurring_next_run_not_scheduled', 'Inc Ghb lst recurring not scheduled'),
+        ('swh_vault_batch_cooking_oneshot_completed', 'Vault batch cook oneshot completed'),
+        ('swh_vault_batch_cooking_oneshot_disabled', 'Vault batch cook oneshot disabled'),
+        ('swh_vault_batch_cooking_oneshot_next_run_not_scheduled', 'Vault batch cook oneshot not scheduled'),
+        ('swh_vault_batch_cooking_oneshot_next_run_scheduled', 'Vault batch cook oneshot scheduled'),
+        ('swh_vault_cooking_oneshot_disabled', 'Vault cook oneshot disabled')
+    ",
+    stack     => 0,
+    graphmin  => 0,
+);
+
+$pg->Process();

@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+# -*- cperl -*-
+#
+# Copyright (C) 2015 Nicolas Dandrimont <nicolas@dandrimont.eu>
+#               2016 Stefano Zacchiroli <zack@upsilon.cc>
+#               2018 Antoine R. Dumont (@ardumont) <antoine.romain.dumont@gmail.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; version 2 dated June,
+# 1991.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA.
+
+=head1 NAME
+
+softwareheritage_scheduler_recurring - Plugin to monitor the number of scheduled tasks for the softwareheritage archive.
+
+=head1 CONFIGURATION
+
+Configuration is done through libpq environment variables, for example
+PGUSER, PGDATABASE, etc. For more information, see L<Munin::Plugin::Pgsql>.
+
+=head1 SEE ALSO
+
+L<Munin::Plugin::Pgsql>
+
+=head1 MAGIC MARKERS
+
+ #%# family=auto
+ #%# capabilities=autoconf suggest
+
+=head1 AUTHOR
+
+Stefano Zacchiroli <zack@upsilon.cc>
+
+=head1 COPYRIGHT/License
+
+Nicolas Dandrimont <nicolas@dandrimont.eu>
+
+All rights reserved. This program is free software; you can
+redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation; version 2
+dated June, 1991.
+
+=cut
+
+use strict;
+use warnings;
+
+use Munin::Plugin::Pgsql;
+
+my $pg = Munin::Plugin::Pgsql->new(
+    defaultdb   => 'softwareheritage-scheduler',
+    category    => 'SoftwareHeritage',
+    title       => 'Software Heritage Scheduled Recurring Tasks',
+    info        => 'Count the recurring scheduled tasks in the Software Heritage Scheduler database',
+    vlabel      => 'recurring scheduled tasks',
+    basequery   => "select type ||' '|| status as type_policy_status, count(*) as count from task where policy='recurring' group by 1 order by 1;",
+    configquery => "VALUES
+        ('origin_update_git_disabled', 'Git ld recurring disabled'),
+        ('origin_update_git_next_run_not_scheduled', 'Git ld recurring not scheduled'),
+        ('origin_update_git_next_run_scheduled', 'Git ld recurring scheduled'),
+        ('swh_lister_debian_next_run_not_scheduled', 'Deb lst recurring not scheduled'),
+        ('swh_lister_debian_next_run_scheduled', 'Deb lst recurring scheduled'),
+        ('swh_lister_github_full_next_run_not_scheduled', 'Full Ghb lst recurring not scheduled'),
+        ('swh_lister_github_incremental_next_run_not_scheduled', 'Inc Ghb lst recurring not scheduled'),
+    ",
+    stack     => 0,
+    graphmin  => 0,
+);
+
+$pg->Process();
