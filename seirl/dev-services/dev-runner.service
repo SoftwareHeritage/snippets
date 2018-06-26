@@ -1,0 +1,9 @@
+[Unit]
+Description=Dev listener
+
+[Service]
+RestartSec=1
+ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.scheduler.celery_backend.runner
+
+[Install]
+WantedBy=dev-swh.target

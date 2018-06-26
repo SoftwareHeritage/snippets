@@ -1,0 +1,8 @@
+[Unit]
+Description=Dev webapp
+
+[Service]
+ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.web.manage runserver 0.0.0.0:5004 -v 3
+
+[Install]
+WantedBy=dev-swh.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Dev storage
+
+[Service]
+ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.storage.api.server %h/.config/swh/storage/storage.yml
+
+[Install]
+WantedBy=dev-swh.target

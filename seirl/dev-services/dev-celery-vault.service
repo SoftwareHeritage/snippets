@@ -1,0 +1,9 @@
+[Unit]
+Description=Dev celery vault
+
+[Service]
+Environment=SWH_WORKER_INSTANCE=vault
+ExecStart=%h/swh-environment/.venv/bin/python3 -m celery worker --app swh.scheduler.celery_backend.config.app --pool=prefork --concurrency=1 -Ofair --loglevel=debug --without-mingle --without-gossip
+
+[Install]
+WantedBy=dev-swh.target

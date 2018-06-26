@@ -1,0 +1,8 @@
+[Unit]
+Description=Dev vault
+
+[Service]
+ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.vault.api.server %h/.config/swh/storage/vault.yml
+
+[Install]
+WantedBy=dev-swh.target
