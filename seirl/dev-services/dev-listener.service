@@ -1,5 +1,6 @@
 [Unit]
 Description=Dev listener
+PartOf=dev-swh.target
 
 [Service]
 ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.scheduler.celery_backend.listener

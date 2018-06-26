@@ -1,5 +1,6 @@
 [Unit]
 Description=Dev storage
+PartOf=dev-swh.target
 
 [Service]
 ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.storage.api.server %h/.config/swh/storage/storage.yml

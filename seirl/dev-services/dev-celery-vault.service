@@ -1,5 +1,6 @@
 [Unit]
 Description=Dev celery vault
+PartOf=dev-swh.target
 
 [Service]
 Environment=SWH_WORKER_INSTANCE=vault
