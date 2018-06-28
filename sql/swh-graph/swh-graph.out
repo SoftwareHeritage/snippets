@@ -1,50 +1,129 @@
+-- set bytea_output = 'escape';
+\timing
 Timing is on.
+create temporary view counts as
+    select object_type as tbl, value as tuples
+    from object_counts
+    order by tbl;
 CREATE VIEW
-Time: 41,763 ms
+Time: 11,486 ms
+create temporary table nodes (
+    description  text,
+    tuples       bigint not null
+);
 CREATE TABLE
-Time: 8,410 ms
+Time: 6,057 ms
+create temporary table edges (like nodes);
 CREATE TABLE
-Time: 5,473 ms
+Time: 5,650 ms
+insert into nodes
+    select 'content', sum(tuples)
+    from counts
+    where tbl in ('content', 'skipped_content');
 INSERT 0 1
-Time: 9,010 ms
+Time: 5,714 ms
+insert into nodes
+    select 'revision', tuples
+    from counts
+    where tbl = 'revision';
 INSERT 0 1
-Time: 3,693 ms
+Time: 3,652 ms
+insert into nodes
+    select 'release', tuples
+    from counts
+    where tbl = 'release';
 INSERT 0 1
-Time: 3,602 ms
+Time: 3,219 ms
+insert into nodes
+    select 'directory', tuples
+    from counts
+    where tbl = 'directory';
 INSERT 0 1
-Time: 3,915 ms
+Time: 3,470 ms
+insert into nodes
+    select 'snapshot', tuples
+    from counts
+    where tbl = 'snapshot';
 INSERT 0 1
-Time: 3,866 ms
+Time: 4,228 ms
+insert into edges
+    select 'revision->revision', tuples
+    from counts
+    where tbl = 'revision_history';
+INSERT 0 0
+Time: 3,399 ms
+insert into edges
+    select 'revision->directory', tuples
+    from counts
+    where tbl = 'revision';
 INSERT 0 1
-Time: 3,891 ms
+Time: 3,490 ms
+insert into edges
+    select 'release->revision', tuples
+    from counts
+    where tbl = 'release';
 INSERT 0 1
-Time: 4,210 ms
+Time: 3,594 ms
+insert into edges
+    select 'snapshot->' || snapshot_branch.target_type as target_type, count(*) * 1000
+    from snapshot tablesample system(0.1)
+    inner join snapshot_branches on snapshot.object_id = snapshot_branches.snapshot_id
+    inner join snapshot_branch on snapshot_branches.branch_id = snapshot_branch.object_id
+    group by snapshot_branch.target_type;
 INSERT 0 3
-Time: 1438562,509 ms
+Time: 243080,038 ms (04:03,080)
+insert into edges
+    with edges as (
+        select sum(coalesce(cardinality(dir_entries), 0))  as dir_edges,
+               sum(coalesce(cardinality(file_entries), 0)) as file_edges,
+               sum(coalesce(cardinality(rev_entries), 0))  as rev_edges
+        from directory tablesample system (0.1)
+        )
+    select 'directory->directory' as description,
+           dir_edges * 1000 as tuples
+    from edges
+    union
+    select 'directory->file' as description,
+           file_edges * 1000 as tuples
+    from edges
+    union
+    select 'directory->revision' as description,
+           rev_edges * 1000 as tuples
+    from edges;
+INSERT 0 3
+Time: 32650,563 ms (00:32,651)
+select * from nodes;
  description |   tuples   
 -------------+------------
- content     | 3263018166
- revision    |  757823872
- release     |    5849477
- directory   | 2812096000
-(4 rows)
+ content     | 4586303051
+ revision    | 1039856865
+ release     |    7713653
+ directory   | 4020639929
+ snapshot    |   55410353
+(5 rows)
 
-Time: 4,672 ms
+Time: 3,904 ms
+select * from edges;
      description      |   tuples    
 ----------------------+-------------
- revision->revision   |   766975616
- revision->directory  |   757823872
- release->revision    |     5849477
- directory->directory | 22268443900
- directory->file      | 33603252100
- directory->revision  |   179751200
-(6 rows)
+ revision->directory  |  1039856865
+ release->revision    |     7713653
+ snapshot->release    |   223180000
+ snapshot->revision   |   702870000
+ snapshot->directory  |        5000
+ directory->directory | 38411104000
+ directory->revision  |   285837000
+ directory->file      | 80660680000
+(8 rows)
 
-Time: 4,885 ms
- feat  |    card     
--------+-------------
- edges | 57582096165
- nodes |  6838787515
+Time: 3,439 ms
+select 'nodes' as feat, sum(tuples) as card from nodes
+union
+select 'edges' as feat, sum(tuples) as card from edges;
+ feat  |     card     
+-------+--------------
+ edges | 121331246518
+ nodes |   9709923851
 (2 rows)
 
-Time: 6,577 ms
+Time: 4,174 ms
