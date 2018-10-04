@@ -13,13 +13,13 @@ class DB_connection:
     def __init__(self, db_conn_string='service=mirror-swh'):
         self.conn = psycopg2.connect(db_conn_string)
 
-    def execute_query(self, query):
+    def execute_query(self, query, arguments):
         """Connect to swh archive to execute query
 
         """
         try:
             cursor = self.conn.cursor()
-            cursor.execute(query)
+            cursor.execute(query, arguments)
             records = cursor.fetchall()
             cursor.close()
             return records
@@ -43,14 +43,14 @@ class DB_connection:
                 writer.writerow(row)
 
 
-def origin_scan_query(min_batch, max_batch, file_name):
+def origin_scan_query(db, min_batch, max_batch, file_name):
     """Retrieve origins between range [min_batch, max_batch[ whose last
        visit resulted in a revision targetting a directory holding a
        filename matching the pattern `filename`.
 
     """
     limit = max_batch - min_batch
-    return """
+    query = """
         WITH last_visited AS (
                SELECT o.url url, ov.snapshot_id snp, date
            FROM origin o
@@ -74,7 +74,9 @@ def origin_scan_query(min_batch, max_batch, file_name):
         INNER JOIN revision rev on hbr.revision_sha1 = rev.id
         INNER JOIN directory dir on rev.directory = dir.id
         INNER JOIN directory_entry_file def on def.id = any(dir.file_entries)
-        WHERE def.name='%s'""" % (min_batch, max_batch, limit, file_name)
+        WHERE def.name = %s"""
+
+    return db.execute_query(query, (min_batch, max_batch, limit, file_name))
 
 
 @click.command()
@@ -96,8 +98,7 @@ def main(database, pattern_filename, start_from, block_size):
     min_batch = start_from
     max_batch = min_batch + block_size
     while True:
-        query = origin_scan_query(min_batch, max_batch, pattern_filename)
-        records = db.execute_query(query)
+        records = origin_scan_query(db, min_batch, max_batch, pattern_filename)
         if not records:
             break
         name = "%s_%s_origin.csv" % (min_batch, max_batch)
