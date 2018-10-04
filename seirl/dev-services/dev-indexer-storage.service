@@ -1,0 +1,9 @@
+[Unit]
+Description=Dev indexer storage
+PartOf=dev-swh.target
+
+[Service]
+ExecStart=%h/swh-environment/.venv/bin/python3 -m swh.indexer.storage.api.server
+
+[Install]
+WantedBy=dev-swh.target
