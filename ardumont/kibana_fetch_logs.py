@@ -12,6 +12,7 @@
 
 import ast
 import click
+import logging
 import requests
 
 from swh.core.config import SWHConfig
@@ -24,8 +25,8 @@ class KibanaFetchLog(SWHConfig):
     CONFIG_BASE_FILENAME = 'kibana/query'
 
     DEFAULT_CONFIG = {
-        'server': ('str', 'http://banco.internal.softwareheritage.org:9200'),
-        'indexes': ('list[str]', ['logstash-2017.05.*', 'logstash-2017.06.*']),
+        'server': ('str', 'http://esnode3.internal.softwareheritage.org:9200'),
+        'indexes': ('list[str]', ['swh_workers-2017.05.*', 'swh_workers-2017.06.*']),
         'types': ('str', 'journal'),
         'size': ('int', 10),
         'from': ('int', 0),
@@ -44,7 +45,6 @@ class KibanaFetchLog(SWHConfig):
                         'match': {
                             'systemd_unit': {
                                 'query': 'swh-worker@swh_loader_svn.service',
-                                'type': 'phrase'
                             }
                         }
                     },
@@ -59,7 +59,6 @@ class KibanaFetchLog(SWHConfig):
                         'match': {
                             'message': {
                                 'query': "[.*] Property 'svn:externals' detected.",  # noqa
-                                'type': 'phrase'
                             }
                         }
                     },
@@ -67,7 +66,6 @@ class KibanaFetchLog(SWHConfig):
                         'match': {
                             'message': {
                                 'query': '[.*] Uneventful visit. Detail: file',
-                                'type': 'phrase'
                             }
                         }
                     },
@@ -75,7 +73,6 @@ class KibanaFetchLog(SWHConfig):
                         'match': {
                             'message': {
                                 'query': '.*Failed to mount the svn dump.*',
-                                'type': 'phrase'
                             }
                         }
                     },
@@ -83,17 +80,16 @@ class KibanaFetchLog(SWHConfig):
                         'match': {
                             'message': {
                                 'query': '[.*] Loading failure, updating to `partial`',  # noqa
-                                'type': 'phrase'}}},
+                            }}},
                     {
                         'match': {
                             'message': {
                                 'query': '[.*] consumer: Cannot connect to amqp.*',  # noqa
-                                'type': 'phrase'}}},
+                            }}},
                     {
                         'match': {
                             'message': {
                                 'query': '[.*] pidbox command error.*',
-                                'type': 'phrase'
                             }
                         }
                     }
@@ -117,6 +113,9 @@ class KibanaFetchLog(SWHConfig):
             key: self.config[key]
             for key in ['from', '_source', 'query', 'size', 'sort']
         }
+        logging.debug('### Server: %s' % self.server)
+        logging.debug('### Indexes: %s' % self.indexes)
+        logging.debug('### Types: %s' % self.types)
 
     def _retrieve_data(self, server, indexes, types, start=None):
         """Retrieve information from server looking up through 'indexes' and
@@ -131,8 +130,12 @@ class KibanaFetchLog(SWHConfig):
         url = '%s/%s/%s/_search' % (server, indexes, types)
 
         r = requests.post(url, json=payload)
-        if r.ok:
-            return r.json()
+        logging.debug('Payload: %s' % payload)
+        if not r.ok:
+            logging.debug('Response: %s' % r.content)
+            raise ValueError("Problem when communicating with server: %s" % r.status_code)
+
+        return r.json()
 
     def _format_result(self, json):
         """Format result from the server's response"""
@@ -223,7 +226,10 @@ class KibanaFetchLog(SWHConfig):
 @click.option('--types', default=None,
               help='ElasticSearch types to lookup (csv if many)')
 @click.option('--size', default=10, type=click.INT, help='Pagination size')
-def main(server, indexes, types, size):
+@click.option('--debug/--nodebug', is_flag=True, default=False)
+def main(server, indexes, types, size, debug):
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+
     config = {}
     if server:
         config['server'] = server
