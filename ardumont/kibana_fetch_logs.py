@@ -26,7 +26,8 @@ class KibanaFetchLog(SWHConfig):
 
     DEFAULT_CONFIG = {
         'server': ('str', 'http://esnode3.internal.softwareheritage.org:9200'),
-        'indexes': ('list[str]', ['swh_workers-2017.05.*', 'swh_workers-2017.06.*']),
+        'indexes': ('list[str]', [
+            'swh_workers-2017.05.*', 'swh_workers-2017.06.*']),
         'types': ('str', 'journal'),
         'size': ('int', 10),
         'from': ('int', 0),
@@ -43,7 +44,7 @@ class KibanaFetchLog(SWHConfig):
                 'must': [
                     {
                         'match': {
-                            'systemd_unit': {
+                            'systemd_unit.keyword': {
                                 'query': 'swh-worker@swh_loader_svn.service',
                             }
                         }
@@ -51,46 +52,6 @@ class KibanaFetchLog(SWHConfig):
                     {
                         'term': {
                             'priority': '3'
-                        }
-                    }
-                ],
-                'must_not': [
-                    {
-                        'match': {
-                            'message': {
-                                'query': "[.*] Property 'svn:externals' detected.",  # noqa
-                            }
-                        }
-                    },
-                    {
-                        'match': {
-                            'message': {
-                                'query': '[.*] Uneventful visit. Detail: file',
-                            }
-                        }
-                    },
-                    {
-                        'match': {
-                            'message': {
-                                'query': '.*Failed to mount the svn dump.*',
-                            }
-                        }
-                    },
-                    {
-                        'match': {
-                            'message': {
-                                'query': '[.*] Loading failure, updating to `partial`',  # noqa
-                            }}},
-                    {
-                        'match': {
-                            'message': {
-                                'query': '[.*] consumer: Cannot connect to amqp.*',  # noqa
-                            }}},
-                    {
-                        'match': {
-                            'message': {
-                                'query': '[.*] pidbox command error.*',
-                            }
                         }
                     }
                 ]
@@ -133,7 +94,8 @@ class KibanaFetchLog(SWHConfig):
         logging.debug('Payload: %s' % payload)
         if not r.ok:
             logging.debug('Response: %s' % r.content)
-            raise ValueError("Problem when communicating with server: %s" % r.status_code)
+            raise ValueError("Problem when communicating with server: %s" % (
+                r.status_code, ))
 
         return r.json()
 
