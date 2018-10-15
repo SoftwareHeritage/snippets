@@ -104,7 +104,12 @@ def check_progress_loop():
     while True:
         c = collections.Counter()
         for b in select(b for b in Batch if b.vault_id is not None):
-            res = b.update_progress()
+            try:
+                res = b.update_progress()
+            except:
+                raise
+                # sleep(20)
+                # continue
             statuses = ('new', 'pending', 'failed', 'done', 'total')
             c += collections.Counter({k: res[k] for k in statuses if k in res})
 
@@ -125,11 +130,15 @@ def check_progress_loop():
     pbar.close()
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+def load():
     db.bind(provider='sqlite', filename=SQLITE_PATH, create_db=True)
-    db.generate_mapping(create_tables=True)
+    db.generate_mapping()  # create_tables=True)
     if Batch.empty():
         load_batches()
-    send_all_batches_directly()
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    load()
+    # send_all_batches_directly()
     check_progress_loop()

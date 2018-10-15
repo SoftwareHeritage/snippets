@@ -14,9 +14,9 @@ from swh.model.hashutil import hash_to_bytes
 
 from deduper.deduper import Deduper
 
-OBJS_ROOT = '/home/seirl/content-samples'
+OBJS_ROOT = '/home/seirl/content-contiguous-sample/'
 OBJS_SLICING = '0:2/2:4'
-DB_SERVICE = 'swh-dedup'  # postgres service name
+DB_SERVICE = 'swh-dedup-cont'  # postgres service name
 
 
 def main():
