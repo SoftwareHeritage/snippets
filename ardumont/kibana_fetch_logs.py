@@ -149,7 +149,7 @@ class KibanaFetchLog(SWHConfig):
 
                 # filtering args
                 if not args_keys:
-                    for k in (k for k in source_keys if '_args_' in k):
+                    for k in sorted(k for k in source_keys if '_args_' in k):
                         args_keys.append(k)
 
                 # and kwargs
