@@ -113,11 +113,15 @@ class KibanaFetchLog(SWHConfig):
         if not hits:
             return {}
 
-        args_keys = []
-        kwargs_keys = []
-
         all_data = []
         last_sort_time = None
+
+        def swh_logging_key_information(keys):
+            for k in keys:
+                if 'swh_logging_' in k:
+                    return True
+            return False
+
         for data in hits:
             last_sort_time = data['sort'][0]
             source = data['_source']
@@ -125,32 +129,47 @@ class KibanaFetchLog(SWHConfig):
                 'args': [],
                 'kwargs': {},
             }
-
             source_keys = source.keys()
 
-            # filtering args
-            if not args_keys:
-                for k in (k for k in source_keys if '_args_' in k):
-                    args_keys.append(k)
+            if swh_logging_key_information(source_keys):
+                swh_logging_args_args = source.get('swh_logging_args_args')
+                if swh_logging_args_args:
+                    _data['args'] = ast.literal_eval(swh_logging_args_args)
 
-            # and kwargs
-            if not kwargs_keys:
-                for k in (k for k in source_keys if '_kwargs_' in k):
-                    kwargs_keys.append(k)
+                swh_logging_args_kwargs = source.get('swh_logging_args_kwargs')
+                if swh_logging_args_kwargs:
+                    _data['kwargs'] = ast.literal_eval(swh_logging_args_kwargs)
 
-            for _arg in args_keys:
-                args_value = source.get(_arg)
-                if args_value:
-                    _data['args'].append(args_value)
+                exception = source.get('swh_logging_args_exc')
+                if exception:
+                    _data['exception'] = exception
+            else:  # determine the args/kwargs for each result
+                args_keys = []
+                kwargs_keys = []
 
-            for _kwarg in kwargs_keys:
-                kwargs_value = source.get(_kwarg)
-                if kwargs_value:
-                    kwargs_key = _kwarg.split('swh_task_kwargs_')[1]
-                    _data['kwargs'][kwargs_key] = kwargs_value
+                # filtering args
+                if not args_keys:
+                    for k in (k for k in source_keys if '_args_' in k):
+                        args_keys.append(k)
+
+                # and kwargs
+                if not kwargs_keys:
+                    for k in (k for k in source_keys if '_kwargs_' in k):
+                        kwargs_keys.append(k)
+
+                for _arg in args_keys:
+                    args_value = source.get(_arg)
+                    if args_value:
+                        _data['args'].append(args_value)
+
+                for _kwarg in kwargs_keys:
+                    kwargs_value = source.get(_kwarg)
+                    if kwargs_value:
+                        kwargs_key = _kwarg.split('swh_task_kwargs_')[1]
+                        _data['kwargs'][kwargs_key] = kwargs_value
 
             message = source.get('message')
-            if message:
+            if 'exception' not in _data:
                 _data['exception'] = message
 
             if _data:
