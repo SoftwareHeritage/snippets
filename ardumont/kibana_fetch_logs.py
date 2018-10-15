@@ -28,7 +28,6 @@ class KibanaFetchLog(SWHConfig):
         'server': ('str', 'http://esnode3.internal.softwareheritage.org:9200'),
         'indexes': ('list[str]', [
             'swh_workers-2017.05.*', 'swh_workers-2017.06.*']),
-        'types': ('str', 'journal'),
         'size': ('int', 10),
         'from': ('int', 0),
         '_source': ('list[str]', [
@@ -69,26 +68,24 @@ class KibanaFetchLog(SWHConfig):
 
         self.server = self.config['server']
         self.indexes = ','.join(self.config['indexes'])
-        self.types = self.config['types']
         self.payload = {
             key: self.config[key]
             for key in ['from', '_source', 'query', 'size', 'sort']
         }
         logging.debug('### Server: %s' % self.server)
         logging.debug('### Indexes: %s' % self.indexes)
-        logging.debug('### Types: %s' % self.types)
 
-    def _retrieve_data(self, server, indexes, types, start=None):
-        """Retrieve information from server looking up through 'indexes' and
-        'types'.  This returns result of length 'size' (configuration)
-        starting from the 'start' position.
+    def _retrieve_data(self, server, indexes, start=None):
+        """Retrieve information from server looking up through 'indexes'. This
+        returns result of length 'size' (configuration) starting from
+        the 'start' position.
 
         """
         payload = self.payload
         if start:
             payload['search_after'] = [start]
 
-        url = '%s/%s/%s/_search' % (server, indexes, types)
+        url = '%s/%s/_search' % (server, indexes)
 
         r = requests.post(url, json=payload)
         logging.debug('Payload: %s' % payload)
@@ -163,11 +160,10 @@ class KibanaFetchLog(SWHConfig):
 
         server = self.server
         indexes = self.indexes
-        types = self.types
 
         while count < total_hits:
             response = self._retrieve_data(
-                server, indexes, types, start=last_sort_time)
+                server, indexes, start=last_sort_time)
             data = self._format_result(response)
             if not data:
                 break
@@ -185,11 +181,9 @@ class KibanaFetchLog(SWHConfig):
               help='Elastic search instance to query against')
 @click.option('--indexes', default=None,
               help='ElasticSearch indexes to lookup (csv if many)')
-@click.option('--types', default=None,
-              help='ElasticSearch types to lookup (csv if many)')
 @click.option('--size', default=10, type=click.INT, help='Pagination size')
 @click.option('--debug/--nodebug', is_flag=True, default=False)
-def main(server, indexes, types, size, debug):
+def main(server, indexes, size, debug):
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 
     config = {}
@@ -197,8 +191,6 @@ def main(server, indexes, types, size, debug):
         config['server'] = server
     if indexes:
         config['indexes'] = indexes.split(',')
-    if types:
-        config['types'] = types
     if size:
         config['size'] = size
 
