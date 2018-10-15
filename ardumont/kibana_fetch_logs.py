@@ -113,33 +113,45 @@ class KibanaFetchLog(SWHConfig):
         if not hits:
             return {}
 
+        args_keys = []
+        kwargs_keys = []
+
         all_data = []
         last_sort_time = None
         for data in hits:
             last_sort_time = data['sort'][0]
             source = data['_source']
-            _data = {}
+            _data = {
+                'args': [],
+                'kwargs': {},
+            }
 
-            swh_logging_args_args = source.get('swh_logging_args_args')
-            if swh_logging_args_args:
-                _data['args'] = ast.literal_eval(swh_logging_args_args)
+            source_keys = source.keys()
 
-            swh_logging_args_kwargs = source.get('swh_logging_args_kwargs')
-            if swh_logging_args_kwargs:
-                _data['kwargs'] = ast.literal_eval(swh_logging_args_kwargs)
+            # filtering args
+            if not args_keys:
+                for k in (k for k in source_keys if '_args_' in k):
+                    args_keys.append(k)
 
-            exception = source.get('swh_logging_args_exc')
-            if exception:
-                _data['exception'] = exception
+            # and kwargs
+            if not kwargs_keys:
+                for k in (k for k in source_keys if '_kwargs_' in k):
+                    kwargs_keys.append(k)
 
-            if not _data:
-                message = source.get('message')
-                if message:
-                    _data = {
-                        'args': {},
-                        'kwargs': {},
-                        'exception': message
-                    }
+            for _arg in args_keys:
+                args_value = source.get(_arg)
+                if args_value:
+                    _data['args'].append(args_value)
+
+            for _kwarg in kwargs_keys:
+                kwargs_value = source.get(_kwarg)
+                if kwargs_value:
+                    kwargs_key = _kwarg.split('swh_task_kwargs_')[1]
+                    _data['kwargs'][kwargs_key] = kwargs_value
+
+            message = source.get('message')
+            if message:
+                _data['exception'] = message
 
             if _data:
                 all_data.append(_data)
