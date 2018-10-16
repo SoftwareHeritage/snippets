@@ -78,17 +78,16 @@ def group_by(origin_types, loader_type):
 
 @click.command()
 @click.option('--origin-types', default=['gitorious', 'googlecode'],
-              help='Default types of origin to lookup')
+              multiple=True, help='Default types of origin to lookup')
 @click.option('--loader-type', default='svn',
               help="Type of loader (%s)" % ', '.join(LOADER_TYPES))
 def main(origin_types, loader_type):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
 
-    if isinstance(origin_types, str):
-        origin_types = [origin_types]
-
+    origin_types = list(origin_types)
     origin_types.append('unknown')
+
     group = group_by(origin_types, loader_type)
 
     result = {}
