@@ -85,7 +85,10 @@ def main(origin_types, loader_type):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
 
-    origin_types = origin_types + ['unknown']
+    if isinstance(origin_types, str):
+        origin_types = [origin_types]
+
+    origin_types.append('unknown')
     group = group_by(origin_types, loader_type)
 
     result = {}
