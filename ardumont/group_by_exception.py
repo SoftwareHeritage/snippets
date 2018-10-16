@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict, OrderedDict
 
 
-LOADER_TYPES = ['git', 'svn', 'hg']
+LOADER_TYPES = ['git', 'svn', 'hg', 'pypi']
 
 
 def work_on_exception_msg(exception):
@@ -33,7 +33,7 @@ def work_on_exception_msg(exception):
 def group_by(origin_types, loader_type):
     group = {ori_type: defaultdict(list) for ori_type in origin_types}
 
-    if loader_type == 'svn':
+    if loader_type in ('svn', 'pypi'):
         # args = ('path-to-archive', 'some-origin-url')
         origin_key_to_lookup = 1
     elif loader_type in ['git', 'hg']:
