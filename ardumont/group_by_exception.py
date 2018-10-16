@@ -102,10 +102,11 @@ def main(origin_types, loader_type):
         out = sorted(_map.items(), key=operator.itemgetter(1),
                      reverse=True)
 
-        result[ori_type] = {
-            'total': total,
-            'errors': OrderedDict(out),
-        }
+        if total != 0:
+            result[ori_type] = {
+                'total': total,
+                'errors': OrderedDict(out),
+            }
 
     print(json.dumps(result))
 
