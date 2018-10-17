@@ -62,11 +62,12 @@ def main(task_policy, task_type):
             if 'visit_date' not in kwargs:
                 kwargs['visit_date'] = 'Tue, 3 May 2016 17:16:32 +0200'
         elif task_type == 'pypi':
-            # HACK: Need an adapter because loader.pypi.tasks and
-            # loader.pypi.loader have not the same signature ~> need
-            # some code fix
-            url = kwargs.pop('origin_metadata_url')
-            kwargs['project_metadata_url'] = url
+            # HACK: Need an adapter as long as T1246#23691 is not
+            # solved, we will need this (task and loader are now
+            # aligned but the indexed data is there)
+            if 'origin_metadata_url' in kwargs:
+                url = kwargs.pop('origin_metadata_url')
+                kwargs['project_metadata_url'] = url
 
         _task_kwargs = json.dumps(kwargs)
 
