@@ -57,10 +57,16 @@ def main(task_policy, task_type):
 
         kwargs = data['kwargs']
 
-        # HACK: Should have been set earlier...
+        # HACK: visit_date should have been set earlier...
         if task_type in ['mercurial', 'mercurial-archive']:
             if 'visit_date' not in kwargs:
                 kwargs['visit_date'] = 'Tue, 3 May 2016 17:16:32 +0200'
+        elif task_type == 'pypi':
+            # HACK: Need an adapter because loader.pypi.tasks and
+            # loader.pypi.loader have not the same signature ~> need
+            # some code fix
+            url = kwargs.pop('origin_metadata_url')
+            kwargs['project_metadata_url'] = url
 
         _task_kwargs = json.dumps(kwargs)
 
