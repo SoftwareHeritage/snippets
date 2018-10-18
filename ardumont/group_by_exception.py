@@ -77,7 +77,7 @@ def group_by(origin_types, loader_type):
 
 
 @click.command()
-@click.option('--origin-types', default=['gitorious', 'googlecode'],
+@click.option('--origin-types', default=['gitorious', 'googlecode', 'pypi'],
               multiple=True, help='Default types of origin to lookup')
 @click.option('--loader-type', default='svn',
               help="Type of loader (%s)" % ', '.join(LOADER_TYPES))
