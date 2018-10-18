@@ -12,8 +12,10 @@ import ast
 import click
 import json
 import operator
+import os
 import re
 import sys
+import yaml
 
 from collections import defaultdict, OrderedDict
 
@@ -21,7 +23,16 @@ from collections import defaultdict, OrderedDict
 LOADER_TYPES = ['git', 'svn', 'hg', 'pypi']
 
 
-def work_on_exception_msg(exception):
+def work_on_exception_msg(errors, exception):
+    """Try and detect the kind of exception
+
+    """
+    # first try to detect according to existing and known errors
+    for error in errors:
+        if error in exception:
+            return error
+
+    # if no standard error is found, group by end of exception message
     exception_msg = None
     if exception.startswith('['):
         exception_msg = re.sub('\[.*\]', '', exception).lstrip()
@@ -30,7 +41,10 @@ def work_on_exception_msg(exception):
     return exception_msg[-50:]
 
 
-def group_by(origin_types, loader_type):
+def group_by(origin_types, loader_type, errors):
+    """Group error by origin_types and loader's type
+
+    """
     group = {ori_type: defaultdict(list) for ori_type in origin_types}
 
     if loader_type in ('svn', 'pypi'):
@@ -70,7 +84,8 @@ def group_by(origin_types, loader_type):
 
             seen.add(origin_url)
 
-        reworked_exception_msg = work_on_exception_msg(data['exception'])
+        reworked_exception_msg = work_on_exception_msg(
+            errors, data['exception'])
         group[origin_type][reworked_exception_msg].append(data['args'])
 
     return group
@@ -81,14 +96,33 @@ def group_by(origin_types, loader_type):
               multiple=True, help='Default types of origin to lookup')
 @click.option('--loader-type', default='svn',
               help="Type of loader (%s)" % ', '.join(LOADER_TYPES))
-def main(origin_types, loader_type):
+@click.option('--config-file',
+              default=os.path.expanduser('~/.config/swh/kibana/group-by.yml'),
+              help='Default configuration file')
+def main(origin_types, loader_type, config_file):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
+
+    if not os.path.exists(config_file):
+        raise ValueError('Bad setup, you need to provide a configuration file')
+
+    with open(config_file, 'r') as f:
+        data = yaml.load(f.read())
+
+    errors = data.get('errors')
+    if not errors:
+        err = 'Bad config, please provide the errors per loader-type'
+        raise ValueError(err)
+
+    if loader_type not in errors:
+        err = 'Bad config, please provide the errors for loader-type %s' % (
+            loader_type)
+        raise ValueError(err)
 
     origin_types = list(origin_types)
     origin_types.append('unknown')
 
-    group = group_by(origin_types, loader_type)
+    group = group_by(origin_types, loader_type, errors[loader_type])
 
     result = {}
     for ori_type in origin_types:
