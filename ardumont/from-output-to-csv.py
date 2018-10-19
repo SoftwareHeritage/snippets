@@ -19,6 +19,7 @@ TYPES = {
     'svn': 'origin-update-svn',
     'svn-archive': 'swh-loader-mount-dump-and-load-svn-repository',
     'pypi': 'origin-update-pypi',
+    'git': 'origin-update-git',
 }
 
 
