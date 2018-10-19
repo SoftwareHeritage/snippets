@@ -41,17 +41,21 @@ def work_on_exception_msg(errors, exception):
     return exception_msg[-50:]
 
 
-def group_by(origin_types, loader_type, errors):
-    """Group error by origin_types and loader's type
+ORIGIN_KEY_TO_LOOKUP = {
+    'svn': 1,
+    'pypi': 1,
+    'git': 0,
+    'hg': 'origin_url',
+}
+
+
+def group_by_origin_types(origin_types, loader_type, errors):
+    """Group origins per origin type, error type.
 
     """
     group = {ori_type: defaultdict(list) for ori_type in origin_types}
-
-    if loader_type in ('svn', 'pypi'):
-        # args = ('path-to-archive', 'some-origin-url')
-        origin_key_to_lookup = 1
-    elif loader_type in ['git', 'hg']:
-        origin_key_to_lookup = 'origin_url'
+    # solve where to look for origin-url information
+    origin_key_to_lookup = ORIGIN_KEY_TO_LOOKUP[loader_type]
 
     seen = set()
     for line in sys.stdin:
@@ -91,15 +95,45 @@ def group_by(origin_types, loader_type, errors):
     return group
 
 
+def group_by(loader_type, errors):
+    """Group origins per error type.
+
+    """
+    group = defaultdict(list)
+    seen = set()
+    for line in sys.stdin:
+        origin_url = None
+        line = line.strip()
+        data = ast.literal_eval(line)
+        args = data['args']
+        if not args:  # possibly the input is different for that loader
+            args = data['kwargs']
+
+        if origin_url:
+            if origin_url in seen:
+                continue
+
+            seen.add(origin_url)
+
+        reworked_exception_msg = work_on_exception_msg(
+            errors, data['exception'])
+        group[reworked_exception_msg].append(data['args'])
+
+    return group
+
+
 @click.command()
-@click.option('--origin-types', default=['gitorious', 'googlecode', 'pypi'],
+@click.option('--origin-types',
+              default=['gitorious', 'googlecode', 'pypi', 'git'],
               multiple=True, help='Default types of origin to lookup')
 @click.option('--loader-type', default='svn',
               help="Type of loader (%s)" % ', '.join(LOADER_TYPES))
 @click.option('--config-file',
               default=os.path.expanduser('~/.config/swh/kibana/group-by.yml'),
               help='Default configuration file')
-def main(origin_types, loader_type, config_file):
+@click.option('--aggregate/--no-aggregate', is_flag=True, default=True,
+              help='Aggregate by origin types (default)')
+def main(origin_types, loader_type, config_file, aggregate):
     if loader_type not in LOADER_TYPES:
         raise ValueError('Bad input, loader type is one of %s' % LOADER_TYPES)
 
@@ -119,28 +153,43 @@ def main(origin_types, loader_type, config_file):
             loader_type)
         raise ValueError(err)
 
-    origin_types = list(origin_types)
-    origin_types.append('unknown')
+    if aggregate:  # by origin types
+        origin_types = list(origin_types)
+        origin_types.append('unknown')
+        group = group_by_origin_types(
+            origin_types, loader_type, errors[loader_type])
+        result = {}
+        for ori_type in origin_types:
+            _map = {}
+            total = 0
+            for k, v in group[ori_type].items():
+                _len = len(v)
+                _map[k] = _len
+                total += _len
 
-    group = group_by(origin_types, loader_type, errors[loader_type])
+            out = sorted(_map.items(), key=operator.itemgetter(1),
+                         reverse=True)
 
-    result = {}
-    for ori_type in origin_types:
+            if total != 0:
+                result[ori_type] = {
+                    'total': total,
+                    'errors': OrderedDict(out)
+                }
+    else:
+        group = group_by(loader_type, errors[loader_type])
         _map = {}
         total = 0
-        for k, v in group[ori_type].items():
-            _len = len(v)
-            _map[k] = _len
+        for error, origins in group.items():
+            _len = len(origins)
+            _map[error] = _len
             total += _len
 
         out = sorted(_map.items(), key=operator.itemgetter(1),
                      reverse=True)
-
-        if total != 0:
-            result[ori_type] = {
-                'total': total,
-                'errors': OrderedDict(out),
-            }
+        result = {
+            'total': total,
+            'errors': OrderedDict(out),
+        }
 
     print(json.dumps(result))
 
