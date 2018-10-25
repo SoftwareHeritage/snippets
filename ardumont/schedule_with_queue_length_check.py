@@ -116,7 +116,7 @@ def print_last_hash(d):
 QUEUES = {
     'svndump': {  # for svn, we use the same queue for length checking
                   # and scheduling
-        'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepositoryTsk',
+        'task_name': 'swh.loader.svn.tasks.MountAndLoadSvnRepository',
         'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': (lambda b: stdin_to_svn_tasks(b, type='dump')),
@@ -124,7 +124,7 @@ QUEUES = {
     },
     'svn': {  # for svn, we use the same queue for length checking
                   # and scheduling
-        'task_name': 'swh.loader.svn.tasks.LoadSWHSvnRepositoryTsk',
+        'task_name': 'swh.loader.svn.tasks.LoadSvnRepository',
         'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_svn_tasks,
@@ -132,7 +132,7 @@ QUEUES = {
     },
     'mercurial': {  # for mercurial, we use the same queue for length
                     # checking and scheduling
-        'task_name': 'swh.loader.mercurial.tasks.LoadArchiveMercurialTsk',
+        'task_name': 'swh.loader.mercurial.tasks.LoadArchiveMercurial',
         'threshold': 1000,
         # to_task the function to use to transform the input in task
         'task_generator_fn': stdin_to_mercurial_tasks,
@@ -140,13 +140,13 @@ QUEUES = {
     },
     'indexer': {  # for indexer, we schedule using the orchestrator's queue
                   # we check the length on the mimetype queue though
-        'task_name': 'swh.indexer.tasks.SWHOrchestratorAllContentsTask',
+        'task_name': 'swh.indexer.tasks.OrchestratorAllContents',
         'threshold': 1000,
         'queues_to_check': [{
-                'task_name': 'swh.indexer.tasks.SWHContentMimetypeTask',
+                'task_name': 'swh.indexer.tasks.ContentMimetype',
                 'threshold': 1000,
             }, {
-                'task_name': 'swh.indexer.tasks.SWHContentFossologyLicenseTask',  # noqa
+                'task_name': 'swh.indexer.tasks.ContentFossologyLicense',
                 'threshold': 200,
             }
         ],
