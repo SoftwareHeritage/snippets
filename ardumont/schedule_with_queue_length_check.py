@@ -142,14 +142,6 @@ QUEUES = {
                   # we check the length on the mimetype queue though
         'task_name': 'swh.indexer.tasks.OrchestratorAllContents',
         'threshold': 1000,
-        'queues_to_check': [{
-                'task_name': 'swh.indexer.tasks.ContentMimetype',
-                'threshold': 1000,
-            }, {
-                'task_name': 'swh.indexer.tasks.ContentFossologyLicense',
-                'threshold': 200,
-            }
-        ],
         'task_generator_fn': stdin_to_index_tasks,
         'print_fn': print_last_hash,
     }
