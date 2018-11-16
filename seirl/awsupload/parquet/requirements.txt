@@ -1,0 +1,7 @@
+boto3
+pandas
+psycopg2-binary
+pyarrow
+requests
+sqlalchemy
+tqdm
