@@ -48,12 +48,12 @@ class ResumableStateTracker:
         self.old_task_set = set()
         self.task_set = set()
         self.last = None
+        self.initial_skipped = 0
 
         self._load()
 
         # skip to current
         if self.last is not None:
-            self.initial_skipped = 0
             while True:
                 self.initial_skipped += 1
                 cur = next(self.it)
