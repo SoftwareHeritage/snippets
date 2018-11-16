@@ -201,7 +201,7 @@ def scheduler(iterator):
 def main():
     if len(sys.argv) >= 3:
         start = int(sys.argv[1], 16)
-        end = int(sys.argv[1], 16) + 1
+        end = int(sys.argv[2], 16) + 1
         iterator = iter(prefix_yielder(start, end))
     else:
         iterator = iter(prefix_yielder())
