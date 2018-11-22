@@ -11,6 +11,8 @@ import subprocess
 import threading
 import tqdm
 
+from tables import TABLES
+
 PARQUET_DATASET = '/srv/hdd/swh-parquet'
 ROW_CHUNK_SIZE = 10000
 PARQUET_SUPERCHUNK_SIZE = 500
@@ -18,93 +20,6 @@ DB_CONN = ('postgresql://guest:guest@dbreplica0.euwest.azure.internal.'
            'softwareheritage.org:5433/softwareheritage')
 ESTIMATE = False
 NUM_WRITER_THREADS = 1
-
-TABLES = [
-    {
-        'name': 'origin_visit',
-        'columns': all,
-        'partition': None
-    },
-    {
-        'name': 'origin',
-        'columns': all,
-        'partition': None
-    },
-    {
-        'name': 'snapshot_branches',
-        'columns': all,
-        'partition': None
-    },
-    {
-        'name': 'snapshot_branch',
-        'columns': all,
-        'partition': None
-    },
-    {
-        'name': 'snapshot',
-        'columns': all,
-        'partition': 'id'
-    },
-    {
-        'name': 'release',
-        'columns': ['id', 'target', 'date', 'date_offset', 'name', 'comment',
-                    'author'],
-        'partition': 'id'
-    },
-    {
-        'name': 'revision_history',
-        'columns': all,
-        'partition': 'id'
-    },
-    {
-        'name': 'release',
-        'columns': ['id', 'target', 'date', 'date_offset', 'name',
-                    'comment', 'author', 'target_type'],
-        'partition': 'id'
-    },
-    {
-        'name': 'revision',
-        'columns': ['id', 'date', 'date_offset', 'committer_date',
-                    'committer_date_offset', 'type', 'directory', 'message',
-                    'author', 'committer'],
-        'partition': 'id'
-    },
-    {
-        'name': 'person',
-        'columns': ['id'],  # Don't export personal information
-        'partition': None
-    },
-    {
-        'name': 'directory_entry_rev',
-        'columns': all,
-        'partition': 'target'
-    },
-    {
-        'name': 'directory_entry_file',
-        'columns': all,
-        'partition': 'target'
-    },
-    {
-        'name': 'directory_entry_dir',
-        'columns': all,
-        'partition': 'target'
-    },
-    {
-        'name': 'directory',
-        'columns': ['id', 'dir_entries', 'file_entries', 'rev_entries'],
-        'partition': 'id'
-    },
-    {
-        'name': 'skipped_content',
-        'columns': ['sha1', 'sha1_git', 'length'],
-        'partition': 'sha1_git'
-    },
-    {
-        'name': 'content',
-        'columns': ['sha1', 'sha1_git', 'length'],
-        'partition': 'sha1_git'
-    },
-]
 
 
 def memory_usage():
