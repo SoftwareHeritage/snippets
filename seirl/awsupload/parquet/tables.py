@@ -60,6 +60,15 @@ TABLES = [
         'partition': 'id'
     },
     {
+        'name': 'revision_history',
+        'columns': [
+            ('id', 'binary'),
+            ('parent_id', 'binary'),
+            ('parent_rank', 'int'),
+        ],
+        'partition': 'id'
+    },
+    {
         'name': 'revision',
         'columns': [
             ('id', 'binary'),
