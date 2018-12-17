@@ -12,7 +12,7 @@ import click
 from swh.core import utils
 from swh.model.hashutil import MultiHash, hash_to_hex
 
-from swh.loader.git.updater import BulkUpdater, RepoRepresentation
+from swh.loader.git.loader import GitLoader, RepoRepresentation
 from swh.loader.git import converters
 
 
@@ -61,7 +61,7 @@ class DummyGraphWalker(object):
     def __next__(self): pass
 
 
-class BaseGitRemoteReader(BulkUpdater):
+class BaseGitRemoteReader(GitLoader):
     CONFIG_BASE_FILENAME = 'loader/git-remote-reader'
 
     ADDITIONAL_CONFIG = {
