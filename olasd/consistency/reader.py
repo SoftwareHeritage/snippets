@@ -12,11 +12,11 @@ import click
 from swh.core import utils
 from swh.model.hashutil import MultiHash, hash_to_hex
 
-from swh.loader.git.updater import BulkUpdater, SWHRepoRepresentation
+from swh.loader.git.updater import BulkUpdater, RepoRepresentation
 from swh.loader.git import converters
 
 
-class SWHRepoFullRepresentation(SWHRepoRepresentation):
+class RepoFullRepresentation(RepoRepresentation):
     """Overridden representation of a swh repository to permit to read
     completely the remote repository.
 
@@ -77,7 +77,7 @@ class BaseGitRemoteReader(BulkUpdater):
     }
 
     def __init__(self):
-        super().__init__(SWHRepoFullRepresentation)
+        super().__init__(RepoFullRepresentation)
         self.next_task = self.config['next_task']
         self.batch_size = self.next_task['batch_size']
         self.task_destination = self.next_task['queue']
