@@ -5,7 +5,7 @@ import pickle
 import os
 import sys
 
-from swh.loader.git.reader import GitCommitRemoteReader
+from .reader import GitCommitRemoteReader
 
 
 def get_revisions_and_origins_from_file(filename):
