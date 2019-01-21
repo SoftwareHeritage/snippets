@@ -1,3 +1,3 @@
-py-afl-fuzz -t 2000 -m 200 -i ~/datasets/gemspec -o fuzzing-results -- python3 ~/swh-environment/snippets/vlorentz/run_mapping.py GemspecMapper @@
+py-afl-fuzz -t 2000 -m 200 -i ~/datasets/gemspec -o fuzzing-results -- python3 ~/swh-environment/snippets/vlorentz/run_mapping.py GemspecMapping @@
 
-py-afl-fuzz -t 2000 -m 200 -i ~/datasets/pkginfo -o fuzzing-results -- python3 ~/swh-environment/snippets/vlorentz/run_mapping.py GemspecMapper @@
+py-afl-fuzz -t 2000 -m 200 -i ~/datasets/pkginfo -o fuzzing-results -- python3 ~/swh-environment/snippets/vlorentz/run_mapping.py PythonPkginfoMapping @@

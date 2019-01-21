@@ -1,3 +1,4 @@
+import gc
 import os
 import os.path
 import pprint
@@ -17,8 +18,10 @@ except KeyError:
     print('Syntax: ./run_mapping.py {GemspecMapping,NpmMapping,...}')
     exit(1)
 
+gc.disable()
+
 #afl.init()
-while afl.loop(1000):
+while afl.loop(100):
 #if True:
     #sys.stdin.buffer.seek(0)
     #file_content = sys.stdin.buffer.read()
