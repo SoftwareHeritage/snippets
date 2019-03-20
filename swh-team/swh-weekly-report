@@ -1,0 +1,156 @@
+#!/usr/bin/python3
+
+# Depends: python3-click, python3-phabricator
+
+import click
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from functools import lru_cache
+from phabricator import Phabricator
+
+
+def paginate(query, args, stop):
+    """perform a query paginating through results until stop condition is met
+
+    """
+    def do_query():
+        after = '0'
+        keep_going = True
+        while keep_going:
+            r = query(**args, after=after)
+            if not(r['data']):
+                break
+            for item in r['data']:
+                if stop(item):
+                    keep_going = False
+                    break
+                yield item
+
+            after = r['cursor']['after']
+
+    return list(do_query())
+
+
+@lru_cache()
+def lookup_repo(phab, repo_phid):
+    """lookup Phabricator repository by PHID
+
+    """
+    return phab.phid.query(phids=[repo_phid])[repo_phid]
+
+
+def pp_repo(repo):
+    """pretty print a short name for a given repository
+
+    """
+    return repo['uri'].split('/')[-2]
+
+
+@lru_cache()
+def whoami(phab):
+    """return current user's PHID
+
+    """
+    return phab.user.whoami()['phid']
+
+
+def list_tasks(phab, newer_than):
+    """list subscribed tasks, modified after given timestamp
+
+    Args:
+        phab: Phabricator instance
+        newer_than: time limit, as seconds sync epoch
+    """
+    r = phab.maniphest.search(queryKey='subscribed',
+                              constraints={'modifiedStart': newer_than},
+                              order='updated')
+
+    return [task for task in r['data']]
+
+
+def list_commits(phab, newer_than):
+    """list authored commits newer than given timestamp
+
+    Args:
+        phab: Phabricator instance
+        newer_than: time limit, as seconds sync epoch
+    """
+    return paginate(phab.diffusion.commit.search,
+                    {'queryKey': 'authored', 'order': 'newest'},
+                    lambda c: c['fields']['author']['epoch'] <= newer_than)
+
+
+def list_reviews(phab, newer_than):
+
+    def recent(c): return c['fields']['dateModified'] <= newer_than
+
+    authored = paginate(phab.differential.revision.search,
+                        {'queryKey': 'authored', 'order': 'updated'},
+                        recent)
+    subscribed = paginate(phab.differential.revision.search,
+                          {'constraints': {'subscribers': [whoami(phab)]},
+                           'order': 'updated'},
+                          recent)
+
+    return authored + [r for r in subscribed if r not in authored]
+
+
+def print_tasks(tasks):
+    print('Tasks (subscribed):')
+    for t in tasks:
+        print('- T{id} | {name}'.format(
+            id=t['id'],
+            name=t['fields']['name']))
+
+
+def print_commits(phab, commits):
+    print('Commits (authored):')
+    for c in commits:
+        repo = lookup_repo(phab, c['fields']['repositoryPHID'])
+        print('- {id} | {repo} | {msg}'.format(
+            id=c['fields']['identifier'][:12],
+            repo=pp_repo(repo),
+            msg=c['fields']['message'].split('\n')[0]))
+
+
+def print_reviews(phab, reviews):
+    print('Reviews (authored & subscribed):')
+    for r in reviews:
+        repo = lookup_repo(phab, r['fields']['repositoryPHID'])
+        print('- D{id} | {repo} | {title}'.format(
+            id=r['id'],
+            repo=pp_repo(repo),
+            title=r['fields']['title']))
+
+
+@click.command()
+@click.option('--days', '-d', default=7, show_default=True, type=int,
+              help='Look for events no older than N days')
+@click.option('--tasks/--no-tasks', default=True, show_default=True,
+              help='list tasks')
+@click.option('--commits/--no-commits', default=True, show_default=True,
+              help='list commits')
+@click.option('--reviews/--no-reviews', default=True, show_default=True,
+              help='list reviews')
+def main(days, tasks, commits, reviews):
+    phab = Phabricator()
+    phab.update_interfaces()
+
+    query = {'newer_than':
+             int((datetime.now() + relativedelta(days=-days)).timestamp())}
+
+    print()
+    if tasks:
+        print_tasks(list_tasks(phab, **query))
+        print()
+    if commits:
+        print_commits(phab, list_commits(phab, **query))
+        print()
+    if reviews:
+        print_reviews(phab, list_reviews(phab, **query))
+        print()
+
+
+if __name__ == '__main__':
+    main()
