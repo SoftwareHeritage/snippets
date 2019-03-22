@@ -45,3 +45,46 @@ def whoami(phab):
 
     """
     return phab.user.whoami()['phid']
+
+
+def print_tasks(phab, tasks):
+    """print a brief list of Phabricator tasks, with some context
+
+    Args:
+        phab: Phabricator instance
+        tasks(iterable): tasks to be printed
+    """
+    for t in tasks:
+        print('- T{id} | {name}'.format(
+            id=t['id'],
+            name=t['fields']['name']))
+
+
+def print_commits(phab, commits):
+    """print a list of Phabricator commits, with some context
+
+    Args:
+        phab: Phabricator instance
+        commits(iterable): commits to be printed
+    """
+    for c in commits:
+        repo = lookup_repo(phab, c['fields']['repositoryPHID'])
+        print('- {id} | {repo} | {msg}'.format(
+            id=c['fields']['identifier'][:12],
+            repo=pp_repo(repo),
+            msg=c['fields']['message'].split('\n')[0]))
+
+
+def print_reviews(phab, reviews):
+    """print a list of Phabricator diffs, with some context
+
+    Args:
+        phab: Phabricator instance
+        reviews(iterable): diffs to be printed
+    """
+    for r in reviews:
+        repo = lookup_repo(phab, r['fields']['repositoryPHID'])
+        print('- D{id} | {repo} | {title}'.format(
+            id=r['id'],
+            repo=pp_repo(repo),
+            title=r['fields']['title']))

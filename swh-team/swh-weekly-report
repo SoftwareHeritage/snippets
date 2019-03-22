@@ -8,7 +8,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from phabricator import Phabricator
 
-from swhphab import paginate, lookup_repo, pp_repo, whoami
+from swhphab import paginate, whoami
+from swhphab import print_commits, print_tasks, print_reviews
 
 
 def list_tasks(phab, newer_than):
@@ -52,34 +53,6 @@ def list_reviews(phab, newer_than):
     return authored + [r for r in subscribed if r not in authored]
 
 
-def print_tasks(tasks):
-    print('Tasks (subscribed):')
-    for t in tasks:
-        print('- T{id} | {name}'.format(
-            id=t['id'],
-            name=t['fields']['name']))
-
-
-def print_commits(phab, commits):
-    print('Commits (authored):')
-    for c in commits:
-        repo = lookup_repo(phab, c['fields']['repositoryPHID'])
-        print('- {id} | {repo} | {msg}'.format(
-            id=c['fields']['identifier'][:12],
-            repo=pp_repo(repo),
-            msg=c['fields']['message'].split('\n')[0]))
-
-
-def print_reviews(phab, reviews):
-    print('Reviews (authored & subscribed):')
-    for r in reviews:
-        repo = lookup_repo(phab, r['fields']['repositoryPHID'])
-        print('- D{id} | {repo} | {title}'.format(
-            id=r['id'],
-            repo=pp_repo(repo),
-            title=r['fields']['title']))
-
-
 @click.command()
 @click.option('--days', '-d', default=7, show_default=True, type=int,
               help='Look for events no older than N days')
@@ -98,12 +71,15 @@ def main(days, tasks, commits, reviews):
 
     print()
     if tasks:
-        print_tasks(list_tasks(phab, **query))
+        print('Tasks (subscribed):')
+        print_tasks(phab, list_tasks(phab, **query))
         print()
     if commits:
+        print('Commits (authored):')
         print_commits(phab, list_commits(phab, **query))
         print()
     if reviews:
+        print('Reviews (authored & subscribed):')
         print_reviews(phab, list_reviews(phab, **query))
         print()
 
