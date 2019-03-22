@@ -29,14 +29,20 @@ def lookup_repo(phab, repo_phid):
     """lookup Phabricator repository by PHID
 
     """
-    return phab.phid.query(phids=[repo_phid])[repo_phid]
+    if repo_phid:
+        return phab.phid.query(phids=[repo_phid])[repo_phid]
+    else:
+        return None  # stacked diffs do not have an associated repo
 
 
 def pp_repo(repo):
     """pretty print a short name for a given repository
 
     """
-    return repo['uri'].split('/')[-2]
+    if repo:
+        return repo['uri'].split('/')[-2]
+    else:
+        return 'None'
 
 
 @lru_cache()
