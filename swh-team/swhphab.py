@@ -61,8 +61,9 @@ def print_tasks(phab, tasks):
         tasks(iterable): tasks to be printed
     """
     for t in tasks:
-        print('- T{id} | {name}'.format(
+        print('- T{id} | {status} | {name}'.format(
             id=t['id'],
+            status=t['fields']['status']['value'],
             name=t['fields']['name']))
 
 
