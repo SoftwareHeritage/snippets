@@ -1,0 +1,70 @@
+#!/usr/bin/python3
+
+# Depends: python3-click, python3-phabricator
+
+import click
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from phabricator import Phabricator
+
+from swhphab import paginate
+from swhphab import print_commits, print_tasks, print_reviews
+
+
+def list_tasks(phab, newer_than):
+    r = phab.maniphest.search(queryKey='p7HVsD_INQxO',
+                              # ^- canned query: Recent task changes
+                              constraints={'modifiedStart': newer_than},
+                              order='updated')
+
+    return [task for task in r['data']]
+
+
+def list_commits(phab, newer_than):
+    return paginate(phab.diffusion.commit.search,
+                    {'queryKey': 'all', 'order': 'newest'},
+                    lambda c: c['fields']['author']['epoch'] <= newer_than)
+
+
+def list_reviews(phab, newer_than):
+    return paginate(phab.differential.revision.search,
+                    {'queryKey': 'mMgFR_PuFDOx',
+                     # ^- canned query: All Revisions by Update Date
+                     'order': 'updated'},
+                    lambda c: c['fields']['dateModified'] <= newer_than)
+
+
+@click.command()
+@click.option('--days', '-d', default=31, show_default=True, type=int,
+              help='Look for events no older than N days')
+@click.option('--tasks/--no-tasks', default=True, show_default=True,
+              help='list tasks')
+@click.option('--commits/--no-commits', default=True, show_default=True,
+              help='list commits')
+@click.option('--reviews/--no-reviews', default=True, show_default=True,
+              help='list reviews')
+def main(days, tasks, commits, reviews):
+    phab = Phabricator()
+    phab.update_interfaces()
+
+    query = {'newer_than':
+             int((datetime.now() + relativedelta(days=-days)).timestamp())}
+
+    print()
+    if tasks:
+        print('Tasks:')
+        print_tasks(phab, list_tasks(phab, **query))
+        print()
+    if commits:
+        print('Commits:')
+        print_commits(phab, list_commits(phab, **query))
+        print()
+    if reviews:
+        print('Reviews:')
+        print_reviews(phab, list_reviews(phab, **query))
+        print()
+
+
+if __name__ == '__main__':
+    main()
