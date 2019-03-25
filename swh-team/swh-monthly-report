@@ -24,7 +24,7 @@ def list_tasks(phab, newer_than):
 def list_commits(phab, newer_than):
     return paginate(phab.diffusion.commit.search,
                     {'queryKey': 'all', 'order': 'newest'},
-                    lambda c: c['fields']['author']['epoch'] <= newer_than)
+                    lambda c: c['fields']['committer']['epoch'] <= newer_than)
 
 
 def list_reviews(phab, newer_than):
