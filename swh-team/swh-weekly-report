@@ -42,13 +42,13 @@ def list_reviews(phab, newer_than):
 
     def recent(c): return c['fields']['dateModified'] <= newer_than
 
-    authored = paginate(phab.differential.revision.search,
-                        {'queryKey': 'authored', 'order': 'updated'},
-                        recent)
-    subscribed = paginate(phab.differential.revision.search,
-                          {'constraints': {'subscribers': [whoami(phab)]},
-                           'order': 'updated'},
-                          recent)
+    authored = list(paginate(phab.differential.revision.search,
+                             {'queryKey': 'authored', 'order': 'updated'},
+                             recent))
+    subscribed = list(paginate(phab.differential.revision.search,
+                               {'constraints': {'subscribers': [whoami(phab)]},
+                                'order': 'updated'},
+                               recent))
 
     return authored + [r for r in subscribed if r not in authored]
 
