@@ -1,0 +1,45 @@
+#!/usr/bin/python3
+
+import logging
+import os
+import subprocess
+import sys
+
+
+# known git commit author names used by Software Heritage staffers
+SWH_TEAM_AUTHORS = {
+    'Antoine Lambert',
+    'Antoine Pietri',
+    'Antoine R. Dumont (@ardumont)',
+    'David Douard',
+    'moranegg',
+    'Morane Otilia Gruenpeter',
+    'Nicolas Dandrimont',
+    'Stefano Zacchiroli',
+    'Valentin Lorentz',
+}
+CONTRIBS_PATH = 'CONTRIBUTORS'
+ENCODING = 'utf-8'
+
+
+def main():
+    contributors = set()
+    if os.path.exists(CONTRIBS_PATH):
+        with open(CONTRIBS_PATH, encoding=ENCODING) as f:
+            contributors = {l.rstrip() for l in f}
+
+    rc = subprocess.run('git log --pretty=%an | sort -u',
+                        shell=True, encoding=ENCODING,
+                        capture_output=True, check=True)
+    authors = {l for l in rc.stdout.split('\n') if l}
+
+    unknown_contributors = authors - contributors - SWH_TEAM_AUTHORS
+    if unknown_contributors:
+        logging.error('Unknown contributors: %s' % unknown_contributors)
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
