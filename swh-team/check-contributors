@@ -1,9 +1,13 @@
 #!/usr/bin/python3
 
+import click
 import logging
 import os
 import subprocess
 import sys
+
+from contextlib import contextmanager
+from pprint import pprint
 
 
 # known git commit author names used by Software Heritage staffers
@@ -18,24 +22,63 @@ SWH_TEAM_AUTHORS = {
     'Stefano Zacchiroli',
     'Valentin Lorentz',
 }
+
+# path where to look for known, per-repository, non-team contributors
 CONTRIBS_PATH = 'CONTRIBUTORS'
+
 ENCODING = 'utf-8'
 
 
-def main():
-    contributors = set()
-    if os.path.exists(CONTRIBS_PATH):
-        with open(CONTRIBS_PATH, encoding=ENCODING) as f:
-            contributors = {l.rstrip() for l in f}
+@contextmanager
+def chdir(path):
+    """context manager to execute a code block in a given dir and go back to the
+    previous cwd when done
 
-    rc = subprocess.run('git log --pretty=%an | sort -u',
-                        shell=True, encoding=ENCODING,
-                        capture_output=True, check=True)
-    authors = {l for l in rc.stdout.split('\n') if l}
+    """
+    previous_dir = os.getcwd()
+    os.chdir(path)
+    try:
+        yield path
+    finally:
+        os.chdir(previous_dir)
 
-    unknown_contributors = authors - contributors - SWH_TEAM_AUTHORS
+
+def check_contributors(git_dir, known_contributors):
+    """cross-check_contributors all git commit authors against the list of
+    known_contributors
+
+    Return: list of unknown contributors, if any
+
+    """
+    with chdir(git_dir):
+        contributors = set()  # contributors listed in CONTRIBUTORS file
+        if os.path.exists(CONTRIBS_PATH):
+            with open(CONTRIBS_PATH, encoding=ENCODING) as f:
+                contributors = {l.rstrip() for l in f}
+
+        rc = subprocess.run('git log --pretty=%an | sort -u',
+                            shell=True, encoding=ENCODING,
+                            capture_output=True, check=True)
+        authors = {l for l in rc.stdout.split('\n') if l}
+
+    return authors - contributors - known_contributors
+
+
+@click.command()
+@click.argument('paths', nargs=-1)
+def main(paths):
+    if not paths:
+        paths = ['.']
+
+    unknown_contributors = {}
+    for path in paths:
+        contribs = check_contributors(path, SWH_TEAM_AUTHORS)
+        if contribs:  # at least one unknown contributor found for path
+            unknown_contributors[path] = contribs
+
     if unknown_contributors:
-        logging.error('Unknown contributors: %s' % unknown_contributors)
+        logging.error('Unknown contributors:')
+        pprint(unknown_contributors, stream=sys.stderr, indent=2)
         sys.exit(1)
     else:
         sys.exit(0)
