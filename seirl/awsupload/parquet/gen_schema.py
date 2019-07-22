@@ -2,6 +2,7 @@
 
 import boto3
 import botocore.exceptions
+import sys
 import textwrap
 import time
 
@@ -12,6 +13,10 @@ OUTPUT_LOCATION = 's3://softwareheritage/queries/'
 
 def create_database(database_name):
     return 'CREATE DATABASE IF NOT EXISTS {};'.format(database_name)
+
+
+def drop_table(table):
+    return 'DROP TABLE IF EXISTS swh.{};'.format(table['name'])
 
 
 def create_table(table):
@@ -56,9 +61,17 @@ def query(client, query_string, *, desc='Querying', delay_secs=0.5):
                            + textwrap.indent(query_string, ' ' * 2))
 
 
+def query(client, query_string, **kwargs):
+    print(query_string)
+
+
 def main():
     client = boto3.client('athena')
     query(client, create_database('swh'), desc='Creating swh database')
+    if len(sys.argv) >= 2 and sys.argv[1] == '--replace-tables':
+        for table in TABLES:
+            query(client, drop_table(table),
+                  desc='Dropping table {}'.format(table['name']))
     for table in TABLES:
         query(client, create_table(table),
               desc='Creating table {}'.format(table['name']))

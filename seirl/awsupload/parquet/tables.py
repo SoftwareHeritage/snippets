@@ -2,18 +2,19 @@ TABLES = [
     {
         'name': 'origin_visit',
         'columns': [
-            ('origin', 'int'),
-            ('visit', 'int'),
-            ('date', 'timestamp'),
+            ('origin', 'bigint'),
+            ('visit', 'bigint'),
+            ('date', 'bigint'),
             ('status', 'string'),
-            ('snapshot_id', 'int'),
+            ('metadata', 'string'),
+            ('snapshot_id', 'bigint'),
         ],
         'partition': None
     },
     {
         'name': 'origin',
         'columns': [
-            ('id', 'int'),
+            ('id', 'bigint'),
             ('type', 'string'),
             ('url', 'string'),
         ],
@@ -22,15 +23,15 @@ TABLES = [
     {
         'name': 'snapshot_branches',
         'columns': [
-            ('snapshot_id', 'int'),
-            ('branch_id', 'int'),
+            ('snapshot_id', 'bigint'),
+            ('branch_id', 'bigint'),
         ],
         'partition': None
     },
     {
         'name': 'snapshot_branch',
         'columns': [
-            ('object_id', 'int'),
+            ('object_id', 'bigint'),
             ('name', 'binary'),
             ('target', 'binary'),
             ('target_type', 'string'),
@@ -40,7 +41,7 @@ TABLES = [
     {
         'name': 'snapshot',
         'columns': [
-            ('object_id', 'int'),
+            ('object_id', 'bigint'),
             ('id', 'binary'),
         ],
         'partition': 'id'
@@ -50,11 +51,11 @@ TABLES = [
         'columns': [
             ('id', 'binary'),
             ('target', 'binary'),
-            ('date', 'timestamp'),
-            ('date_offset', 'int'),
+            ('date', 'bigint'),
+            ('date_offset', 'smallint'),
             ('name', 'binary'),
             ('comment', 'binary'),
-            ('author', 'int'),
+            ('author', 'bigint'),
             ('target_type', 'string'),
         ],
         'partition': 'id'
@@ -72,29 +73,29 @@ TABLES = [
         'name': 'revision',
         'columns': [
             ('id', 'binary'),
-            ('date', 'timestamp'),
-            ('date_offset', 'int'),
-            ('committer_date', 'timestamp'),
-            ('committer_date_offset', 'int'),
+            ('date', 'bigint'),
+            ('date_offset', 'smallint'),
+            ('committer_date', 'bigint'),
+            ('committer_date_offset', 'smallint'),
             ('type', 'string'),
             ('directory', 'binary'),
             ('message', 'binary'),
-            ('author', 'int'),
-            ('committer', 'int'),
+            ('author', 'bigint'),
+            ('committer', 'bigint'),
         ],
         'partition': 'id'
     },
     {
         'name': 'person',
         'columns': [  # Don't export personal information
-            ('id', 'int'),
+            ('id', 'bigint'),
         ],
         'partition': 'id'
     },
     {
         'name': 'directory_entry_rev',
         'columns': [
-            ('id', 'int'),
+            ('id', 'bigint'),
             ('target', 'binary'),
             ('name', 'binary'),
             ('perms', 'int'),
@@ -104,7 +105,7 @@ TABLES = [
     {
         'name': 'directory_entry_file',
         'columns': [
-            ('id', 'int'),
+            ('id', 'bigint'),
             ('target', 'binary'),
             ('name', 'binary'),
             ('perms', 'int'),
@@ -114,7 +115,7 @@ TABLES = [
     {
         'name': 'directory_entry_dir',
         'columns': [
-            ('id', 'int'),
+            ('id', 'bigint'),
             ('target', 'binary'),
             ('name', 'binary'),
             ('perms', 'int'),
@@ -125,9 +126,9 @@ TABLES = [
         'name': 'directory',
         'columns': [
             ('id', 'binary'),
-            ('dir_entries', 'array<int>'),
-            ('file_entries', 'array<int>'),
-            ('rev_entries', 'array<int>'),
+            ('dir_entries', 'array<bigint>'),
+            ('file_entries', 'array<bigint>'),
+            ('rev_entries', 'array<bigint>'),
         ],
         'partition': 'id'
     },
@@ -136,7 +137,7 @@ TABLES = [
         'columns': [
             ('sha1', 'binary'),
             ('sha1_git', 'binary'),
-            ('length', 'int'),
+            ('length', 'bigint'),
         ],
         'partition': 'sha1_git'
     },
@@ -145,7 +146,7 @@ TABLES = [
         'columns': [
             ('sha1', 'binary'),
             ('sha1_git', 'binary'),
-            ('length', 'int'),
+            ('length', 'bigint'),
         ],
         'partition': 'sha1_git'
     },
