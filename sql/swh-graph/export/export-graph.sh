@@ -14,6 +14,7 @@ tmp_dir=$(mktemp -td swh-graph.XXXXXXXXXX)
 trap "rm -rf ${tmp_dir}" EXIT
 
 fifo="${tmp_dir}/graph.fifo"
+mkfifo "$fifo"
 
 psql "$PSQL_CONN" < export-edges.sql \
     | tee "$fifo" | pigz -c > swh-graph.edges.csv.gz
