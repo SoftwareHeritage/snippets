@@ -7,8 +7,11 @@
 import click
 import datetime
 import gzip
+import re
 import logging
 import json
+
+from typing import Dict, Tuple, List
 
 from collections import defaultdict
 from pprint import pprint
@@ -29,11 +32,36 @@ def validate_date_pattern(date_text, pattern):
     return valid
 
 
-def date_field_pattern_repartition(data, date_field='Date'):
-    """Try and validate the data set
+def analyze_pattern_repartition(data, patterns, field, validate_pattern_fn):
+    repartition = defaultdict(int)
+    invalid = []
+    for d in data:
+        valid = False
+        value = d.get(field)
+        if value is None:
+            repartition[None] += 1
+            continue
+        for pattern in patterns:
+            if validate_pattern_fn(value, pattern):
+                repartition['valid'] += 1
+                repartition[pattern] += 1
+                valid = True
+                continue
+        if not valid:
+            repartition['invalid'] += 1
+            invalid.append(value)
+
+    return dict(repartition), invalid
+
+
+def date_field_pattern_repartition(
+        data: Dict, field: str = 'Date') -> Tuple[Dict, List]:
+    """Analyze date field pattern repartition
+
+    Returns:
+        Repartition of date per pattern, List of unknown values
 
     """
-    status_date = defaultdict(int)
     patterns = [
         '%d %B %Y',   # '21 February 2012',
         '%d %b %Y',
@@ -46,24 +74,38 @@ def date_field_pattern_repartition(data, date_field='Date'):
         '%Y/%m/%d',
         '%Y-%m-%d %H:%M:%S',
     ]
-    invalid_dates = []
-    for d in data:
-        valid = False
-        date = d.get(date_field)
-        if date is None:
-            status_date[None] += 1
-            continue
-        for pattern in patterns:
-            if validate_date_pattern(date, pattern):
-                status_date['valid'] += 1
-                status_date[pattern] += 1
-                valid = True
-                continue
-        if not valid:
-            status_date['invalid'] += 1
-            invalid_dates.append(date)
+    return analyze_pattern_repartition(data, patterns,
+                                       field, validate_date_pattern)
 
-    return status_date, invalid_dates
+
+def validate_author_pattern(field_author, pattern):
+    """Validate author field pattern (regexp)
+
+    Pattern possible for example: '%Y-%m-%d'
+    """
+    return re.match(pattern, field_author)
+
+
+def author_field_pattern_repartition(
+        data: Dict, field: str = 'Maintainer') -> Tuple[Dict, List]:
+    """Try and validate the data set for field
+
+    Returns:
+        Repartition of author per pattern, List of unknown values
+
+    """
+    patterns = [
+        # Maintainer fields are ok with the following
+        r'[Ø\'"a-zA-Z].*<[a-zA-Z0-9.@].*>.*',
+        r'[a-zA-Z].*\n<[a-zA-Z0-9.@].*>',
+        r'ORPHANED',
+        # Author fields needs more work
+        r'[\'ØA-Za-z ].*',
+        r'\n',
+        r'\t',
+    ]
+    return analyze_pattern_repartition(data, patterns, field,
+                                       validate_author_pattern)
 
 
 def author_field_repartition(data):
@@ -84,7 +126,7 @@ def author_field_repartition(data):
         else:
             summary['no_author_no_maintainer'] += 1
 
-    return summary
+    return dict(summary)
 
 
 def date_field_repartition(data):
@@ -105,7 +147,7 @@ def date_field_repartition(data):
         else:
             summary['no_date_no_published'] += 1
 
-    return summary
+    return dict(summary)
 
 
 def load_data(filepath):
@@ -126,19 +168,31 @@ def load_data(filepath):
 @click.option('--with-pattern-date-repartition', is_flag=True, default=False)
 @click.option('--with-author-repartition', is_flag=True, default=False)
 @click.option('--with-date-repartition', is_flag=True, default=False)
+@click.option('--with-pattern-author-repartition', is_flag=True, default=False)
 def main(dataset, with_pattern_date_repartition,
-         with_author_repartition, with_date_repartition):
+         with_author_repartition, with_date_repartition,
+         with_pattern_author_repartition):
     data = load_data(dataset)
 
     if with_pattern_date_repartition:
-        for field_date in ['Date', 'Published']:
-            summary, invalid_dates = date_field_pattern_repartition(
-                data, field_date)
-            logger.info("Summary for '%s' field", field_date)
+        for field in ['Date', 'Published']:
+            summary, invalid = date_field_pattern_repartition(
+                data, field)
+            logger.info("Summary for '%s' field", field)
             pprint(summary)
 
-            logger.info("Unknown date format for '%s' field" % field_date)
-            pprint(invalid_dates)
+            logger.info("Unknown date format for '%s' field" % field)
+            pprint(invalid)
+
+    if with_pattern_author_repartition:
+        for field in ['Maintainer', 'Author']:
+            summary, invalid = author_field_pattern_repartition(
+                data, field)
+            logger.info("Summary for '%s' field", field)
+            pprint(summary)
+
+            logger.info("Unknown format for '%s' field" % field)
+            pprint(invalid)
 
     if with_author_repartition:
         summary = author_field_repartition(data)
