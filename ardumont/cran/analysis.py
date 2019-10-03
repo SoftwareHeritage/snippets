@@ -119,9 +119,9 @@ def author_field_repartition(data):
         author = d.get('Author')
         if maintainer is not None and author is not None:
             summary['maintainer_and_author'] += 1
-        elif maintainer:
+        elif maintainer is not None:
             summary['maintainer'] += 1
-        elif author:
+        elif author is not None:
             summary['author'] += 1
         else:
             summary['no_author_no_maintainer'] += 1
@@ -140,9 +140,9 @@ def date_field_repartition(data):
         published = d.get('Published')
         if published is not None and date is not None:
             summary['date_and_published'] += 1
-        elif date:
+        elif date is not None:
             summary['date'] += 1
-        elif published:
+        elif published is not None:
             summary['published'] += 1
         else:
             summary['no_date_no_published'] += 1
