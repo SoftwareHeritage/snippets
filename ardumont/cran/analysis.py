@@ -6,6 +6,7 @@
 
 import click
 import datetime
+import dateparser
 import gzip
 import re
 import logging
@@ -178,11 +179,14 @@ def main(dataset, with_pattern_date_repartition,
         for field in ['Date', 'Published']:
             summary, invalid = date_field_pattern_repartition(
                 data, field)
-            logger.info("Summary for '%s' field", field)
+            print("Summary for '%s' field", field)
             pprint(summary)
-
-            logger.info("Unknown date format for '%s' field" % field)
-            pprint(invalid)
+            if invalid:
+                print("Unknown date format for '%s' field" % field)
+                print("Trying to parse them")
+                from dateparser import parse
+                for unknown_date in invalid:
+                    print('%s: %s' % (unknown_date, parse(unknown_date)))
 
     if with_pattern_author_repartition:
         for field in ['Maintainer', 'Author']:
