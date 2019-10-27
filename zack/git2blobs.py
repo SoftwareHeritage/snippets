@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""crawl a local Git repository and write all the blobs it contains to a
+Software Heritage like on-disk object storage
+
+"""
+
 import dulwich
 import gzip
 import sys
