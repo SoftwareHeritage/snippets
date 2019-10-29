@@ -5,13 +5,20 @@ Software Heritage like on-disk object storage
 
 """
 
+import click
 import dulwich
 import gzip
-import sys
+import shutil
 
 from dulwich.repo import Repo
 from pathlib import Path
 from tqdm import tqdm
+
+
+class PathlibPath(click.Path):
+    """A Click path argument that returns a pathlib Path, not a string"""
+    def convert(self, value, param, ctx):
+        return Path(super().convert(value, param, ctx))
 
 
 def store_blob(obj, objstorage_dir):
@@ -26,7 +33,24 @@ def store_blob(obj, objstorage_dir):
             obj_f.write(data)
 
 
-def main(repo_dir, objstorage_dir):
+@click.command()
+@click.option('--repository', '-r', 'repo_dir', metavar='DIR',
+              type=PathlibPath(exists=True, readable=True,
+                               file_okay=False, dir_okay=True),
+              required=True,
+              help='on-disk git respository input to crawl')
+@click.option('--objstorage', '-o', 'objstorage_dir', metavar='DIR',
+              type=PathlibPath(writable=True, file_okay=False, dir_okay=True),
+              required=True,
+              help='root directory of the output object storage')
+@click.option('--tar/--no-tar', '-t', 'use_tar',
+              default=False,
+              help='tar object storage directory (and remove it!) after '
+              "extraction (default: don't tar)")
+def main(repo_dir, objstorage_dir, use_tar):
+    repo_dir = Path(repo_dir)
+    objstorage_dir = Path(objstorage_dir)
+
     repo = Repo(repo_dir)
     objs = repo.object_store
 
@@ -36,10 +60,10 @@ def main(repo_dir, objstorage_dir):
         if isinstance(obj, dulwich.objects.Blob):
             store_blob(obj, objstorage_dir)
 
+    if use_tar:
+        shutil.make_archive(objstorage_dir, 'tar', objstorage_dir)
+        shutil.rmtree(objstorage_dir)
+
 
 if __name__ == '__main__':
-    try:
-        main(sys.argv[1], Path(sys.argv[2]))
-    except IndexError:
-        print('Usage: git2objstorage REPO_DIR OBJSTORAGE_DIR')
-        sys.exit(1)
+    main()
