@@ -17,6 +17,9 @@ from tqdm import tqdm
 def store_blob(obj, objstorage_dir):
     sha1 = obj.id.decode('ascii')
     obj_path = objstorage_dir / sha1[0:2] / sha1[2:4] / sha1
+    if obj_path.exists():
+        return
+
     obj_path.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(obj_path, 'wb') as obj_f:
         for data in obj.chunked:
