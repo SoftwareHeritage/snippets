@@ -1,3 +1,5 @@
+import functools
+import hashlib
 import math
 from threading import Event
 import time
@@ -39,32 +41,55 @@ class PagedResultHandler(object):
             self.finished_event.set()
 
     def handle_error(self, exc):
-        print('%s' % exc)
+        print('%r' % exc)
         self.finished_event.set()
 
 
 class Writer:
+
     def __init__(self, nodes_fd, edges_fd):
         self._nodes_fd = nodes_fd
         self._edges_fd = edges_fd
 
-    def _write_node(self, node_id):
+    def write_node(self, node_id):
         self._nodes_fd.write(node_id + '\n')
 
-    def _write_edge(self, from_id, to_id):
+    def write_edge(self, from_id, to_id):
         self._edges_fd.write('%s %s\n' % (from_id, to_id))
 
-    def revision_callback(self, row):
-        rev_id = 'swh:1:rev:%s' % row.id.hex()
-        self._write_node(rev_id)
-        self._write_edge(rev_id, 'swh:1:dir:%s' % row.directory.hex())
-        for parent in row.parents:
-            self._write_edge(rev_id, 'swh:1:rev:%s' % parent.hex())
+
+_last_url = None
+_id = None
+def origin_id_from_url(url):
+    global _last_url, _id
+    if url == _last_url:
+        # ~5% speedup in origin_visit export by using a cache for the
+        # results of this function; because visits are returned grouped by
+        # origin url (it's their partition key)
+        return _id
+    origin_hash = hashlib.sha1(url.encode('ascii'))
+    _last_url = url
+    _id = 'swh:1:ori:%s' % origin_hash.hexdigest()
+    return _id
 
 
 class Exporter:
     TABLES = [
-        'content', 'directory', 'revision', 'release', 'snapshot', 'origin']
+        'content', 'directory', 'directory_entry', 'revision', 'release',
+        'snapshot', 'snapshot_branch', 'origin_visit', 'origin',
+    ]
+    DIR_ENTRY_TYPE_TO_PID_TYPE = {
+        'file': 'cnt',
+        'dir': 'dir',
+        'rev': 'rev',
+    }
+    TARGET_TYPE_TO_PID_TYPE = {
+        'content': 'cnt',
+        'directory': 'dir',
+        'revision': 'rev',
+        'release': 'rel',
+        'snapshot': 'snp',
+    }
     TOKEN_BEGIN = -(2**63)
     '''Minimum value returned by the CQL function token()'''
     TOKEN_END = 2**63-1
@@ -90,11 +115,121 @@ class Exporter:
         for table in self._tables:
             getattr(self, '%s_to_writer' % table)(writer)
 
-    def revision_to_writer(self, writer):
+    def content_to_writer(self, writer):
+        def callback(row):
+            cnt_id = 'swh:1:cnt:%s' % row.sha1_git.hex()
+            writer.write_node(cnt_id)
+
         self.query(
-            'SELECT token(id) as tok, id, directory, parents '
-            'FROM revision WHERE token(id) >= %s AND token(id) <= %s',
-            writer.revision_callback)
+            'select sha1_git '
+            'from content '
+            'where token(sha1, sha1_git, sha256, blake2s256) >= %s '
+            'and token(sha1, sha1_git, sha256, blake2s256) <= %s',
+            callback)
+
+    def directory_to_writer(self, writer):
+        def callback(row):
+            dir_id = 'swh:1:dir:%s' % row.id.hex()
+            writer.write_node(dir_id)
+
+        self.query(
+            'select id '
+            'from directory where token(id) >= %s and token(id) <= %s',
+            callback)
+
+    def directory_entry_to_writer(self, writer):
+        def callback(row):
+            dir_id = 'swh:1:dir:%s' % row.directory_id.hex()
+            target_pid_type = self.DIR_ENTRY_TYPE_TO_PID_TYPE[row.type]
+            target_id = 'swh:1:%s:%s' % (target_pid_type, row.target.hex())
+            writer.write_edge(dir_id, target_id)
+
+        self.query(
+            'select directory_id, type, target '
+            'from directory_entry where token(directory_id) >= %s '
+            'and token(directory_id) <= %s',
+            callback)
+
+    def revision_to_writer(self, writer):
+        def callback(row):
+            rev_id = 'swh:1:rev:%s' % row.id.hex()
+            writer.write_node(rev_id)
+            writer.write_edge(rev_id, 'swh:1:dir:%s' % row.directory.hex())
+            for parent in row.parents:
+                writer.write_edge(rev_id, 'swh:1:rev:%s' % parent.hex())
+
+        self.query(
+            'select id, directory, parents '
+            'from revision where token(id) >= %s and token(id) <= %s',
+            callback)
+
+    def release_to_writer(self, writer):
+        def callback(row):
+            rel_id = 'swh:1:rel:%s' % row.id.hex()
+            writer.write_node(rel_id)
+
+            target_pid_type = self.TARGET_TYPE_TO_PID_TYPE[row.target_type]
+            target_id = 'swh:1:%s:%s' % (target_pid_type, row.target.hex())
+            writer.write_edge(rel_id, target_id)
+
+        self.query(
+            'select id, target_type, target '
+            'from release where token(id) >= %s and token(id) <= %s',
+            callback)
+
+    def snapshot_to_writer(self, writer):
+        def callback(row):
+            snp_id = 'swh:1:snp:%s' % row.id.hex()
+            writer.write_node(snp_id)
+
+        self.query(
+            'select id '
+            'from snapshot where token(id) >= %s and token(id) <= %s',
+            callback)
+
+    def snapshot_branch_to_writer(self, writer):
+        def callback(row):
+            if row.target_type is None:
+                assert row.target is None
+                return
+            if row.target_type == 'alias':
+                return  # TODO
+            snp_id = 'swh:1:snp:%s' % row.snapshot_id.hexdigest()
+            target_pid_type = self.TARGET_TYPE_TO_PID_TYPE[row.target_type]
+            target_id = 'swh:1:%s:%s' % (target_pid_type, row.target.hex())
+            writer.write_edge(snp_id, target_id)
+
+        self.query(
+            'select snapshot_id, target_type, target '
+            'from snapshot_branch where token(snapshot_id) >= %s '
+            'and token(snapshot_id) <= %s',
+            callback)
+
+    def origin_visit_to_writer(self, writer):
+        def callback(row):
+            if row.snapshot is None:
+                return
+
+            ori_id = origin_id_from_url(row.origin)
+
+            target_id = 'swh:1:snp:%s' % row.snapshot.hex()
+            writer.write_edge(ori_id, target_id)
+
+        self.query(
+            'select origin, snapshot '
+            'from origin_visit where token(origin) >= %s '
+            'and token(origin) <= %s',
+            callback)
+
+    def origin_to_writer(self, writer):
+        def callback(row):
+            ori_id = origin_id_from_url(row.url)
+            writer.write_node(ori_id)
+
+        self.query(
+            'select url '
+            'from origin where token(url) >= %s and token(url) <= %s',
+            callback)
 
 
 def _is_power_of_two(n):
