@@ -17,7 +17,7 @@ class PagedResultHandler(object):
         self.error = None
         self.finished_event = Event()
 
-        statement = SimpleStatement(query)
+        statement = SimpleStatement(query, fetch_size=10000)
         self.start_time = time.time()
         self.future = session.execute_async(statement, args)
 
