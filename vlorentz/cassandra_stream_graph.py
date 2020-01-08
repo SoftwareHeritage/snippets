@@ -263,10 +263,8 @@ def main(nodes_file, edges_file, nb_partitions, partition_id, tables):
     storage = get_storage(
         'cassandra',
         hosts=[
-            '128.93.66.190',
-            '128.93.66.191',
-            '128.93.66.187',
-            '128.93.64.42',
+            f'cassandra{i:02d}.euwest.azure.internal.softwareheritage.org'
+            for i in range(1, 7)
         ],
         keyspace='swh_test',
         objstorage={
