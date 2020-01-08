@@ -3,7 +3,7 @@ set -e
 
 PYTHON=python3
 NB_PARTITIONS=16
-TABLES="content directory directory_entry revision release snapshot snapshot_branch origin_visit origin"
+TABLES="content directory directory_entry revision revision_parent release snapshot snapshot_branch origin_visit origin"
 TABLES="revision"
 
 tmp_dir=$(mktemp -td swh-graph-export.XXXXXXXXXX)

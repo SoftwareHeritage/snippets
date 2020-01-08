@@ -75,7 +75,8 @@ def origin_id_from_url(url):
 
 class Exporter:
     TABLES = [
-        'content', 'directory', 'directory_entry', 'revision', 'release',
+        'content', 'directory', 'directory_entry',
+        'revision', 'revision_parent', 'release',
         'snapshot', 'snapshot_branch', 'origin_visit', 'origin',
     ]
     DIR_ENTRY_TYPE_TO_PID_TYPE = {
@@ -155,12 +156,21 @@ class Exporter:
             rev_id = 'swh:1:rev:%s' % row.id.hex()
             writer.write_node(rev_id)
             writer.write_edge(rev_id, 'swh:1:dir:%s' % row.directory.hex())
-            for parent in row.parents:
-                writer.write_edge(rev_id, 'swh:1:rev:%s' % parent.hex())
 
         self.query(
-            'select id, directory, parents '
+            'select id, directory '
             'from revision where token(id) >= %s and token(id) <= %s',
+            callback)
+
+    def revision_parent_to_writer(self, writer):
+        def callback(row):
+            rev_id = 'swh:1:rev:%s' % row.id.hex()
+            parent_id = 'swh:1:rev:%s' % row.parent_id.hex()
+            writer.write_edge(rev_id, parent_id)
+
+        self.query(
+            'select id, parent_id '
+            'from revision_parent where token(id) >= %s and token(id) <= %s',
             callback)
 
     def release_to_writer(self, writer):
