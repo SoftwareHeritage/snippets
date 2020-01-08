@@ -19,6 +19,7 @@ class PagedResultHandler(object):
 
         statement = SimpleStatement(query, fetch_size=10000)
         self.start_time = time.time()
+        self.last_log_time = self.start_time
         self.future = session.execute_async(statement, args)
 
         self.future.add_callbacks(
@@ -30,9 +31,12 @@ class PagedResultHandler(object):
             self.future.start_fetching_next_page()
 
         self.total_rows += len(rows)
-        print('total rows: %s (%dk/s)' % (
-            self.total_rows, 
-            self.total_rows/(time.time()-self.start_time)/1000))
+        current_time = time.time()
+        if current_time - self.last_log_time >= 60:
+            print('total rows: %s (%dk/s)' % (
+                self.total_rows,
+                self.total_rows/(current_time-self.start_time)/1000))
+            self.last_log_time = current_time
 
         for row in rows:
             self.callback(row)
