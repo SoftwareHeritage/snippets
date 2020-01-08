@@ -260,19 +260,20 @@ def main(nodes_file, edges_file, nb_partitions, partition_id, tables):
         raise click.BadParameter(
             '--partition-id must be >=0 and lower than --nb-partitions')
 
-    storage = get_storage('cassandra', {
-        'hosts': [
+    storage = get_storage(
+        'cassandra',
+        hosts=[
             '128.93.66.190',
             '128.93.66.191',
             '128.93.66.187',
             '128.93.64.42',
         ],
-        'keyspace': 'swh_test',
-        'objstorage': {
+        keyspace='swh_test',
+        objstorage={
             'cls': 'memory',
             'args': {},
         },
-    })
+    )
 
     session = storage._proxy._session
 
