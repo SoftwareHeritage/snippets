@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import logging
 
 import click
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 SENTRY_URL = 'https://sentry.softwareheritage.org'
 
 
-def url_project(base_url: str) -> str:
+def url_api_project(base_url: str) -> str:
     return f'{base_url}/api/0/projects/'
 
 
@@ -22,21 +23,36 @@ def url_api_token(base_url: str) -> str:
     return f'{base_url}/settings/account/api/auth-tokens/'
 
 
-@click.command()
+@click.group()
 @click.option('-a', '--api-url', default=SENTRY_URL, help='sentry api to use')
 @click.option('-t', '--token', help='Api authentication token')
-def main(api_url: str, token: str) -> Dict[str, Any]:
-    if not token:
-        token_url = url_api_token(api_url)
-        raise ValueError(
-            f'Missing api token, connect and generate one in {token_url}'
-        )
+@click.pass_context
+def main(ctx, api_url: str, token: str):
+    """Allow sentry data manipulation with the click
 
-    url = url_project(api_url)
-    logger.debug('api_url: %(url)s, token: %(token)s', {
-        'url': url,
-        'token': token,
-    })
+    """
+    api_token = url_api_token(api_url)
+    if not token:
+        raise ValueError(
+            f'Missing api token, connect and generate one in {api_token}'
+        )
+    ctx.ensure_object(dict)
+    ctx.obj['token'] = token
+    ctx.obj['url'] = {
+        'base': api_url,
+        'project': url_api_project(api_url),
+        'api-token': api_token,
+    }
+
+
+@main.command('project')
+@click.pass_context
+def list_projects(ctx: Dict) -> Dict[str, Any]:
+    """List all projects's. This returns a mapping from their name to their id.
+
+    """
+    url = ctx.obj['url']['project']
+    token = ctx.obj['token']
     resp = requests.get(url, headers={
         'Authorization': f'Bearer {token}',
         'content-type': 'application/json'
@@ -44,12 +60,13 @@ def main(api_url: str, token: str) -> Dict[str, Any]:
 
     if resp.ok:
         logger.debug('resp: %(resp)s', {'resp': resp})
-        logger.debug('resp data: %(resp)s', {'resp': resp.content})
-        return resp.json()
+        data = resp.json()
+        projects = {}
+        for project in data:
+            projects[project['name']] = project['id']
+        click.echo(json.dumps(projects))
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    output = main()
-    if output:
-        print(output)
+    # logging.basicConfig(level=logging.DEBUG)
+    main()
