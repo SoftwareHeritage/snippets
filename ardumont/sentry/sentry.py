@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 SENTRY_URL = 'https://sentry.softwareheritage.org'
-ORGANIZATION_SLUG = 'swh'
+ORGA_SLUG = 'swh'
 
 
 def url_api_project(base_url: str) -> str:
@@ -24,8 +24,12 @@ def url_api_token(base_url: str) -> str:
     return f'{base_url}/settings/account/api/auth-tokens/'
 
 
-def url_project_issue(base_url: str, project_slug: str) -> str:
-    return f'{base_url}/api/0/projects/{ORGANIZATION_SLUG}/{project_slug}/issues/'
+def url_project_issues(base_url: str, project_slug: str, short_id: Optional[str] = None) -> str:
+    return f'{base_url}/api/0/projects/{ORGA_SLUG}/{project_slug}/issues/'
+
+
+def url_issue(base_url: str, issue_id: int) -> str:
+    return f'{base_url}/api/0/issues/{issue_id}/'
 
 
 @click.group()
@@ -93,23 +97,31 @@ def list_projects(ctx: Dict) -> Dict[str, Any]:
         click.echo(json.dumps(projects))
 
 
-@main.command('issue')
+@main.command('issues')
 @click.option('--project-slug', '-p', required=1,
                help="Project's slug identifier")
-# @click.option('--issue', '-i', help='Issue id')
 @click.pass_context
-def issue(ctx, project_slug):
-    """List all projects's. This returns a mapping from their name to their id.
+def issues(ctx, project_slug):
+    """List all projects's issues. This returns a mapping from their id to their
+    summary.
 
     """
     base_url = ctx.obj['url']['base']
     token = ctx.obj['token']
 
-    url = url_project_issue(base_url, project_slug)
+    url = url_project_issues(base_url, project_slug)
     data = query(url, token=token)
 
     if data:
-        click.echo(json.dumps(data))
+        mappings = {}
+        for issue in data:
+            mappings[issue['id']] = {
+                'short-id': issue['shortId'],
+                'status': issue['status'],
+                'metadata': issue['metadata'],
+            }
+
+        click.echo(json.dumps(mappings))
 
 
 if __name__ == '__main__':
