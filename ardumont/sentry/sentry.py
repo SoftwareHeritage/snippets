@@ -6,13 +6,14 @@ import logging
 import click
 import requests
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Iterable
 
 
 logger = logging.getLogger(__name__)
 
 
 SENTRY_URL = 'https://sentry.softwareheritage.org'
+ORGANIZATION_SLUG = 'swh'
 
 
 def url_api_project(base_url: str) -> str:
@@ -21,6 +22,10 @@ def url_api_project(base_url: str) -> str:
 
 def url_api_token(base_url: str) -> str:
     return f'{base_url}/settings/account/api/auth-tokens/'
+
+
+def url_project_issue(base_url: str, project_slug: str) -> str:
+    return f'{base_url}/api/0/projects/{ORGANIZATION_SLUG}/{project_slug}/issues/'
 
 
 @click.group()
@@ -45,14 +50,23 @@ def main(ctx, api_url: str, token: str):
     }
 
 
-@main.command('project')
-@click.pass_context
-def list_projects(ctx: Dict) -> Dict[str, Any]:
-    """List all projects's. This returns a mapping from their name to their id.
+def project_name_to_id(projects: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    """Compute the project mapping from name to id.
 
     """
-    url = ctx.obj['url']['project']
-    token = ctx.obj['token']
+    mapping = {}
+    for project in projects:
+        mapping[project['slug']] = {
+            'id': project['id'],
+            'name': project['name'],
+        }
+    return mapping
+
+
+def query(url, token: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Query the sentry api url with authentication token.
+
+    """
     resp = requests.get(url, headers={
         'Authorization': f'Bearer {token}',
         'content-type': 'application/json'
@@ -61,10 +75,41 @@ def list_projects(ctx: Dict) -> Dict[str, Any]:
     if resp.ok:
         logger.debug('resp: %(resp)s', {'resp': resp})
         data = resp.json()
-        projects = {}
-        for project in data:
-            projects[project['name']] = project['id']
+        return data
+
+
+@main.command('project')
+@click.pass_context
+def list_projects(ctx: Dict) -> Dict[str, Any]:
+    """List all projects's. This returns a mapping from their slug to their {id,
+    name}.
+
+    """
+    url = ctx.obj['url']['project']
+    token = ctx.obj['token']
+    data = query(url, token=token)
+    if data:
+        projects = project_name_to_id(data)
         click.echo(json.dumps(projects))
+
+
+@main.command('issue')
+@click.option('--project-slug', '-p', required=1,
+               help="Project's slug identifier")
+# @click.option('--issue', '-i', help='Issue id')
+@click.pass_context
+def issue(ctx, project_slug):
+    """List all projects's. This returns a mapping from their name to their id.
+
+    """
+    base_url = ctx.obj['url']['base']
+    token = ctx.obj['token']
+
+    url = url_project_issue(base_url, project_slug)
+    data = query(url, token=token)
+
+    if data:
+        click.echo(json.dumps(data))
 
 
 if __name__ == '__main__':
