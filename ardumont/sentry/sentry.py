@@ -58,21 +58,9 @@ def main(ctx, api_url: str, token: str):
     }
 
 
-def project_name_to_id(projects: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
-    """Compute the project mapping from name to id.
-
-    """
-    mapping = {}
-    for project in projects:
-        mapping[project['slug']] = {
-            'id': project['id'],
-            'name': project['name'],
-        }
-    return mapping
-
-
-def query(url, token: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def query(url, token: Optional[str] = None) -> Dict[str, Any]:
     """Query the sentry api url with authentication token.
+       This returns result per page.
 
     """
     resp = requests.get(url, headers={
@@ -83,7 +71,27 @@ def query(url, token: Optional[str] = None) -> Optional[Dict[str, Any]]:
     if resp.ok:
         logger.debug('resp: %(resp)s', {'resp': resp})
         data = resp.json()
-        return data
+
+        if 'next' in resp.links:
+            next_page = resp.links['next']['url']
+        else:
+            next_page = None
+        return {'data': data, 'next': next_page}
+    return {'data': None, 'next': None}
+
+
+def query_all(url, token: Optional[str] = None):
+    """Query api which resolves the pagination
+
+    """
+    while True:
+        data = query(url, token=token)
+        if not data['data']:
+            break
+        yield data['data']
+        if not data['next']:
+            break
+        url = data['next']
 
 
 @main.command('project')
@@ -95,10 +103,15 @@ def list_projects(ctx: Dict) -> Dict[str, Any]:
     """
     url = ctx.obj['url']['project']
     token = ctx.obj['token']
-    data = query(url, token=token)
-    if data:
-        projects = project_name_to_id(data)
-        click.echo(json.dumps(projects))
+    page_projects = query_all(url, token=token)
+    mappings = {}
+    for projects in page_projects:
+        for project in projects:
+            mappings[project['slug']] = {
+                'id': project['id'],
+                'name': project['name'],
+            }
+    click.echo(json.dumps(mappings))
 
 
 @main.command('issues')
@@ -114,18 +127,18 @@ def issues(ctx, project_slug):
     token = ctx.obj['token']
 
     url = url_project_issues(base_url, project_slug)
-    data = query(url, token=token)
+    data = query_all(url, token=token)
 
-    if data:
-        mappings = {}
-        for issue in data:
+    mappings = {}
+    for issues in data:
+        for issue in issues:
             mappings[issue['id']] = {
                 'short-id': issue['shortId'],
                 'status': issue['status'],
                 'metadata': issue['metadata'],
             }
 
-        click.echo(json.dumps(mappings))
+    click.echo(json.dumps(mappings))
 
 
 @main.command('issue')
@@ -139,9 +152,10 @@ def issue(ctx, issue_id):
     token = ctx.obj['token']
 
     url = url_issue(base_url, issue_id)
-    issue = query(url, token=token)
+    data = query(url, token=token)
 
-    if issue:
+    issue = data['data']
+    if data:
         summary_issue = {
             'short-id': issue['shortId'],
             'title': issue['title'],
@@ -159,7 +173,7 @@ def issue(ctx, issue_id):
 @main.command('events')
 @click.option('--issue-id', '-i', help='Issue id (not the short one listed in ui)')
 @click.pass_context
-def issue(ctx, issue_id):
+def events(ctx, issue_id):
     """Get detail about a specific issue by its id.
 
     """
@@ -167,10 +181,10 @@ def issue(ctx, issue_id):
     token = ctx.obj['token']
 
     url = url_issue_events(base_url, issue_id)
-    events = query(url, token=token)
+    data = query_all(url, token=token)
 
-    if events:
-        mappings = {}
+    mappings = {}
+    for events in data:
         for event in events:
             mappings[event['id']] = {
                 'culprit': event['culprit'],
@@ -179,7 +193,7 @@ def issue(ctx, issue_id):
                 'project-id': event['projectID'],
                 'group-id': event['groupID'],
             }
-        click.echo(json.dumps(mappings))
+    click.echo(json.dumps(mappings))
 
 
 if __name__ == '__main__':
