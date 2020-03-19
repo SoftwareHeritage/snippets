@@ -32,6 +32,10 @@ def url_issue(base_url: str, issue_id: int) -> str:
     return f'{base_url}/api/0/issues/{issue_id}/'
 
 
+def url_issue_events(base_url: str, issue_id: int) -> str:
+    return f'{base_url}/api/0/issues/{issue_id}/events/'
+
+
 @click.group()
 @click.option('-a', '--api-url', default=SENTRY_URL, help='sentry api to use')
 @click.option('-t', '--token', help='Api authentication token')
@@ -150,6 +154,32 @@ def issue(ctx, issue_id):
             'metadata': issue['metadata'],
         }
         click.echo(json.dumps(summary_issue))
+
+
+@main.command('events')
+@click.option('--issue-id', '-i', help='Issue id (not the short one listed in ui)')
+@click.pass_context
+def issue(ctx, issue_id):
+    """Get detail about a specific issue by its id.
+
+    """
+    base_url = ctx.obj['url']['base']
+    token = ctx.obj['token']
+
+    url = url_issue_events(base_url, issue_id)
+    events = query(url, token=token)
+
+    if events:
+        mappings = {}
+        for event in events:
+            mappings[event['id']] = {
+                'culprit': event['culprit'],
+                'title': event['title'],
+                'message': event['message'],
+                'project-id': event['projectID'],
+                'group-id': event['groupID'],
+            }
+        click.echo(json.dumps(mappings))
 
 
 if __name__ == '__main__':
