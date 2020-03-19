@@ -124,6 +124,34 @@ def issues(ctx, project_slug):
         click.echo(json.dumps(mappings))
 
 
+@main.command('issue')
+@click.option('--issue-id', '-i', help='Issue id (not the short one listed in ui)')
+@click.pass_context
+def issue(ctx, issue_id):
+    """Get detail about a specific issue by its id.
+
+    """
+    base_url = ctx.obj['url']['base']
+    token = ctx.obj['token']
+
+    url = url_issue(base_url, issue_id)
+    issue = query(url, token=token)
+
+    if issue:
+        summary_issue = {
+            'short-id': issue['shortId'],
+            'title': issue['title'],
+            'first-seen': issue['firstSeen'],
+            'last-seen': issue['lastSeen'],
+            'count': issue['count'],
+            'status': issue['status'],
+            'project': issue['project']['slug'],
+            'culprit': issue['culprit'],
+            'metadata': issue['metadata'],
+        }
+        click.echo(json.dumps(summary_issue))
+
+
 if __name__ == '__main__':
     # logging.basicConfig(level=logging.DEBUG)
     main()

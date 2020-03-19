@@ -20,7 +20,7 @@ Enter the virtualenv (this is using pipenv):
 pipenv shell
 ```
 
-# Use cases
+# Use case samples
 
 ## List projects
 
@@ -60,4 +60,26 @@ $ python -m sentry --token $TOKEN \
   },
   ...
 ]
+```
+
+## Detailed issue
+
+```
+$ python -m sentry --token $TOKEN issue --issue-id 1438 | jq .
+{
+  "short-id": "SWH-STORAGE-AP",
+  "title": "HashCollision: ('sha1', b'\\xf9y\\xcb\\xe0\\xb8\\xe7\\xc7-\\x94\\xfe\\x96\\x98\\x8dS\\xce,\\x8cb{w', [{'sha1_git': b'\\xfe\\xd2...",
+  "first-seen": "2020-03-18T16:25:46.502583Z",
+  "last-seen": "2020-03-19T13:34:25Z",
+  "count": "252",
+  "status": "unresolved",
+  "project": "swh-storage",
+  "culprit": "content_add",
+  "metadata": {
+    "function": "_content_add_metadata",
+    "type": "HashCollision",
+    "value": "('sha1', b'\\xf9y\\xcb\\xe0\\xb8\\xe7\\xc7-\\x94\\xfe\\x96\\x98\\x8dS\\xce,\\x8cb{w', [{'sha1_git': b'\\xfe\\xd2\\xf4m\\x8cZ\\xcf\\x16q\\xefDv\\xdf\\xf3\\xd6\\xad\\x1bPn%', 'blake2s256': b'}\\x84\\xe5\\xbf\\x14\\xcc\\xce\\x17\\x83\\xb9\\xf0\\xa0\\x9d\\x89\\xb2\\x97\\xbcS\\xd7\\xa2\\xdc\\xb3\\xd5r\\xaewB\\x88\\xcb\\\\\\xcd9', 'sha256': b'\\xc9\\x0b\\xca@e\\x0e\\x17\\x9f\\xc8\\x15{0\\xc8~\\xeb\\xc8\\x1alB\\x88\"W\\x03\\xc6\\x15J\\xa7\\x89~ll\\xf1', 'sha1': b'\\xf9y\\xcb\\xe0\\xb8\\xe7\\xc7-\\x94\\xfe\\x96\\x98\\x8dS\\xce,\\x8cb{w'}])",
+    "filename": "swh/storage/storage.py"
+  }
+}
 ```
