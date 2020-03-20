@@ -3,6 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+# use:
+# python -m analyse_hash_collision \
+#   --data-file hash-collisions.json \
+#   | jq . > summary-collisions.json
+
 import ast
 import json
 
