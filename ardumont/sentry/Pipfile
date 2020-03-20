@@ -12,6 +12,7 @@ pdbpp = "*"
 [packages]
 requests = "*"
 click = "*"
+swh-storage = "*"
 
 [requires]
 python_version = "3.7"
