@@ -48,9 +48,29 @@ def content_get_metadata(
 
 
 def content_hex_hashes(content: Dict[str, bytes]) -> Dict[str, str]:
+    """Convert bytes hashes into hex hashes. Also "enforce" the key order (not an
+    OrderedDict though but that seems enough for json dumps).
+
+    """
     return {
         algo: hash_to_hex(content[algo]) for algo in DEFAULT_ALGORITHMS
     }
+
+
+def compute_diff_hashes(
+        content0: Dict[str, str], content1: Dict[str, str]) -> Dict[str, str]:
+    """Compute the specific different between content
+
+    """
+    diff_hashes = {}
+    for algo in DEFAULT_ALGORITHMS:
+        hash0 = content0[algo]
+        hash1 = content1[algo]
+
+        if hash0 != hash1:
+            diff_hashes[algo] = [hash0, hash1]
+
+    return diff_hashes
 
 
 @click.command()
@@ -77,6 +97,7 @@ def main(data_file):
 
         msg: Tuple[str, bytes, Dict[str, bytes]] = ast.literal_eval(message)
         algo, hash_id, colliding_contents = msg
+        # Asserting we only have sha1 collisions so far
         assert algo == 'sha1'
 
         summary_count[hash_id] += 1
@@ -96,9 +117,15 @@ def main(data_file):
         stored_content = content_hex_hashes(stored_content)
 
         if collision_content != stored_content:
+            diff_hashes = compute_diff_hashes(
+                stored_content, collision_content)
             count_collisions += 1
             hex_hash_id = hash_to_hex(hash_id)
-            collisions[hex_hash_id] = [stored_content, collision_content]
+            collisions[hex_hash_id] = [
+                ('stored-cnt', stored_content),
+                ('sentry-cnt', collision_content),
+                ('difference', diff_hashes)
+            ]
 
     summary = {
         'total-collisions-raises-in-sentry': count,
