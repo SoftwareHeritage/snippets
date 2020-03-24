@@ -17,6 +17,19 @@ from typing import Any, Dict, List, Tuple
 import click
 
 from swh.model.hashutil import hash_to_hex, DEFAULT_ALGORITHMS
+from swh.storage import get_storage as get_swhstorage
+
+
+storage = None
+
+
+def get_storage():
+    global storage
+    if not storage:
+        storage = get_swhstorage(
+            cls='remote', url='http://uffizi.internal.softwareheritage.org:5002')
+
+    return storage
 
 
 def import_data(f):
@@ -28,10 +41,7 @@ def content_get_metadata(
     """Retrieve contents from the storage
 
     """
-    from swh.storage import get_storage
-    storage = get_storage(
-        cls='remote', url='http://uffizi.internal.softwareheritage.org:5002')
-    contents = storage.content_get_metadata(content_ids)
+    contents = get_storage().content_get_metadata(content_ids)
     result = {}
     for hash_id, all_contents in contents.items():
         count = len(all_contents)
@@ -47,14 +57,36 @@ def content_get_metadata(
     return result
 
 
-def content_hex_hashes(content: Dict[str, bytes]) -> Dict[str, str]:
-    """Convert bytes hashes into hex hashes. Also "enforce" the key order (not an
-    OrderedDict though but that seems enough for json dumps).
+def content_find(content: Dict[str, bytes]) -> Dict[str, bytes]:
+    """Retrieve content from the storage
 
     """
-    return {
-        algo: hash_to_hex(content[algo]) for algo in DEFAULT_ALGORITHMS
-    }
+    c = get_storage().content_find(content)
+    return c[0]
+
+
+def content_hex_hashes(
+        content: Dict[str, bytes], with_details=False) -> Dict[str, str]:
+    """Convert bytes hashes into hex hashes.
+
+    """
+    c = content.copy()
+    for algo in DEFAULT_ALGORITHMS:
+        c[algo] = hash_to_hex(content[algo])
+    ctime = c.get('ctime')
+    if ctime:
+        c['ctime'] = ctime.isoformat()
+    return c
+
+
+def content_equal(content0: Dict, content1: Dict) -> bool:
+    """Check if content are equals solely comparing their hashes
+
+    """
+    for algo in DEFAULT_ALGORITHMS:
+        if content0[algo] != content1[algo]:
+            return False
+    return True
 
 
 def compute_diff_hashes(
@@ -99,6 +131,7 @@ def main(data_file):
             # incomplete message, skipping for now
             continue
 
+        date_created = entry['date-created']
         msg: Tuple[str, bytes, Dict[str, bytes]] = ast.literal_eval(message)
         algo, hash_id, colliding_contents = msg
         # Asserting we only have sha1 collisions so far
@@ -108,8 +141,10 @@ def main(data_file):
 
         # take only 1 content, on previous iteration, the list was multiple
         # occurences of the same hash
-        # TODO: ensure it remains true
-        detailed_collisions[hash_id] = colliding_contents[0]
+        assert len(colliding_contents) == 1
+        sentry_content = colliding_contents[0]
+        sentry_content['date-reported-by-sentry'] = date_created
+        detailed_collisions[hash_id] = sentry_content
 
     # Retrieve the contents from storage to compare
     full_contents = content_get_metadata(list(summary_count.keys()))
@@ -119,34 +154,42 @@ def main(data_file):
     collisions = {}
     falsy_collisions = {}
     for hash_id, stored_content in full_contents.items():
-        collision_content = content_hex_hashes(detailed_collisions[hash_id])
-        stored_content = content_hex_hashes(stored_content)
+        collision_content_hhashes = content_hex_hashes(
+            detailed_collisions[hash_id])
+        stored_content_hhashes = content_hex_hashes(stored_content)
 
-        if collision_content != stored_content:
-            falsy, diff_hashes = compute_diff_hashes(
-                stored_content, collision_content)
-            hex_hash_id = hash_to_hex(hash_id)
-            if falsy:
-                count_falsy_collisions += 1
-                falsy_collisions[hex_hash_id] = [
-                    ('stored-cnt', stored_content),
-                    ('sentry-cnt', collision_content),
-                    ('difference', diff_hashes)
-                ]
-            else:
-                count_collisions += 1
-                collisions[hex_hash_id] = [
-                    ('stored-cnt', stored_content),
-                    ('sentry-cnt', collision_content),
-                    ('difference', diff_hashes)
-                ]
+        if content_equal(collision_content_hhashes, stored_content_hhashes):
+            continue
+
+        falsy, diff_hashes = compute_diff_hashes(
+            stored_content_hhashes, collision_content_hhashes)
+
+        hex_hash_id = hash_to_hex(hash_id)
+        if falsy:
+            count_falsy_collisions += 1
+            # we want the ctime
+            stored_content_hhashes = content_hex_hashes(
+                content_find(stored_content))
+
+            falsy_collisions[hex_hash_id] = [
+                ('stored-cnt', stored_content_hhashes),
+                ('sentry-cnt', collision_content_hhashes),
+                ('difference', diff_hashes)
+            ]
+        else:
+            count_collisions += 1
+            collisions[hex_hash_id] = [
+                ('stored-cnt', stored_content_hhashes),
+                ('sentry-cnt', collision_content_hhashes),
+                ('difference', diff_hashes)
+            ]
 
     summary = {
-        'total-collisions-raises-in-sentry': count,
-        'total-collisions-on-sha1': count_collisions,
-        'total-falsy-collisions-on-sha1': count_falsy_collisions,
+        'total-collisions-raised-in-sentry': count,
+        'total-collisions': count_collisions,
+        'total-falsy-collisions': count_falsy_collisions,
         'detailed-collisions': collisions,
-        'detailed-falsy-collision': falsy_collisions,
+        'detailed-falsy-collisions': falsy_collisions,
     }
 
     click.echo(json.dumps(summary))

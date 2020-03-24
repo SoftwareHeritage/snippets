@@ -190,6 +190,7 @@ def events(ctx, issue_id):
     for events in data:
         for event in events:
             mappings[event['id']] = {
+                'date-created': event['dateCreated'],
                 'culprit': event['culprit'],
                 'title': event['title'],
                 'message': event['message'],
