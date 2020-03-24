@@ -58,10 +58,12 @@ def content_hex_hashes(content: Dict[str, bytes]) -> Dict[str, str]:
 
 
 def compute_diff_hashes(
-        content0: Dict[str, str], content1: Dict[str, str]) -> Dict[str, str]:
+        content0: Dict[str, str], content1: Dict[str, str]) -> Tuple[
+            bool, Dict[str, str]]:
     """Compute the specific different between content
 
     """
+    falsy = False
     diff_hashes = {}
     for algo in DEFAULT_ALGORITHMS:
         hash0 = content0[algo]
@@ -69,8 +71,10 @@ def compute_diff_hashes(
 
         if hash0 != hash1:
             diff_hashes[algo] = [hash0, hash1]
+            # different length is a smell for falsy collisions
+            falsy = len(hash0) != len(hash1)
 
-    return diff_hashes
+    return falsy, diff_hashes
 
 
 @click.command()
@@ -111,26 +115,38 @@ def main(data_file):
     full_contents = content_get_metadata(list(summary_count.keys()))
 
     count_collisions = 0
+    count_falsy_collisions = 0
     collisions = {}
+    falsy_collisions = {}
     for hash_id, stored_content in full_contents.items():
         collision_content = content_hex_hashes(detailed_collisions[hash_id])
         stored_content = content_hex_hashes(stored_content)
 
         if collision_content != stored_content:
-            diff_hashes = compute_diff_hashes(
+            falsy, diff_hashes = compute_diff_hashes(
                 stored_content, collision_content)
-            count_collisions += 1
             hex_hash_id = hash_to_hex(hash_id)
-            collisions[hex_hash_id] = [
-                ('stored-cnt', stored_content),
-                ('sentry-cnt', collision_content),
-                ('difference', diff_hashes)
-            ]
+            if falsy:
+                count_falsy_collisions += 1
+                falsy_collisions[hex_hash_id] = [
+                    ('stored-cnt', stored_content),
+                    ('sentry-cnt', collision_content),
+                    ('difference', diff_hashes)
+                ]
+            else:
+                count_collisions += 1
+                collisions[hex_hash_id] = [
+                    ('stored-cnt', stored_content),
+                    ('sentry-cnt', collision_content),
+                    ('difference', diff_hashes)
+                ]
 
     summary = {
         'total-collisions-raises-in-sentry': count,
-        'total-real-collisions-on-sha1': count_collisions,
+        'total-collisions-on-sha1': count_collisions,
+        'total-falsy-collisions-on-sha1': count_falsy_collisions,
         'detailed-collisions': collisions,
+        'detailed-falsy-collision': falsy_collisions,
     }
 
     click.echo(json.dumps(summary))
