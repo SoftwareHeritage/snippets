@@ -27,7 +27,9 @@ def get_storage():
     global storage
     if not storage:
         storage = get_swhstorage(
-            cls='remote', url='http://uffizi.internal.softwareheritage.org:5002')
+            cls='remote',
+            url='http://uffizi.internal.softwareheritage.org:5002'
+        )
 
     return storage
 
