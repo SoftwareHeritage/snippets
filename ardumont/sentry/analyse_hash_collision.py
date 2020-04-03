@@ -12,11 +12,13 @@ import ast
 import json
 
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 import click
 
-from swh.model.hashutil import hash_to_hex, DEFAULT_ALGORITHMS
+from swh.model.hashutil import (
+    DEFAULT_ALGORITHMS, hash_to_hex, hash_to_bytes
+)
 from swh.storage import get_storage as get_swhstorage
 
 
@@ -39,16 +41,19 @@ def import_data(f):
 
 
 def content_get_metadata(
-        content_ids: List[bytes]) -> Dict[bytes, Dict[str, Any]]:
-    """Retrieve contents from the storage
+        content_ids: Iterable[str]) -> Dict[bytes, Dict[str, Any]]:
+    """Retrieve content hashes from storage
 
     """
-    contents = get_storage().content_get_metadata(content_ids)
+    content_bytes_ids = [
+        hash_to_bytes(hhash_id) for hhash_id in list(content_ids)
+    ]
+    contents = get_storage().content_get_metadata(content_bytes_ids)
     result = {}
     for hash_id, all_contents in contents.items():
         count = len(all_contents)
-        if count > 1:
-            click.echo(f'hash_id {hash_id} has multiple entries: {count}')
+        if count == 0:  # unexpected?
+            continue
         # to ease comparison:
         # - take only 1 of the contents (most cases i guess)
         # - drop the length
@@ -126,6 +131,7 @@ def main(data_file):
     for entry_id, entry in data.items():
         message = entry['message']
         count += 1
+
         if message.endswith('...'):
             # TOOD: Find a way to retrieve the full message
             # because it can't be parsed for now
@@ -136,28 +142,40 @@ def main(data_file):
         date_created = entry['date-created']
         msg: Tuple[str, bytes, Dict[str, bytes]] = ast.literal_eval(message)
         algo, hash_id, colliding_contents = msg
+        if isinstance(hash_id, bytes):
+            # old format
+            # both hash_id and colliding_contents are using hash as bytes
+            hex_hash_id = hash_to_hex(hash_id)
+            colliding_contents = [
+                content_hex_hashes(c) for c in colliding_contents
+            ]
+        else:
+            hex_hash_id = hash_id
+        # In the new hash collision format, hash_id and colliding_contents uses
+        # hex hashes so nothing to do
+
         # Asserting we only have sha1 collisions so far
         assert algo == 'sha1'
 
-        summary_count[hash_id] += 1
+        summary_count[hex_hash_id] += 1
 
         # take only 1 content, on previous iteration, the list was multiple
         # occurences of the same hash
         assert len(colliding_contents) == 1
         sentry_content = colliding_contents[0]
         sentry_content['date-reported-by-sentry'] = date_created
-        detailed_collisions[hash_id] = sentry_content
+        detailed_collisions[hex_hash_id] = sentry_content
 
     # Retrieve the contents from storage to compare
-    full_contents = content_get_metadata(list(summary_count.keys()))
+    full_contents = content_get_metadata(summary_count.keys())
 
     count_collisions = 0
     count_falsy_collisions = 0
     collisions = {}
     falsy_collisions = {}
     for hash_id, stored_content in full_contents.items():
-        collision_content_hhashes = content_hex_hashes(
-            detailed_collisions[hash_id])
+        hex_hash_id = hash_to_hex(hash_id)
+        collision_content_hhashes = detailed_collisions[hex_hash_id]
         stored_content_hhashes = content_hex_hashes(stored_content)
 
         if content_equal(collision_content_hhashes, stored_content_hhashes):
@@ -166,7 +184,6 @@ def main(data_file):
         falsy, diff_hashes = compute_diff_hashes(
             stored_content_hhashes, collision_content_hhashes)
 
-        hex_hash_id = hash_to_hex(hash_id)
         if falsy:
             count_falsy_collisions += 1
             # we want the ctime
