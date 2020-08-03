@@ -229,5 +229,24 @@ def single(diffoscope, source_path, target_path):
         subprocess.run(["diffoscope", source_path, target_path])
 
 
+@cli.command()
+@click.argument("source_paths", nargs=-1)
+def many(source_paths):
+    for source_path in source_paths:
+        target_file = tempfile.NamedTemporaryFile(suffix=".tar")
+        target_path = target_file.name
+
+        storage = get_storage("memory")
+
+        revision_swhid = ingest_tarball(storage, source_path)
+
+        generate_tarball(storage, revision_swhid, target_path)
+
+        if check_files_equal(source_path, target_path):
+            print(f"{source_path} is reproducible")
+        else:
+            print(f"{source_path} is not reproducible")
+
+
 if __name__ == "__main__":
     exit(cli())
