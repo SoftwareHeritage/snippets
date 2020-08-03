@@ -144,7 +144,13 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
 
             assert member.size == content.length
 
-            storage.content_add([content])
+            if member.isfile():
+                # should have been added by the storage
+                assert not list(storage.content_missing([content.hashes()])), (
+                    member,
+                    content,
+                )
+
             members_metadata.append(
                 {"header": member.buf, "hashes": content.hashes(),}
             )
@@ -195,21 +201,27 @@ def generate_tarball(
     tar_metadata = msgpack.loads(last_metadata.metadata)
 
     global_metadata = tar_metadata[b"global"]
+    format = magic_number_to_format(global_metadata[b"magic_number"])
 
     with tarfile.TarFile(
         target_path,
         "w",
-        format=global_metadata[b"format"],
-        pax_headers=global_metadata[b"pax_headers"],
+        format=format,
+        pax_headers={
+            k.decode(): v.decode() for (k, v) in global_metadata[b"pax_headers"].items()
+        },
         encoding=global_metadata[b"encoding"].decode(),
         errors="strict",
     ) as tf:
         for member_metadata in tar_metadata[b"members"]:
             contents = list(storage.content_get([member_metadata[b"hashes"][b"sha1"]]))
-            member_content = io.BytesIO(contents[0]["data"])
             tar_info = BufPreservingTarInfo.frombuf(
                 member_metadata[b"header"], encoding=tf.encoding, errors="strict",
             )
+            if tar_info.isfile():
+                member_content = io.BytesIO(contents[0]["data"])
+            else:
+                member_content = io.BytesIO(b"")
             tf.addfile(tar_info, member_content)
 
 
