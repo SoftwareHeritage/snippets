@@ -4,6 +4,7 @@ import hashlib
 import io
 import os
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -189,24 +190,34 @@ def generate_tarball(
 
 
 def main():
-    try:
+    if len(sys.argv) == 2:
+        (_, source_path) = sys.argv
+        target_file = tempfile.NamedTemporaryFile(suffix=".tar")
+        target_path = target_file.name
+        run_diffoscope = True
+    elif len(sys.argv) == 3:
         (_, source_path, target_path) = sys.argv
-    except ValueError:
-        print("Syntax: reproduce-tarball.py <source.tar> <target.tar>")
+        run_diffoscope = False
+    else:
+        print("Syntax: reproduce-tarball.py <source.tar> [<target.tar>]")
         return 1
     storage = get_storage("memory")
 
     revision_swhid = ingest_tarball(storage, source_path)
 
+
     generate_tarball(storage, revision_swhid, target_path)
 
-    with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
-        while True:
-            source_chunk = source_fd.read(512)
-            target_chunk = target_fd.read(512)
-            assert source_chunk == target_chunk, (source_chunk, target_chunk)
-            if not source_chunk:
-                break
+    if run_diffoscope:
+        subprocess.run(["diffoscope", source_path, target_path])
+    else:
+        with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
+            while True:
+                source_chunk = source_fd.read(512)
+                target_chunk = target_fd.read(512)
+                assert source_chunk == target_chunk, (source_chunk, target_chunk)
+                if not source_chunk:
+                    break
 
 
 if __name__ == "__main__":
