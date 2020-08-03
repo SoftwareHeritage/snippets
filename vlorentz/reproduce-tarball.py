@@ -76,6 +76,15 @@ class LocalArchiveLoader(ArchiveLoader):
         return [(p_info.url, {})]
 
 
+def magic_number_to_format(magic_number):
+    if magic_number == tarfile.GNU_MAGIC:
+        return tarfile.GNU_FORMAT
+    elif magic_number == tarfile.POSIX_MAGIC:
+        return tarfile.PAX_FORMAT
+    else:
+        raise ValueError("Unknown magic number %r" % magic_number)
+
+
 def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     url = "file://" + os.path.abspath(source_path)
     with mock_config():
@@ -110,8 +119,17 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
+    with open(source_path, "rb") as fd:
+        first_chunk = fd.read(512)
+        magic_number = first_chunk[257:265]
+        format = magic_number_to_format(magic_number)
+
     with tarfile.open(
-        source_path, encoding="utf-8", errors="strict", tarinfo=BufPreservingTarInfo
+        source_path,
+        encoding="utf-8",
+        errors="strict",
+        tarinfo=BufPreservingTarInfo,
+        format=format,
     ) as tf:
         members_metadata = []
         for member in tf.getmembers():
@@ -133,7 +151,7 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
 
         tar_metadata = {
             b"global": {
-                b"format": tf.format,
+                b"magic_number": magic_number,
                 b"encoding": tf.encoding,
                 b"pax_headers": tf.pax_headers,
             },
