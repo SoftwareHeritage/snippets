@@ -121,6 +121,11 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
 
                 content = Content.from_data(member_fd.read())
 
+            # TODO: if 'member' is sparse, dig matching holes in the content.
+            # (currently, this would produce a corrupted tarball)
+
+            assert member.size == content.length
+
             storage.content_add([content])
             members_metadata.append(
                 {"header": member.buf, "hashes": content.hashes(),}
