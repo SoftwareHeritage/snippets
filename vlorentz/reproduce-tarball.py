@@ -207,7 +207,9 @@ def cli():
 
 
 @cli.command()
-@click.option("--diffoscope", default=False, help="Run diffoscope before exiting.")
+@click.option(
+    "--diffoscope", default=False, is_flag=True, help="Run diffoscope before exiting."
+)
 @click.argument("source_path")
 @click.argument("target_path", default="")
 def single(diffoscope, source_path, target_path):
