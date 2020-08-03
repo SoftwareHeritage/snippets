@@ -185,6 +185,8 @@ def main():
             source_chunk = source_fd.read(512)
             target_chunk = target_fd.read(512)
             assert source_chunk == target_chunk, (source_chunk, target_chunk)
+            if not source_chunk:
+                break
 
 
 if __name__ == "__main__":
