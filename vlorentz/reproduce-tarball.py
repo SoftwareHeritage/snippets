@@ -208,16 +208,19 @@ def main():
 
     generate_tarball(storage, revision_swhid, target_path)
 
+    with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
+        while True:
+            source_chunk = source_fd.read(512)
+            target_chunk = target_fd.read(512)
+            if source_chunk != target_chunk:
+                print("Source and target tarballs do not match.")
+                break
+            if not source_chunk:
+                print("Source and target tarballs are identical")
+                break
+
     if run_diffoscope:
         subprocess.run(["diffoscope", source_path, target_path])
-    else:
-        with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
-            while True:
-                source_chunk = source_fd.read(512)
-                target_chunk = target_fd.read(512)
-                assert source_chunk == target_chunk, (source_chunk, target_chunk)
-                if not source_chunk:
-                    break
 
 
 if __name__ == "__main__":
