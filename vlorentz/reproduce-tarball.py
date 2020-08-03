@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 from unittest.mock import patch
 
+import click
 import msgpack
 
 from swh.core.api.classes import stream_results
@@ -200,18 +201,19 @@ def check_files_equal(source_path, target_path):
                 return True
 
 
-def main():
-    if len(sys.argv) == 2:
-        (_, source_path) = sys.argv
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option("--diffoscope", default=False, help="Run diffoscope before exiting.")
+@click.argument("source_path")
+@click.argument("target_path", default="")
+def single(diffoscope, source_path, target_path):
+    if not target_path:
         target_file = tempfile.NamedTemporaryFile(suffix=".tar")
         target_path = target_file.name
-        run_diffoscope = True
-    elif len(sys.argv) == 3:
-        (_, source_path, target_path) = sys.argv
-        run_diffoscope = False
-    else:
-        print("Syntax: reproduce-tarball.py <source.tar> [<target.tar>]")
-        return 1
     storage = get_storage("memory")
 
     revision_swhid = ingest_tarball(storage, source_path)
@@ -223,9 +225,9 @@ def main():
     else:
         print("Source and target tarballs do not match.")
 
-    if run_diffoscope:
+    if diffoscope:
         subprocess.run(["diffoscope", source_path, target_path])
 
 
 if __name__ == "__main__":
-    exit(main())
+    exit(cli())
