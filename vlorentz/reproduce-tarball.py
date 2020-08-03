@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from typing import Optional
 from unittest.mock import patch
 
 import click
@@ -119,10 +120,15 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
+    """
     with open(source_path, "rb") as fd:
         first_chunk = fd.read(512)
         magic_number = first_chunk[257:265]
-        format = magic_number_to_format(magic_number)
+    """
+    with tarfile.open(source_path, tarinfo=BufPreservingTarInfo,) as tf:
+        magic_number = tf.firstmember.buf[257:265]
+
+    format = magic_number_to_format(magic_number)
 
     with tarfile.open(
         source_path,
@@ -155,7 +161,21 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
                 {"header": member.buf, "hashes": content.hashes(),}
             )
 
+        (_, ext) = os.path.splitext(source_path)
+        ext = ext[1:]
+        if ext == "tar":
+            pristine = None
+        else:
+            assert ext in ("gz", "bz2", "xz"), ext
+            proc = subprocess.run(
+                ["pristine-" + ext, "gendelta", source_path, "-"], capture_output=True
+            )
+            assert proc.returncode == 0, proc
+            pristine = {b"type": ext.encode(), b"delta": proc.stdout}
+
         tar_metadata = {
+            b"filename": os.path.basename(source_path),
+            b"pristine": pristine,
             b"global": {
                 b"magic_number": magic_number,
                 b"encoding": tf.encoding,
@@ -181,8 +201,8 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     return revision_swhid
 
 
-def generate_tarball(
-    storage: StorageInterface, revision_swhid: SWHID, target_path: str
+def get_tar_metadata(
+    storage: StorageInterface, revision_swhid: SWHID,
 ):
     metadata = stream_results(
         storage.raw_extrinsic_metadata_get,
@@ -198,7 +218,13 @@ def generate_tarball(
 
     assert last_metadata.format == "tarball-metadata-msgpack"
 
-    tar_metadata = msgpack.loads(last_metadata.metadata)
+    return msgpack.loads(last_metadata.metadata)
+
+
+def generate_tarball(
+    storage: StorageInterface, revision_swhid: SWHID, target_path: str
+):
+    tar_metadata = get_tar_metadata(storage, revision_swhid)
 
     global_metadata = tar_metadata[b"global"]
     format = magic_number_to_format(global_metadata[b"magic_number"])
@@ -225,6 +251,30 @@ def generate_tarball(
             tf.addfile(tar_info, member_content)
 
 
+def run_pristine(
+    storage: StorageInterface,
+    revision_swhid: SWHID,
+    intermediate_path: str,
+    target_path: str,
+):
+    tar_metadata = get_tar_metadata(storage, revision_swhid)
+
+    if tar_metadata[b"pristine"] is None:
+        return
+
+    ext = tar_metadata[b"pristine"][b"type"].decode()
+    assert ext in ("gz", "bz2", "xz")
+
+    with open(target_path, "wb") as fd:
+        proc = subprocess.run(
+            ["pristine-" + ext, "gen" + ext, "-", intermediate_path],
+            input=tar_metadata[b"pristine"][b"delta"],
+            stdout=fd,
+        )
+
+    assert proc.returncode == 0, proc
+
+
 def check_files_equal(source_path, target_path):
     with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
         while True:
@@ -234,6 +284,36 @@ def check_files_equal(source_path, target_path):
                 return False
             if not source_chunk:
                 return True
+
+
+def run_one(source_path: str, target_path: Optional[str] = None):
+    storage = get_storage("memory")
+
+    print(f"{source_path}: ingesting")
+    revision_swhid = ingest_tarball(storage, source_path)
+
+    print(f"{source_path}: reproducing")
+    tar_metadata = get_tar_metadata(storage, revision_swhid)
+    original_filename = tar_metadata[b"filename"]
+
+    if target_path is None:
+        target_file = tempfile.NamedTemporaryFile(suffix=original_filename)
+        target_path = target_file.name
+
+    intermediate_file = tempfile.NamedTemporaryFile(suffix=".tar")
+    intermediate_path = intermediate_file.name
+
+    generate_tarball(storage, revision_swhid, intermediate_path)
+
+    if check_files_equal(source_path, intermediate_path):
+        print(f"{source_path} is reproducible without pristine-tar")
+    else:
+        run_pristine(storage, revision_swhid, intermediate_path, target_path)
+
+        if check_files_equal(source_path, target_path):
+            print(f"{source_path} is reproducible after pristine-tar")
+        else:
+            print(f"{source_path} is not reproducible")
 
 
 @click.group()
@@ -248,41 +328,18 @@ def cli():
 @click.argument("source_path")
 @click.argument("target_path", default="")
 def single(diffoscope, source_path, target_path):
-    if not target_path:
-        target_file = tempfile.NamedTemporaryFile(suffix=".tar")
-        target_path = target_file.name
-    storage = get_storage("memory")
-
-    revision_swhid = ingest_tarball(storage, source_path)
-
-    generate_tarball(storage, revision_swhid, target_path)
-
-    if check_files_equal(source_path, target_path):
-        print("Source and target tarballs are identical")
-    else:
-        print("Source and target tarballs do not match.")
+    run_one(source_path, target_path)
 
     if diffoscope:
-        subprocess.run(["diffoscope", source_path, target_path])
+        proc = subprocess.run(["diffoscope", source_path, target_path])
+        exit(proc.returncode)
 
 
 @cli.command()
 @click.argument("source_paths", nargs=-1)
 def many(source_paths):
     for source_path in source_paths:
-        target_file = tempfile.NamedTemporaryFile(suffix=".tar")
-        target_path = target_file.name
-
-        storage = get_storage("memory")
-
-        revision_swhid = ingest_tarball(storage, source_path)
-
-        generate_tarball(storage, revision_swhid, target_path)
-
-        if check_files_equal(source_path, target_path):
-            print(f"{source_path} is reproducible")
-        else:
-            print(f"{source_path} is not reproducible")
+        run_one(source_path)
 
 
 if __name__ == "__main__":
