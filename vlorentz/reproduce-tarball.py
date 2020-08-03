@@ -189,6 +189,17 @@ def generate_tarball(
             tf.addfile(tar_info, member_content)
 
 
+def check_files_equal(source_path, target_path):
+    with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
+        while True:
+            source_chunk = source_fd.read(512)
+            target_chunk = target_fd.read(512)
+            if source_chunk != target_chunk:
+                return False
+            if not source_chunk:
+                return True
+
+
 def main():
     if len(sys.argv) == 2:
         (_, source_path) = sys.argv
@@ -205,19 +216,12 @@ def main():
 
     revision_swhid = ingest_tarball(storage, source_path)
 
-
     generate_tarball(storage, revision_swhid, target_path)
 
-    with open(source_path, "rb") as source_fd, open(target_path, "rb") as target_fd:
-        while True:
-            source_chunk = source_fd.read(512)
-            target_chunk = target_fd.read(512)
-            if source_chunk != target_chunk:
-                print("Source and target tarballs do not match.")
-                break
-            if not source_chunk:
-                print("Source and target tarballs are identical")
-                break
+    if check_files_equal(source_path, target_path):
+        print("Source and target tarballs are identical")
+    else:
+        print("Source and target tarballs do not match.")
 
     if run_diffoscope:
         subprocess.run(["diffoscope", source_path, target_path])
