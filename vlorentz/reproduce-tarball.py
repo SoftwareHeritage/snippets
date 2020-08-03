@@ -38,6 +38,26 @@ FETCHER = MetadataFetcher(
 )
 
 
+class BufPreservingTarInfo(tarfile.TarInfo):
+    r"""Makes tobuf return a value bit-for-bit identical to the one passed to
+    frombuf.
+
+    This avoids a round-trip of decoding then re-encoding, which is lossy as
+    decoding is not injective (eg. b"\x00" and b"00000\x00" are both decoded
+    as 0 for null-terminated ASCII numbers).
+    """
+    buf: bytes
+
+    @classmethod
+    def frombuf(cls, buf, encoding, errors):
+        tar_info = super().frombuf(buf, encoding, errors)
+        tar_info.buf = buf
+        return tar_info
+
+    def tobuf(self, *args, **kwargs):
+        return self.buf
+
+
 @contextlib.contextmanager
 def mock_config():
     with tempfile.NamedTemporaryFile(suffix=".yml") as fd:
@@ -88,7 +108,9 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
-    with tarfile.open(source_path, encoding="utf-8", errors="strict") as tf:
+    with tarfile.open(
+        source_path, encoding="utf-8", errors="strict", tarinfo=BufPreservingTarInfo
+    ) as tf:
         members_metadata = []
         for member in tf.getmembers():
             with tempfile.NamedTemporaryFile() as member_fd:
@@ -99,7 +121,7 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
 
             storage.content_add([content])
             members_metadata.append(
-                {"header": member.tobuf(), "hashes": content.hashes(),}
+                {"header": member.buf, "hashes": content.hashes(),}
             )
 
         tar_metadata = {
@@ -160,10 +182,8 @@ def generate_tarball(
         for member_metadata in tar_metadata[b"members"]:
             contents = list(storage.content_get([member_metadata[b"hashes"][b"sha1"]]))
             member_content = io.BytesIO(contents[0]["data"])
-            tar_info = tarfile.TarInfo.frombuf(
-                member_metadata[b"header"],
-                encoding=tf.encoding,
-                errors="strict",
+            tar_info = BufPreservingTarInfo.frombuf(
+                member_metadata[b"header"], encoding=tf.encoding, errors="strict",
             )
             tf.addfile(tar_info, member_content)
 
