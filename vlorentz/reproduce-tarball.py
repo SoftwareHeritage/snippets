@@ -61,7 +61,27 @@ class LocalArchiveLoader(ArchiveLoader):
         return [(p_info.url, {})]
 
 
-def ingest_tarball(storage: StorageInterface, source_path: str, *, verbose: bool) -> Sha1Git:
+def revision_swhid_from_status(status):
+    assert status["snapshot_id"] is not None
+    snapshot_id = hash_to_bytes(status["snapshot_id"])
+
+    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id)["branches"]
+    assert snapshot_branches is not None
+    for (branch_name, branch) in snapshot_branches.items():
+        if branch["target_type"] == "revision":
+            revision_id = branch["target"]
+            break
+    else:
+        assert False, "no branch"
+
+    assert list(storage.revision_missing([revision_id])) == []
+    return SWHID(object_type="revision", object_id=hash_to_hex(revision_id))
+
+
+def ingest_tarball(
+    storage: StorageInterface, source_path: str, *, verbose: bool
+) -> Sha1Git:
+    """Ingests a tarball in the storage, returns the revision's SWHID"""
     url = "file://" + os.path.abspath(source_path)
     with mock_config():
         loader = LocalArchiveLoader(
@@ -80,20 +100,8 @@ def ingest_tarball(storage: StorageInterface, source_path: str, *, verbose: bool
 
     status = loader.load()
     assert status["status"] == "eventful"
-    assert status["snapshot_id"] is not None
-    snapshot_id = hash_to_bytes(status["snapshot_id"])
 
-    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id)["branches"]
-    assert snapshot_branches is not None
-    for (branch_name, branch) in snapshot_branches.items():
-        if branch["target_type"] == "revision":
-            revision_id = branch["target"]
-            break
-    else:
-        assert False, "no branch"
-
-    assert list(storage.revision_missing([revision_id])) == []
-    revision_swhid = SWHID(object_type="revision", object_id=hash_to_hex(revision_id))
+    revision_swhid = revision_swhid_from_status(status)
 
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
@@ -132,6 +140,7 @@ def ingest_tarball(storage: StorageInterface, source_path: str, *, verbose: bool
 def get_tar_metadata(
     storage: StorageInterface, revision_swhid: SWHID,
 ):
+    """Return the stored metadata for the given revision."""
     metadata = stream_results(
         storage.raw_extrinsic_metadata_get,
         type=MetadataTargetType.REVISION,
@@ -150,8 +159,14 @@ def get_tar_metadata(
 
 
 def generate_tarball(
-    storage: StorageInterface, revision_swhid: SWHID, target_path: str, *, verbose: bool,
+    storage: StorageInterface,
+    revision_swhid: SWHID,
+    target_path: str,
+    *,
+    verbose: bool,
 ):
+    """Using only the storage and revision SWHID, regenerates a tarball
+    identical to the source tarball."""
     tar_metadata = get_tar_metadata(storage, revision_swhid)
 
     revision_id = hash_to_bytes(revision_swhid.object_id)
@@ -173,7 +188,7 @@ def generate_tarball(
             ["pristine-tar", "gentar", "-", target_path],
             input=tar_metadata[b"pristine"][b"delta"],
             cwd=cwd,
-            capture_output=True
+            capture_output=True,
         )
         assert proc.returncode == 0, proc.stdout
 
