@@ -33,6 +33,7 @@ from swh.model.model import (
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_all_branches
 from swh.storage.interface import StorageInterface
+from swh.vault.to_disk import DirectoryBuilder
 
 
 AUTHORITY = MetadataAuthority(
@@ -60,7 +61,7 @@ class LocalArchiveLoader(ArchiveLoader):
         return [(p_info.url, {})]
 
 
-def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
+def ingest_tarball(storage: StorageInterface, source_path: str, *, verbose: bool) -> Sha1Git:
     url = "file://" + os.path.abspath(source_path)
     with mock_config():
         loader = LocalArchiveLoader(
@@ -82,78 +83,34 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     assert status["snapshot_id"] is not None
     snapshot_id = hash_to_bytes(status["snapshot_id"])
 
-    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id)
+    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id)["branches"]
     assert snapshot_branches is not None
-    for (branch_name, branch_target) in snapshot_branches.items():
-        revision_id = branch_target
-        break
+    for (branch_name, branch) in snapshot_branches.items():
+        if branch["target_type"] == "revision":
+            revision_id = branch["target"]
+            break
     else:
         assert False, "no branch"
+
+    assert list(storage.revision_missing([revision_id])) == []
     revision_swhid = SWHID(object_type="revision", object_id=hash_to_hex(revision_id))
 
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
-    (_, ext) = os.path.splitext(source_path)
-    ext = ext[1:]
-    if ext == "tar":
-        pristine = None
-        opener = open
-    else:
-        assert ext in ("gz", "bz2", "xz"), ext
-        proc = subprocess.run(
-            ["pristine-" + ext, "gendelta", source_path, "-"], capture_output=True
-        )
-        assert proc.returncode == 0, proc
-        pristine = {b"type": ext.encode(), b"delta": proc.stdout}
-
-        opener = {"gz": gzip.open, "bz2": bz2.open, "xz": lzma.open,}[ext]
-
-    members_metadata = []
-
-    with opener(source_path, "rb") as fd:
-        magic_number = None
-        nb_eof_headers = 0
-
-        while True:
-            header = fd.read(512)
-            print(header)
-            try:
-                tar_info = tarfile.TarInfo.frombuf(
-                    header, encoding="utf-8", errors="strict"
-                )
-            except tarfile.EOFHeaderError:
-                nb_eof_headers += 1
-                continue
-            except tarfile.EmptyHeaderError:
-                # real end of file
-                break
-            else:
-                assert nb_eof_headers == 0, "Got data after EOF header"
-            data = fd.read(tar_info._block(tar_info.size))[0 : tar_info.size]
-            if magic_number is None:
-                magic_number = header[257:265]
-            content = Content.from_data(data)
-            if tar_info.isfile():
-                # should have been added by the storage
-                assert not list(storage.content_missing([content.hashes()])), (
-                    tar_info,
-                    content,
-                )
-
-            members_metadata.append(
-                {"header": header, "hashes": content.hashes(),}
-            )
+    proc = subprocess.run(
+        ["pristine-tar", "gendelta", source_path, "-"], capture_output=True
+    )
+    assert proc.returncode == 0, proc
+    pristine_delta = proc.stdout
+    if verbose:
+        print(f"Size of pristine delta: {len(pristine_delta)} bytes")
+    pristine = {b"type": "tar", b"delta": pristine_delta}
 
     tar_metadata = {
         b"filename": os.path.basename(source_path),
         b"pristine": pristine,
-        b"global": {b"magic_number": magic_number, "nb_eof_headers": nb_eof_headers},
-        b"members": members_metadata,
     }
-
-    import pprint
-    pprint.pprint(tar_metadata)
 
     storage.raw_extrinsic_metadata_add(
         [
@@ -193,58 +150,32 @@ def get_tar_metadata(
 
 
 def generate_tarball(
-    storage: StorageInterface, revision_swhid: SWHID, target_path: str
+    storage: StorageInterface, revision_swhid: SWHID, target_path: str, *, verbose: bool,
 ):
     tar_metadata = get_tar_metadata(storage, revision_swhid)
 
-    global_metadata = tar_metadata[b"global"]
+    revision_id = hash_to_bytes(revision_swhid.object_id)
+    revision = list(storage.revision_get([revision_id]))[0]
 
-    with open(target_path, "wb") as fd:
-        for member_metadata in tar_metadata[b"members"]:
-            header = member_metadata[b"header"]
-            tar_info = tarfile.TarInfo.frombuf(header, "utf-8", "strict")
-            contents = list(storage.content_get([member_metadata[b"hashes"][b"sha1"]]))
-            if tar_info.isfile():
-                member_content = contents[0]["data"]
-                assert len(member_content) == tar_info.size, (
-                    len(member_content),
-                    tar_info.size,
-                )
-            else:
-                member_content = b""
-            fd.write(header)
-            fd.write(member_content)
+    with tempfile.TemporaryDirectory() as tempdir:
+        dir_builder = DirectoryBuilder(storage, tempdir.encode(), revision["directory"])
+        dir_builder.build()
 
-            # pad to 512-bytes alignment
-            # FIXME: don't assume the source tarball uses only \x00 as padding
-            pad_length = tar_info._block(len(member_content)) - len(member_content)
-            fd.write(b"\x00" * pad_length)
+        # pristine-tar needs a different CWD depending on the number of root
+        # directory of the tarball
+        root_dirs = os.listdir(tempdir)
+        if len(root_dirs) == 1:
+            cwd = os.path.join(tempdir, root_dirs[0])
+        else:
+            cwd = tempdir
 
-        fd.write(b"\x00" * 512 * global_metadata[b"nb_eof_headers"])
-
-
-def run_pristine(
-    storage: StorageInterface,
-    revision_swhid: SWHID,
-    intermediate_path: str,
-    target_path: str,
-):
-    tar_metadata = get_tar_metadata(storage, revision_swhid)
-
-    if tar_metadata[b"pristine"] is None:
-        return
-
-    ext = tar_metadata[b"pristine"][b"type"].decode()
-    assert ext in ("gz", "bz2", "xz")
-
-    with open(target_path, "wb") as fd:
         proc = subprocess.run(
-            ["pristine-" + ext, "gen" + ext, "-", intermediate_path],
+            ["pristine-tar", "gentar", "-", target_path],
             input=tar_metadata[b"pristine"][b"delta"],
-            stdout=fd,
+            cwd=cwd,
+            capture_output=True
         )
-
-    assert proc.returncode == 0, proc
+        assert proc.returncode == 0, proc.stdout
 
 
 def check_files_equal(source_path, target_path):
@@ -258,13 +189,15 @@ def check_files_equal(source_path, target_path):
                 return True
 
 
-def run_one(source_path: str, target_path: Optional[str] = None):
+def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: bool):
     storage = get_storage("memory")
 
-    print(f"{source_path}: ingesting")
-    revision_swhid = ingest_tarball(storage, source_path)
+    if verbose:
+        print(f"{source_path}: ingesting")
+    revision_swhid = ingest_tarball(storage, source_path, verbose=verbose)
 
-    print(f"{source_path}: reproducing")
+    if verbose:
+        print(f"{source_path}: reproducing")
     tar_metadata = get_tar_metadata(storage, revision_swhid)
     original_filename = tar_metadata[b"filename"]
 
@@ -274,30 +207,12 @@ def run_one(source_path: str, target_path: Optional[str] = None):
     else:
         target_file = None
 
-    (_, ext) = os.path.splitext(original_filename)
+    generate_tarball(storage, revision_swhid, target_path, verbose=verbose)
 
-    if ext == b".tar":
-        generate_tarball(storage, revision_swhid, target_path)
-
-        if check_files_equal(source_path, target_path):
-            print(f"{source_path} is reproducible")
-        else:
-            print(f"{source_path} is not reproducible")
+    if check_files_equal(source_path, target_path):
+        print(f"{source_path} is reproducible")
     else:
-        intermediate_file = tempfile.NamedTemporaryFile(suffix=".tar")
-        intermediate_path = intermediate_file.name
-
-        generate_tarball(storage, revision_swhid, intermediate_path)
-
-        if check_files_equal(source_path, intermediate_path):
-            print(f"{source_path} is reproducible without pristine")
-        else:
-            run_pristine(storage, revision_swhid, intermediate_path, target_path)
-
-            if check_files_equal(source_path, target_path):
-                print(f"{source_path} is reproducible after pristine")
-            else:
-                print(f"{source_path} is not reproducible")
+        print(f"{source_path} is not reproducible")
 
     return target_file
 
@@ -311,10 +226,11 @@ def cli():
 @click.option(
     "--diffoscope", default=False, is_flag=True, help="Run diffoscope before exiting."
 )
+@click.option("--verbose", is_flag=True, help="Verbose mode")
 @click.argument("source_path")
 @click.argument("target_path", default="")
-def single(diffoscope, source_path, target_path):
-    target_file = run_one(source_path, target_path or None)
+def single(diffoscope, source_path, target_path, verbose):
+    target_file = run_one(source_path, target_path or None, verbose=verbose)
 
     if diffoscope:
         if not target_path:
@@ -326,9 +242,10 @@ def single(diffoscope, source_path, target_path):
 
 @cli.command()
 @click.argument("source_paths", nargs=-1)
-def many(source_paths):
+@click.option("--verbose", is_flag=True, help="Verbose mode")
+def many(source_paths, verbose):
     for source_path in source_paths:
-        run_one(source_path)
+        run_one(source_path, verbose=verbose)
 
 
 if __name__ == "__main__":
