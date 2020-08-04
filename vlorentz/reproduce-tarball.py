@@ -1,7 +1,10 @@
+import bz2
 import contextlib
 import datetime
+import gzip
 import hashlib
 import io
+import lzma
 import os
 import shutil
 import subprocess
@@ -41,26 +44,6 @@ FETCHER = MetadataFetcher(
 )
 
 
-class BufPreservingTarInfo(tarfile.TarInfo):
-    r"""Makes tobuf return a value bit-for-bit identical to the one passed to
-    frombuf.
-
-    This avoids a round-trip of decoding then re-encoding, which is lossy as
-    decoding is not injective (eg. b"\x00" and b"00000\x00" are both decoded
-    as 0 for null-terminated ASCII numbers).
-    """
-    buf: bytes
-
-    @classmethod
-    def frombuf(cls, buf, encoding, errors):
-        tar_info = super().frombuf(buf, encoding, errors)
-        tar_info.buf = buf
-        return tar_info
-
-    def tobuf(self, *args, **kwargs):
-        return self.buf
-
-
 @contextlib.contextmanager
 def mock_config():
     with tempfile.NamedTemporaryFile(suffix=".yml") as fd:
@@ -75,15 +58,6 @@ def mock_config():
 class LocalArchiveLoader(ArchiveLoader):
     def download_package(self, p_info: ArchivePackageInfo, tmpdir: str):
         return [(p_info.url, {})]
-
-
-def magic_number_to_format(magic_number):
-    if magic_number == tarfile.GNU_MAGIC:
-        return tarfile.GNU_FORMAT
-    elif magic_number == tarfile.POSIX_MAGIC:
-        return tarfile.PAX_FORMAT
-    else:
-        raise ValueError("Unknown magic number %r" % magic_number)
 
 
 def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
@@ -120,83 +94,80 @@ def ingest_tarball(storage: StorageInterface, source_path: str) -> Sha1Git:
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
-    """
-    with open(source_path, "rb") as fd:
-        first_chunk = fd.read(512)
-        magic_number = first_chunk[257:265]
-    """
-    with tarfile.open(source_path, tarinfo=BufPreservingTarInfo,) as tf:
-        magic_number = tf.firstmember.buf[257:265]
+    (_, ext) = os.path.splitext(source_path)
+    ext = ext[1:]
+    if ext == "tar":
+        pristine = None
+        opener = open
+    else:
+        assert ext in ("gz", "bz2", "xz"), ext
+        proc = subprocess.run(
+            ["pristine-" + ext, "gendelta", source_path, "-"], capture_output=True
+        )
+        assert proc.returncode == 0, proc
+        pristine = {b"type": ext.encode(), b"delta": proc.stdout}
 
-    format = magic_number_to_format(magic_number)
+        opener = {"gz": gzip.open, "bz2": bz2.open, "xz": lzma.open,}[ext]
 
-    with tarfile.open(
-        source_path,
-        encoding="utf-8",
-        errors="strict",
-        tarinfo=BufPreservingTarInfo,
-        format=format,
-    ) as tf:
-        members_metadata = []
-        for member in tf.getmembers():
-            with tempfile.NamedTemporaryFile() as member_fd:
-                # FIXME: we can spare the disk write by rewriting makefile
-                tf.makefile(member, member_fd.name)
+    members_metadata = []
 
-                content = Content.from_data(member_fd.read())
+    with opener(source_path, "rb") as fd:
+        magic_number = None
+        nb_eof_headers = 0
 
-            # TODO: if 'member' is sparse, dig matching holes in the content.
-            # (currently, this would produce a corrupted tarball)
-
-            assert member.size == content.length
-
-            if member.isfile():
+        while True:
+            header = fd.read(512)
+            print(header)
+            try:
+                tar_info = tarfile.TarInfo.frombuf(
+                    header, encoding="utf-8", errors="strict"
+                )
+            except tarfile.EOFHeaderError:
+                nb_eof_headers += 1
+                continue
+            except tarfile.EmptyHeaderError:
+                # real end of file
+                break
+            else:
+                assert nb_eof_headers == 0, "Got data after EOF header"
+            data = fd.read(tar_info._block(tar_info.size))[0 : tar_info.size]
+            if magic_number is None:
+                magic_number = header[257:265]
+            content = Content.from_data(data)
+            if tar_info.isfile():
                 # should have been added by the storage
                 assert not list(storage.content_missing([content.hashes()])), (
-                    member,
+                    tar_info,
                     content,
                 )
 
             members_metadata.append(
-                {"header": member.buf, "hashes": content.hashes(),}
+                {"header": header, "hashes": content.hashes(),}
             )
 
-        (_, ext) = os.path.splitext(source_path)
-        ext = ext[1:]
-        if ext == "tar":
-            pristine = None
-        else:
-            assert ext in ("gz", "bz2", "xz"), ext
-            proc = subprocess.run(
-                ["pristine-" + ext, "gendelta", source_path, "-"], capture_output=True
+    tar_metadata = {
+        b"filename": os.path.basename(source_path),
+        b"pristine": pristine,
+        b"global": {b"magic_number": magic_number, "nb_eof_headers": nb_eof_headers},
+        b"members": members_metadata,
+    }
+
+    import pprint
+    pprint.pprint(tar_metadata)
+
+    storage.raw_extrinsic_metadata_add(
+        [
+            RawExtrinsicMetadata(
+                type=MetadataTargetType.REVISION,
+                id=revision_swhid,
+                discovery_date=datetime.datetime.now(),
+                authority=AUTHORITY,
+                fetcher=FETCHER,
+                format="tarball-metadata-msgpack",
+                metadata=msgpack.dumps(tar_metadata),
             )
-            assert proc.returncode == 0, proc
-            pristine = {b"type": ext.encode(), b"delta": proc.stdout}
-
-        tar_metadata = {
-            b"filename": os.path.basename(source_path),
-            b"pristine": pristine,
-            b"global": {
-                b"magic_number": magic_number,
-                b"encoding": tf.encoding,
-                b"pax_headers": tf.pax_headers,
-            },
-            b"members": members_metadata,
-        }
-
-        storage.raw_extrinsic_metadata_add(
-            [
-                RawExtrinsicMetadata(
-                    type=MetadataTargetType.REVISION,
-                    id=revision_swhid,
-                    discovery_date=datetime.datetime.now(),
-                    authority=AUTHORITY,
-                    fetcher=FETCHER,
-                    format="tarball-metadata-msgpack",
-                    metadata=msgpack.dumps(tar_metadata),
-                )
-            ]
-        )
+        ]
+    )
 
     return revision_swhid
 
@@ -227,28 +198,29 @@ def generate_tarball(
     tar_metadata = get_tar_metadata(storage, revision_swhid)
 
     global_metadata = tar_metadata[b"global"]
-    format = magic_number_to_format(global_metadata[b"magic_number"])
 
-    with tarfile.TarFile(
-        target_path,
-        "w",
-        format=format,
-        pax_headers={
-            k.decode(): v.decode() for (k, v) in global_metadata[b"pax_headers"].items()
-        },
-        encoding=global_metadata[b"encoding"].decode(),
-        errors="strict",
-    ) as tf:
+    with open(target_path, "wb") as fd:
         for member_metadata in tar_metadata[b"members"]:
+            header = member_metadata[b"header"]
+            tar_info = tarfile.TarInfo.frombuf(header, "utf-8", "strict")
             contents = list(storage.content_get([member_metadata[b"hashes"][b"sha1"]]))
-            tar_info = BufPreservingTarInfo.frombuf(
-                member_metadata[b"header"], encoding=tf.encoding, errors="strict",
-            )
             if tar_info.isfile():
-                member_content = io.BytesIO(contents[0]["data"])
+                member_content = contents[0]["data"]
+                assert len(member_content) == tar_info.size, (
+                    len(member_content),
+                    tar_info.size,
+                )
             else:
-                member_content = io.BytesIO(b"")
-            tf.addfile(tar_info, member_content)
+                member_content = b""
+            fd.write(header)
+            fd.write(member_content)
+
+            # pad to 512-bytes alignment
+            # FIXME: don't assume the source tarball uses only \x00 as padding
+            pad_length = tar_info._block(len(member_content)) - len(member_content)
+            fd.write(b"\x00" * pad_length)
+
+        fd.write(b"\x00" * 512 * global_metadata[b"nb_eof_headers"])
 
 
 def run_pristine(
@@ -299,21 +271,35 @@ def run_one(source_path: str, target_path: Optional[str] = None):
     if target_path is None:
         target_file = tempfile.NamedTemporaryFile(suffix=original_filename)
         target_path = target_file.name
-
-    intermediate_file = tempfile.NamedTemporaryFile(suffix=".tar")
-    intermediate_path = intermediate_file.name
-
-    generate_tarball(storage, revision_swhid, intermediate_path)
-
-    if check_files_equal(source_path, intermediate_path):
-        print(f"{source_path} is reproducible without pristine-tar")
     else:
-        run_pristine(storage, revision_swhid, intermediate_path, target_path)
+        target_file = None
+
+    (_, ext) = os.path.splitext(original_filename)
+
+    if ext == b".tar":
+        generate_tarball(storage, revision_swhid, target_path)
 
         if check_files_equal(source_path, target_path):
-            print(f"{source_path} is reproducible after pristine-tar")
+            print(f"{source_path} is reproducible")
         else:
             print(f"{source_path} is not reproducible")
+    else:
+        intermediate_file = tempfile.NamedTemporaryFile(suffix=".tar")
+        intermediate_path = intermediate_file.name
+
+        generate_tarball(storage, revision_swhid, intermediate_path)
+
+        if check_files_equal(source_path, intermediate_path):
+            print(f"{source_path} is reproducible without pristine")
+        else:
+            run_pristine(storage, revision_swhid, intermediate_path, target_path)
+
+            if check_files_equal(source_path, target_path):
+                print(f"{source_path} is reproducible after pristine")
+            else:
+                print(f"{source_path} is not reproducible")
+
+    return target_file
 
 
 @click.group()
@@ -328,9 +314,12 @@ def cli():
 @click.argument("source_path")
 @click.argument("target_path", default="")
 def single(diffoscope, source_path, target_path):
-    run_one(source_path, target_path)
+    target_file = run_one(source_path, target_path or None)
 
     if diffoscope:
+        if not target_path:
+            target_path = target_file.name
+
         proc = subprocess.run(["diffoscope", source_path, target_path])
         exit(proc.returncode)
 
