@@ -61,7 +61,7 @@ class LocalArchiveLoader(ArchiveLoader):
         return [(p_info.url, {})]
 
 
-def revision_swhid_from_status(status):
+def revision_swhid_from_status(storage, status):
     assert status["snapshot_id"] is not None
     snapshot_id = hash_to_bytes(status["snapshot_id"])
 
@@ -101,7 +101,7 @@ def ingest_tarball(
     status = loader.load()
     assert status["status"] == "eventful"
 
-    revision_swhid = revision_swhid_from_status(status)
+    revision_swhid = revision_swhid_from_status(storage, status)
 
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
