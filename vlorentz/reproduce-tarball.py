@@ -256,6 +256,26 @@ def single(diffoscope, source_path, target_path, verbose):
 
 
 @cli.command()
+@click.argument("source_path")
+@click.argument("target_dir")
+def checkout(source_path, target_dir):
+    """Loads the source_path into the storage, then extracts it into the target_dir."""
+    storage = get_storage("memory")
+    revision_swhid = ingest_tarball(storage, source_path, verbose=False)
+    revision_id = hash_to_bytes(revision_swhid.object_id)
+    revision = list(storage.revision_get([revision_id]))[0]
+
+    tar_metadata = get_tar_metadata(storage, revision_swhid)
+    original_filename = tar_metadata[b"filename"]
+
+    target_file = tempfile.NamedTemporaryFile(suffix=original_filename)
+    target_path = target_file.name
+
+    dir_builder = DirectoryBuilder(storage, target_dir.encode(), revision["directory"])
+    dir_builder.build()
+
+
+@cli.command()
 @click.argument("source_paths", nargs=-1)
 @click.option("--verbose", is_flag=True, help="Verbose mode")
 @click.option(
