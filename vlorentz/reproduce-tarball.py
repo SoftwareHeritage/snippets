@@ -107,14 +107,22 @@ def ingest_tarball(
     storage.metadata_authority_add([AUTHORITY])
     storage.metadata_fetcher_add([FETCHER])
 
-    proc = subprocess.run(
-        ["pristine-tar", "gendelta", source_path, "-"], capture_output=True
-    )
-    assert proc.returncode == 0, proc
-    pristine_delta = proc.stdout
+    if source_path.endswith((".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2")):
+        type_ = "tar"
+    elif source_path.endswith((".zip",)):
+        type_ = "zip"
+
+    with tempfile.NamedTemporaryFile() as delta_fd:
+        proc = subprocess.run(
+            ["pristine-" + type_, "gendelta", source_path, delta_fd.name],
+            capture_output=True,
+        )
+        assert proc.returncode == 0, proc
+        pristine_delta = delta_fd.read()
     if verbose:
         print(f"Size of pristine delta: {len(pristine_delta)} bytes")
-    pristine = {b"type": "tar", b"delta": pristine_delta}
+
+    pristine = {b"type": type_, b"delta": pristine_delta}
 
     tar_metadata = {
         b"filename": os.path.basename(source_path),
@@ -177,21 +185,31 @@ def generate_tarball(
         dir_builder = DirectoryBuilder(storage, tempdir.encode(), revision["directory"])
         dir_builder.build()
 
+        type_ = tar_metadata[b"pristine"][b"type"].decode()
+        assert type_ in ("tar", "zip"), f"Unknown type {type_}"
+
         # pristine-tar needs a different CWD depending on the number of root
         # directory of the tarball
         root_dirs = os.listdir(tempdir)
-        if len(root_dirs) == 1:
+        if type_ == "tar" and len(root_dirs) == 1:
             cwd = os.path.join(tempdir, root_dirs[0])
         else:
             cwd = tempdir
 
-        proc = subprocess.run(
-            ["pristine-tar", "gentar", "-", target_path],
-            input=tar_metadata[b"pristine"][b"delta"],
-            cwd=cwd,
-            capture_output=True,
-        )
-        assert proc.returncode == 0, proc.stdout
+        with tempfile.NamedTemporaryFile() as delta_fd:
+            delta_fd.write(tar_metadata[b"pristine"][b"delta"])
+            delta_fd.flush()
+
+            proc = subprocess.run(
+                ["pristine-" + type_, "gen" + type_, delta_fd.name, target_path],
+                cwd=cwd,
+                capture_output=True,
+            )
+
+    if proc.returncode != 0:
+        print(proc.stdout.decode())
+        print(proc.stderr.decode())
+    return proc.returncode == 0
 
 
 def check_files_equal(source_path, target_path):
