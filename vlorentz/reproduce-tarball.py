@@ -258,9 +258,19 @@ def single(diffoscope, source_path, target_path, verbose):
 @cli.command()
 @click.argument("source_paths", nargs=-1)
 @click.option("--verbose", is_flag=True, help="Verbose mode")
-def many(source_paths, verbose):
+@click.option(
+    "--fail-early", is_flag=True, help="Stop after the first unreproducible tarball"
+)
+def many(source_paths, verbose, fail_early):
+    success = True
+
     for source_path in source_paths:
-        run_one(source_path, verbose=verbose)
+        (reproducible, _) = run_one(source_path, verbose=verbose)
+        success = success and reproducible
+        if fail_early and not reproducible:
+            break
+
+    exit(0 if success else 1)
 
 
 if __name__ == "__main__":
