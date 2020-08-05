@@ -99,7 +99,8 @@ def ingest_tarball(
     loader.storage = storage
 
     status = loader.load()
-    assert status["status"] == "eventful"
+    if status["status"] != "eventful":
+        return None
 
     revision_swhid = revision_swhid_from_status(storage, status)
 
@@ -209,7 +210,11 @@ def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: boo
 
     if verbose:
         print(f"{source_path}: ingesting")
+
     revision_swhid = ingest_tarball(storage, source_path, verbose=verbose)
+    if revision_swhid is None:
+        print(f"{source_path} could not be loaded")
+        return (True, None)
 
     if verbose:
         print(f"{source_path}: reproducing")
@@ -222,14 +227,19 @@ def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: boo
     else:
         target_file = None
 
-    generate_tarball(storage, revision_swhid, target_path, verbose=verbose)
+    success = generate_tarball(storage, revision_swhid, target_path, verbose=verbose)
 
-    if check_files_equal(source_path, target_path):
+    if not success:
+        print(f"{source_path} could not be generated")
+        reproducible = False
+    elif check_files_equal(source_path, target_path):
         print(f"{source_path} is reproducible")
+        reproducible = True
     else:
         print(f"{source_path} is not reproducible")
+        reproducible = False
 
-    return target_file
+    return (reproducible, target_file)
 
 
 @click.group()
