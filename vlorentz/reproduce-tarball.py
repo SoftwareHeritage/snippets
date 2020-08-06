@@ -100,7 +100,7 @@ def ingest_tarball(
 
     status = loader.load()
     if status["status"] != "eventful":
-        return None
+        return (None, None)
 
     revision_swhid = revision_swhid_from_status(storage, status)
 
@@ -143,7 +143,7 @@ def ingest_tarball(
         ]
     )
 
-    return revision_swhid
+    return (revision_swhid, len(pristine_delta))
 
 
 def get_tar_metadata(
@@ -229,7 +229,7 @@ def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: boo
     if verbose:
         print(f"{source_path}: ingesting")
 
-    revision_swhid = ingest_tarball(storage, source_path, verbose=verbose)
+    (revision_swhid, delta_size) = ingest_tarball(storage, source_path, verbose=verbose)
     if revision_swhid is None:
         print(f"{source_path} could not be loaded")
         return (True, None)
@@ -251,7 +251,8 @@ def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: boo
         print(f"{source_path} could not be generated")
         reproducible = False
     elif check_files_equal(source_path, target_path):
-        print(f"{source_path} is reproducible")
+        source_size = os.stat(source_path).st_size
+        print(f"{source_path} is reproducible (delta is {delta_size} bytes, {int(100*delta_size/source_size)}% of the original file)")
         reproducible = True
     else:
         print(f"{source_path} is not reproducible")
@@ -289,7 +290,7 @@ def single(diffoscope, source_path, target_path, verbose):
 def checkout(source_path, target_dir):
     """Loads the source_path into the storage, then extracts it into the target_dir."""
     storage = get_storage("memory")
-    revision_swhid = ingest_tarball(storage, source_path, verbose=False)
+    (revision_swhid, _) = ingest_tarball(storage, source_path, verbose=False)
     revision_id = hash_to_bytes(revision_swhid.object_id)
     revision = list(storage.revision_get([revision_id]))[0]
 
