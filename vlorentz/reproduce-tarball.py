@@ -109,12 +109,16 @@ def ingest_tarball(
 
     if source_path.endswith((".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2")):
         type_ = "tar"
+        extra_options = []
     elif source_path.endswith((".zip",)):
         type_ = "zip"
+        extra_options = ["--lax-guess"]
+    else:
+        assert False, source_path
 
     with tempfile.NamedTemporaryFile() as delta_fd:
         proc = subprocess.run(
-            ["pristine-" + type_, "gendelta", source_path, delta_fd.name],
+            ["pristine-" + type_, *extra_options, "gendelta", source_path, delta_fd.name],
             capture_output=True,
         )
         assert proc.returncode == 0, proc
