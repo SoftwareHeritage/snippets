@@ -230,6 +230,16 @@ def check_files_equal(source_path, target_path):
 def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: bool):
     storage = get_storage("memory")
 
+    if not os.path.isfile(source_path):
+        print(f"{source_path}: skipping, not a file")
+        return (True, None)
+
+    proc = subprocess.run(["file", source_path], capture_output=True)
+    proc.check_returncode()
+    if b"ASCII text" in proc.stdout or b"Unicode text" in proc.stdout:
+        print(f"{source_path}: skipping, not an archive file")
+        return (True, None)
+
     if verbose:
         print(f"{source_path}: ingesting")
 
