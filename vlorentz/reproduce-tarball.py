@@ -29,6 +29,7 @@ from swh.model.model import (
     MetadataTargetType,
     Sha1Git,
     RawExtrinsicMetadata,
+    TargetType,
 )
 from swh.storage import get_storage
 from swh.storage.algos.snapshot import snapshot_get_all_branches
@@ -37,7 +38,9 @@ from swh.vault.to_disk import DirectoryBuilder
 
 
 AUTHORITY = MetadataAuthority(
-    type=MetadataAuthorityType.FORGE, url="http://localhost/", metadata={},
+    type=MetadataAuthorityType.FORGE,
+    url="http://localhost/",
+    metadata={},
 )
 
 FETCHER = MetadataFetcher(
@@ -57,6 +60,9 @@ def mock_config():
 
 
 class LocalArchiveLoader(ArchiveLoader):
+    def get_loader_version(self):
+        return "0.0.0"
+
     def download_package(self, p_info: ArchivePackageInfo, tmpdir: str):
         return [(p_info.url, {})]
 
@@ -65,11 +71,11 @@ def revision_swhid_from_status(storage, status):
     assert status["snapshot_id"] is not None
     snapshot_id = hash_to_bytes(status["snapshot_id"])
 
-    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id)["branches"]
+    snapshot_branches = snapshot_get_all_branches(storage, snapshot_id).branches
     assert snapshot_branches is not None
     for (branch_name, branch) in snapshot_branches.items():
-        if branch["target_type"] == "revision":
-            revision_id = branch["target"]
+        if branch.target_type == TargetType.REVISION:
+            revision_id = branch.target
             break
     else:
         assert False, "no branch"
@@ -138,7 +144,7 @@ def ingest_tarball(
             RawExtrinsicMetadata(
                 type=MetadataTargetType.REVISION,
                 id=revision_swhid,
-                discovery_date=datetime.datetime.now(),
+                discovery_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 authority=AUTHORITY,
                 fetcher=FETCHER,
                 format="tarball-metadata-msgpack",
@@ -259,14 +265,24 @@ def run_one(source_path: str, target_path: Optional[str] = None, *, verbose: boo
     else:
         target_file = None
 
-    success = generate_tarball(storage, revision_swhid, target_path, verbose=verbose)
+    if method == "pristine":
+        success = generate_tarball_pristine(
+            storage, revision_swhid, target_path, verbose=verbose
+        )
+    else:
+        assert method == "disarchive"
+        success = generate_tarball_disarchive(
+            storage, revision_swhid, target_path, verbose=verbose
+        )
 
     if not success:
         print(f"{source_path} could not be generated")
         reproducible = False
     elif check_files_equal(source_path, target_path):
         source_size = os.stat(source_path).st_size
-        print(f"{source_path} is reproducible (delta is {delta_size} bytes, {int(100*delta_size/source_size)}% of the original file)")
+        print(
+            f"{source_path} is reproducible (delta is {delta_size} bytes, {int(100*delta_size/source_size)}% of the original file)"
+        )
         reproducible = True
     else:
         print(f"{source_path} is not reproducible")
