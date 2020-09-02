@@ -136,9 +136,9 @@ def disarchive_save(source_path):
                 },
                 capture_output=True,
             )
+            assert proc.returncode == 0, proc
             dircache_dirs = os.listdir(os.path.join(dircache, "sha256"))
             (dircache_sha256,) = dircache_dirs
-        assert proc.returncode == 0, proc
         with tempfile.NamedTemporaryFile(suffix=".tar.gz") as disarchive_db_fd:
             proc = subprocess.run(
                 ["tar", "-cz", ".", "-f", disarchive_db_fd.name],
