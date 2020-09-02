@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import traceback
 from typing import Optional
 from unittest.mock import patch
 
@@ -466,6 +467,14 @@ def checkout(source_path, target_dir, method):
     "--fail-early", is_flag=True, help="Stop after the first unreproducible tarball"
 )
 @click.option(
+    "--catch-errors",
+    is_flag=True,
+    help=(
+        "Catches errors if they happen and reports them later, "
+        "instead of stopping immediately."
+    ),
+)
+@click.option(
     "--pattern",
     is_flag=True,
     help=(
@@ -473,16 +482,38 @@ def checkout(source_path, target_dir, method):
         "This is useful when the list of files is too long for the interpreter)"
     ),
 )
-def many(source_paths, verbose, method, fail_early, pattern):
+def many(source_paths, verbose, method, fail_early, catch_errors, pattern):
     if pattern:
         patterns = source_paths
         source_paths = []
         for pattern in patterns:
             source_paths.extend(glob.glob(pattern, recursive=True))
 
+    exceptions = []
+    nb_reproducible = 0
+    nb_unreproducible = 0
+
     for source_path in source_paths:
-        (reproducible, _) = run_one(method, source_path, verbose=verbose)
-        success = success and reproducible
+        try:
+            (reproducible, _) = run_one(method, source_path, verbose=verbose)
+        except (Exception, AssertionError) as e:
+            if not catch_errors:
+                raise
+            traceback.print_exc()
+            exceptions.append(e)
+            reproducible = False
+
+        if reproducible:
+            nb_reproducible += 1
+        else:
+            nb_unreproducible += 1
+
+        print(
+            f"Stats: {nb_reproducible} reproducible, "
+            f"{nb_unreproducible} unreproducible "
+            f"(including {len(exceptions)} exceptions)."
+        )
+
         if fail_early and not reproducible:
             break
 
