@@ -1,6 +1,7 @@
 import bz2
 import contextlib
 import datetime
+import glob
 import gzip
 import hashlib
 import io
@@ -464,8 +465,20 @@ def checkout(source_path, target_dir, method):
 @click.option(
     "--fail-early", is_flag=True, help="Stop after the first unreproducible tarball"
 )
-def many(source_paths, verbose, method, fail_early):
-    success = True
+@click.option(
+    "--pattern",
+    is_flag=True,
+    help=(
+        "Interpret the source paths as patterns (ie. *, **, and ?). "
+        "This is useful when the list of files is too long for the interpreter)"
+    ),
+)
+def many(source_paths, verbose, method, fail_early, pattern):
+    if pattern:
+        patterns = source_paths
+        source_paths = []
+        for pattern in patterns:
+            source_paths.extend(glob.glob(pattern, recursive=True))
 
     for source_path in source_paths:
         (reproducible, _) = run_one(method, source_path, verbose=verbose)
