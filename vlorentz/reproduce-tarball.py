@@ -152,7 +152,10 @@ def disarchive_save(source_path):
     tar_metadata = {
         b"filename": os.path.basename(source_path),
         b"sha256": source_sha256,
-        b"disarchive": {b"dircache_sha256": dircache_sha256, b"disarchive_db": disarchive_db},
+        b"disarchive": {
+            b"dircache_sha256": dircache_sha256,
+            b"disarchive_db": disarchive_db,
+        },
     }
 
     return (tar_metadata, overhead_size)
