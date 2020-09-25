@@ -11,7 +11,6 @@ default_device_role_id = None
 default_cluster = 'Default cluster'
 default_cluster_id = None
 
-
 class Facts(yaml.YAMLObject):
     yaml_tag = u"!ruby/object:Puppet::Node::Facts"
 
@@ -20,7 +19,6 @@ class Facts(yaml.YAMLObject):
         self.values = values
         self.expiration = expiration
         self.timestamp = timestamp
-
 
 # yaml.add_multi_constructor(u"!ruby/object:Puppet::Node::Facts", construct_ruby_object)
 # yaml.add_constructor(u"!ruby/sym.*", construct_ruby_sym)
@@ -88,14 +86,16 @@ def get_or_create_ip_address(address):
         ip['address'] = address
 
         ip = nb.ipam.ip_addresses.create(ip)
-        return ip['id']
+        return ip
     elif count == 1:
-        return ip[0]['id']
+        return ip[0]
     else:
         print(f"There are more then one ip addresse defined for {address}")
         exit(1)
 
 def create_or_update_device(facts):
+    # print(vars(facts))
+    
     device_type = facts.values['dmi']['product']['name']
     device_type_id = get_device_type_id(device_type)
     print("device_type_id: ", device_type_id)
@@ -118,21 +118,49 @@ def create_or_update_device(facts):
         device['status'] = 'active'
         device['site'] = site_id
 
-        print(f"  Creating {device['name']} via api")
+        # print(f"  Creating {device['name']} via api")
         print(json.dumps(device))
 
-        nb.dcim.devices.create(device)
+        device = nb.dcim.devices.create(device)
+
+        interfaces = facts.values['interfaces'] if 'interfaces' in facts.values else ''
+        print("\tinterfaces : "+ interfaces)
+        networking = facts.values['networking'] if 'networking' in facts.values else {}
+        interfaces_details = networking['interfaces'] if 'interfaces' in networking else {}
+
+        for interface in interfaces.split(','):
+            if interface == 'lo': 
+                continue 
+            print(f"\t\tCreating interface {interface}")
+            interface_facts = interfaces_details[interface]
+            netbox_interface = {}
+            netbox_interface['name'] = interface
+            netbox_interface['type'] = 'other'
+            netbox_interface['mtu'] = interface_facts['mtu'] if 'mtu' in interface_facts else None
+            mac = interface_facts['mac'] if 'mac' in interface_facts else None
+            if mac != None:
+                netbox_interface['mac_address'] = mac.replace(' ', '')
+            netbox_interface['device'] = device.id
+
+            netbox_interface = nb.dcim.interfaces.create(netbox_interface)
+            print(f"\t\t\tid={netbox_interface.id}")
+
+            if 'ip' in interface_facts:
+                ip = get_or_create_ip_address(interface_facts['ip'])
+                print(f"\t\tLink ip {ip.id}/{ip.address}")
+                ip.assigned_object_type = 'dcim.interface'
+                ip.assigned_object_id = netbox_interface.id
+                ip.save()
 
     else:
         print(f"Device {facts.name} already exists")
 
 def create_or_update_virtual_machine(facts):
-    print(vars(facts))
-
+    # print(vars(facts))
     vm = get_virtual_machine(facts.name)
 
     if vm == None :
-        print(f"VM {facts.name} needs to be created")
+        print(f"\tVM {facts.name} needs to be created")
 
         vm = {}
         vm['name'] = facts.name
@@ -142,6 +170,39 @@ def create_or_update_virtual_machine(facts):
         vm['memory'] = "%.0f" % facts.values['memorysize_mb']
         vm['vcpus'] = facts.values['physicalprocessorcount']
 
+        print(f"Creating {vm['name']} via api")
+        print(json.dumps(vm))
+        vm = nb.virtualization.virtual_machines.create(vm)
+
+        interfaces = facts.values['interfaces'] if 'interfaces' in facts.values else ''
+        print("\tinterfaces : "+ interfaces)
+        networking = facts.values['networking'] if 'networking' in facts.values else {}
+        interfaces_details = networking['interfaces'] if 'interfaces' in networking else {}
+
+        for interface in interfaces.split(','):
+            if interface == 'lo': 
+                continue 
+            print(f"\t\tCreating interface {interface}")
+            interface_facts = interfaces_details[interface]
+            netbox_interface = {}
+            netbox_interface['name'] = interface
+            netbox_interface['mtu'] = interface_facts['mtu'] if 'mtu' in interface_facts else None
+            mac = interface_facts['mac'] if 'mac' in interface_facts else None
+            if mac != None:
+                netbox_interface['mac_address'] = mac.replace(' ', '')
+            netbox_interface['virtual_machine'] = vm.id
+
+            netbox_interface = nb.virtualization.interfaces.create(netbox_interface)
+            print(f"\t\t\tid={netbox_interface.id}")
+
+            if 'ip' in interface_facts:
+                ip = get_or_create_ip_address(interface_facts['ip'])
+                print(f"\t\tLink ip {ip.id}/{ip.address}")
+                ip.assigned_object_type = 'virtualization.vminterface'
+                ip.assigned_object_id = netbox_interface.id
+                ip.save()
+
+
         # TODO create all ips + properties
         # TODO Create interfaces
         # TODO associate interfaces and ips
@@ -149,13 +210,16 @@ def create_or_update_virtual_machine(facts):
         ip_id = get_or_create_ip_address(facts.values['networking']['ip'])
         #vm['primaryip'] = facts.values['networking']['ip']
 
-        print(f"  Creating {vm['name']} via api")
-        print(json.dumps(vm))
-        nb.virtualization.virtual_machines.create(vm)
-
     else:
-        print(f"VM {facts.name} already exists")
-    exit(1)
+        print(f"\tVM {facts.name} already exists")
+
+        # TODO Remove this
+        # vm = get_virtual_machine(facts.name)
+        # print(f"\tDeleting {vm.id}")
+        # vm.delete()
+        # create_or_update_virtual_machine(facts)
+    
+#    exit(1)
 
 #####################################
 ## Start
@@ -186,7 +250,7 @@ for (_, _, filenames) in walk(facts_directory) :
 
             facts = yaml.load(file, Loader=yaml.FullLoader)
 
-            print("\tName : ", facts.name)
+            print("Name : ", facts.name)
             print("\tis_virtual :", facts.values['is_virtual'])
 
             if facts.values['is_virtual'] == False:
@@ -195,4 +259,4 @@ for (_, _, filenames) in walk(facts_directory) :
                 create_or_update_virtual_machine(facts)
             else:
                 print("Virtual status can't be found for facts :")
-                print(facts)
+                print(vars(facts))
