@@ -10,6 +10,7 @@ default_device_role = 'to be defined'
 default_device_role_id = None
 default_cluster = 'Default cluster'
 default_cluster_id = None
+imported_tag_id = None
 
 class Facts(yaml.YAMLObject):
     yaml_tag = u"!ruby/object:Puppet::Node::Facts"
@@ -33,6 +34,13 @@ def check_end_get_object_id(result, name, filter):
 
     return result[0]['id']
 
+def get_tag_id(name):
+    tag = nb.extras.tags.filter(name)
+    if tag is None or len(tag) == 0:
+        print(f"Tag {name} not found")
+        exit(1)
+    return tag[0].id
+
 def get_device_role_id(name):
     device_roles = nb.dcim.device_roles.filter(name=name)
     return check_end_get_object_id(device_roles, "device role", name)
@@ -46,7 +54,7 @@ def get_platform_id(name):
     return check_end_get_object_id(platforms, "platform", name)
 
 def get_site_id(name):
-    sites = nb.dcim.sites.filter(name=name)
+    sites = nb.dcim.sites.filter(slug=name)
     return check_end_get_object_id(sites, "sites", name)
 
 def get_cluster_id(name):
@@ -118,6 +126,11 @@ def create_or_update_device(facts):
         device['status'] = 'active'
         device['site'] = site_id
 
+        environment = facts.values['agent_specified_environment']
+        tag_id = get_tag_id('environment-'+environment)
+
+        device['tags'] = [imported_tag_id, tag_id]
+
         # print(f"  Creating {device['name']} via api")
         print(json.dumps(device))
 
@@ -172,6 +185,12 @@ def create_or_update_virtual_machine(facts):
 
         print(f"Creating {vm['name']} via api")
         print(json.dumps(vm))
+
+        environment = facts.values['agent_specified_environment']
+        tag_id = get_tag_id('environment-'+environment)
+
+        vm['tags'] = [imported_tag_id, tag_id]
+
         vm = nb.virtualization.virtual_machines.create(vm)
 
         interfaces = facts.values['interfaces'] if 'interfaces' in facts.values else ''
@@ -241,6 +260,7 @@ nb = pynetbox.api(netbox_url, token=netbox_token)
 default_device_role_id = get_device_role_id(default_device_role)
 # print("The default device role id for '{}' is : {}".format(default_device_role, default_device_role_id))
 default_cluster_id = get_cluster_id(default_cluster)
+imported_tag_id = get_tag_id('Imported from puppet facts')
 
 for (_, _, filenames) in walk(facts_directory) :
     for filename in filenames:
