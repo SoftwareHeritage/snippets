@@ -55,9 +55,6 @@ def ls_projects(sitemap_url):
         known_projs = set()  # hash()-es of known projects
         for proj in sub_idx.findall(".//{*}url"):
             proj_url = proj.find("{*}loc").text
-            # proj_ts = proj.find("{*}lastmod").text
-            # proj_freq = proj.find("{*}changefreq").text
-            # print("\t".join([proj_url, proj_ts, proj_freq]))A
             if m := PROJ_URL_RE.match(proj_url):
                 proj_name = m.group(2)  # base project url
                 h = hash(proj_name)
