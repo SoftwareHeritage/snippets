@@ -6,7 +6,7 @@ from confluent_kafka import Consumer
 from confluent_kafka import KafkaException
 from confluent_kafka import TopicPartition
 import redis
-import msgpack
+# import msgpack
 
 
 redis_time = 0
@@ -33,6 +33,8 @@ def consume(conf, topic, batch_size):
             continue
         # click.echo("batch read")
 
+        pipeline = redis_client.pipeline()
+
         for message in messages:
 
             key = message.key()
@@ -41,9 +43,13 @@ def consume(conf, topic, batch_size):
             # click.echo(str(msgpack.unpackb(key, raw=True)))
 
             before_time = time.perf_counter()
-            redis_client.pfadd(collection, key)
+            pipeline.pfadd(collection, key)
 
             redis_time += time.perf_counter() - before_time
+
+        before_time = time.perf_counter()
+        pipeline.execute()
+        redis_time += time.perf_counter() - before_time
 
         consumer.commit(asynchronous=True)
         with mutex:
