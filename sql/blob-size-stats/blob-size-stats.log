@@ -1,0 +1,21 @@
+$ date -R
+Sat, 30 Jan 2021 19:40:48 +0100
+
+$ ./blob-size-stats.sh 
+real	59m17,410s
+user	0m5,709s
+sys	0m3,323s
+
+$ wc -l blob-size-stats.csv 
+9737167 blob-size-stats.csv
+
+$ ./analyze.py
+          blob size
+count  9.737166e+06
+mean   8.233840e+04
+std    1.207056e+06
+min    2.000000e+00
+25%    1.054000e+03
+50%    3.313000e+03
+75%    1.308800e+04
+max    1.109894e+08
