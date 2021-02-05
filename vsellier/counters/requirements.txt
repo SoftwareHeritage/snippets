@@ -1,3 +1,4 @@
 confluent-kafka
 click
 redis
+msgpack

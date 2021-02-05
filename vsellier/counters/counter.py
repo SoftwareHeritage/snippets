@@ -6,13 +6,14 @@ from confluent_kafka import Consumer
 from confluent_kafka import KafkaException
 from confluent_kafka import TopicPartition
 import redis
-# import msgpack
+import msgpack
 
 
 redis_time = 0
 collection: str
 redis_client: redis.Redis
 local_counter: int
+message_in_error: int = 0
 mutex = threading.Lock()
 
 
@@ -20,6 +21,7 @@ def consume(conf, topic, batch_size):
     global redis_time
     global collection
     global local_counter
+    global message_in_error
 
     consumer = Consumer(conf)
 
@@ -33,23 +35,29 @@ def consume(conf, topic, batch_size):
             continue
         # click.echo("batch read")
 
-        pipeline = redis_client.pipeline()
-
+        pipeline = redis_client.pipeline(transaction=False)
+        pipeline_instruction=0
         for message in messages:
-
             key = message.key()
-            # click.echo(str(key[0] % 10))
-            # click.echo(str(key))
-            # click.echo(str(msgpack.unpackb(key, raw=True)))
+            if not key:
+                click.echo("\t%s"%message.value())
+                message_in_error += 1
+                topicPartition = TopicPartition(message.topic(), message.partition(), message.offset())
+                click.echo("\tPartition %s"%(topicPartition))
+                topicPartition.offset += 1
+                consumer.seek(topicPartition)
 
+            else:
+                before_time = time.perf_counter()
+                pipeline.pfadd(collection, key)
+                pipeline_instruction += 1
+                redis_time += time.perf_counter() - before_time
+
+        if pipeline_instruction >0:
             before_time = time.perf_counter()
-            pipeline.pfadd(collection, key)
-
+            pipeline.execute()
             redis_time += time.perf_counter() - before_time
-
-        before_time = time.perf_counter()
-        pipeline.execute()
-        redis_time += time.perf_counter() - before_time
+        pipeline.reset()
 
         consumer.commit(asynchronous=True)
         with mutex:
@@ -60,6 +68,7 @@ def display_counter(click):
     global redis_time
     global collection
     global local_counter
+    global message_in_error
 
     last_count = redis_client.pfcount(collection)
     last_redis_time = redis_time
@@ -78,13 +87,14 @@ def display_counter(click):
         prefix = time.strftime("%m-%d-%Y %H:%M:%S", time.localtime())
 
         click.echo(
-            "%s local_counter=%d redis_counter=%d (%dm/s redis: %fs)"
+            "%s local_counter=%d redis_counter=%d (%dm/s redis: %fs) in_error=%d"
             % (
                 prefix,
                 local_counter,
                 redis_counter,
                 message_per_seconds,
                 current_redis_time - last_redis_time,
+                message_in_error,
             )
         )
         last_count = local_counter
@@ -114,6 +124,7 @@ def count(consumer_group, topic, broker, threads, batch_size, redis_host, redis_
         "group.id": consumer_group,
         "auto.offset.reset": "earliest",
         "enable.auto.commit": False,
+        # "errors.tolerance": 'all', # weird decompression issue on release and directory topic
     }
 
     consumer = Consumer(conf)
