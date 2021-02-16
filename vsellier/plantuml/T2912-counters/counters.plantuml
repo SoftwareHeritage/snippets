@@ -1,0 +1,73 @@
+@startuml
+title Object counters pipeline
+
+actor browser
+
+node pergamon {
+    file "/var/www/stats.export.softwareheritage.org/history_counters.json" as history_counters
+    file "/usr/local/share/swh-data/history_counters.munin.json" as munin_counters
+    note left: export from old \n munin monitoring
+    component "/usr/local/bin/export_archive_counters.py" as export_script
+    note left: executed once a day\nvia a crontab
+    database prometheus
+    component apache2 {
+        boundary "stats.export.softwareheritage.org" as apache_stats
+    }
+    component prometheus_server
+}
+
+node moma {
+    component webapp
+}
+
+node belvedere {
+    component prometheus_sql_exporter
+    database "postgresql/softwareheritage" as softwareheritage {
+        agent object_counts
+        collections object_tables
+        agent object_counts_bucketed
+        component swh_update_counters_from_buckets
+        component update_counts_from_bucketed
+        component swh_update_counter_bucketed
+        note right: Update one bucket at\na time, older first
+        component swh_update_counter
+    }
+
+    component cron 
+    note right: 29 2-22/4  *   *   *
+
+    component rest_api {
+        boundary "/stat/refresh" as api_refresh
+    }
+
+    actor psql
+}
+
+export_script --> munin_counters : Load historical data
+export_script --> prometheus : Aggregate sql_swh_archive_object_count\nby 12h steps since\nthe 11/12/2018 à 15:47:07
+export_script --> history_counters
+apache_stats --> history_counters
+
+webapp --> apache_stats
+browser --> webapp
+
+prometheus_server --> prometheus
+prometheus_server --> prometheus_sql_exporter : read metrics including\n sql_swh_archive_object_count
+prometheus_sql_exporter --> object_counts : read counters
+
+api_refresh --> swh_update_counter: for contents:\ndirectory\ndirectory_entry_dir\ndirectory_entry_file\ndirectory_entry_rev\norigin\norigin_visit\nperson\nrelease\nrevision\nrevision_history\nskipped_content\nsnapshot
+
+cron --> swh_update_counter: for existing counters\nsingle_update=true
+
+swh_update_counter --> object_counts : insert/update\ncounts per object
+swh_update_counter --> object_tables : select count(*)\nper object
+
+object_counts_bucketed --> update_counts_from_bucketed : trigger on\ninsert/update
+update_counts_from_bucketed --> swh_update_counters_from_buckets : each 256 changes
+swh_update_counters_from_buckets --> object_counts : Override all values\nfrom buckets
+
+psql --> swh_update_counter_bucketed : infinite\nloop
+
+swh_update_counter_bucketed --> object_counts_bucketed : update the bucket\nfor the range
+swh_update_counter_bucketed --> object_tables : count objects\nper range
+@enduml

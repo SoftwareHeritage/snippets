@@ -1,0 +1,86 @@
+@startuml
+title Object counters pipeline
+
+actor browser
+
+node pergamon {
+    file "/var/www/stats.export.softwareheritage.org/history_counters.json" as history_counters
+    file "/usr/local/share/swh-data/history_counters.json" as counters_extracts
+    note left: export from old \n munin monitoring +\nold sql_swh_archive_object_count
+    component "/usr/local/bin/export_archive_counters.py" as export_script
+    note left: executed once a day\nvia a crontab
+    database prometheus
+    component apache2 {
+        boundary "stats.export.softwareheritage.org" as apache_stats
+    }
+    component prometheus_server
+
+    export_script --> counters_extracts : Load historical data
+    export_script --> prometheus : Aggregate sql_swh_archive_object_count\nby 12h steps since\nthe 11/12/2018 à 15:47:07
+    export_script --> history_counters
+
+    prometheus_server --> prometheus
+
+}
+
+node moma {
+    component webapp
+}
+
+node "storage(saam|storage1)" as storage_server {
+    component "swh-storage" as swhstoragegunicorn
+}
+
+
+node counters {
+    component redis {
+        collections "HyperLogLog collections" as hll
+        note left of hll: One collection per\nobject type
+    }
+
+    component counter_journal_client as cjc {
+    }
+    component counter as gunicorncounter {
+        boundary "/metrics/prometheus" as metrics
+        boundary "/counter?type=<type>" as counterapi
+    }
+
+    component nginx {
+        boundary 50XX as counter
+    }
+
+    cjc --> hll
+    counter --> metrics
+    counter --> counterapi
+    gunicorncounter --> hll
+
+
+}
+
+node journal {
+    queue content as topic_content
+    queue origin as topic_origin
+    queue revision as topic_revision
+    queue "..." as topic_others
+    topic_others -[hidden]right-> topic_revision
+}
+
+apache_stats --> history_counters
+
+webapp --> apache_stats: /stat_counters
+webapp --> counter: /api/1/stat/counters => /counter/<type>
+browser --> webapp
+
+topic_content --> cjc
+topic_origin --> cjc
+topic_revision --> cjc
+topic_others --> cjc
+
+swhstoragegunicorn --> topic_content
+swhstoragegunicorn --> topic_origin
+swhstoragegunicorn --> topic_revision
+swhstoragegunicorn --> topic_others
+
+prometheus_server --> counter : /metrics/prometheus
+
+@enduml
