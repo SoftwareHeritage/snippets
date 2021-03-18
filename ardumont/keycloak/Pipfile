@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-keycloak = '*'
+Click = '*'
+PyYAML = '*'
+
+[dev-packages]
+pytest = '*'
+tox = '*'
+ipython = "*"
+pdbpp = "*"
+
+
+[requires]
+python_version = "3.7"
