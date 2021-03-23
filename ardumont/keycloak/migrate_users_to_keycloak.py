@@ -20,16 +20,17 @@ logger = logging.getLogger(__name__)
 
 def create_keycloak_user_dict(user: Dict) -> Dict:
     """Create a mapping dict """
+    username = user["username"]
     return {
         "email": user["email"],
         "username": user["username"],
-        "firstName": user.get("firstname", ""),
-        "lastName": user.get("lastname", ""),
+        "firstName": user.get("firstname", username),
+        "lastName": user.get("lastname", username),
         "credentials": [
             {"value": user["password"], "type": "password", "temporary": False}
         ],
         "enabled": True,
-        "emailVerified": False,
+        "emailVerified": True,
     }
 
 
