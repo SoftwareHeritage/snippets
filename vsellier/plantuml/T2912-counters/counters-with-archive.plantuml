@@ -45,10 +45,10 @@ node counters {
     file "/usr/local/share/swh-data/archive.json" as archive_json
     file "/usr/local/share/swh-data/counters.json" as counters_json
 
-    cjc --> hll
+    cjc --> hll: increment\ncollections
     counter --> metrics
     counter --> counterapi
-    gunicorncounter --> hll
+    gunicorncounter --> hll: Read\nvalues
     
     refresh_cache --> counters_json: generate\ncache\nfile
     refresh_cache --> archive_json: read\narchive\nfile
