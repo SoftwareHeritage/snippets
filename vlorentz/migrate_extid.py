@@ -245,4 +245,4 @@ if __name__ == "__main__":
         print(f"Syntax: {sys.argv[0]} <storage_dbconn> <storage_url> [<first id>]")
         exit(1)
 
-    main(storage_dbconn, storage_url, bytes.fromhex(first_id), True)
+    main(storage_dbconn, storage_url, bytes.fromhex(first_id), False)
