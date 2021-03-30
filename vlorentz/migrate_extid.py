@@ -109,7 +109,9 @@ def handle_tar_row(revision_swhid: CoreSWHID, metadata: Dict) -> Optional[ExtID]
             (extid_type, extid) = res
             return ExtID(extid_type=extid_type, extid=extid, target=revision_swhid)
 
-    if provider.startswith(("https://ftp.gnu.org/gnu/", "https://ftp.gnu.org/old-gnu/")):
+    if provider.startswith(
+        ("https://ftp.gnu.org/gnu/", "https://ftp.gnu.org/old-gnu/")
+    ):
         res = ARCHIVE_LOADER.known_artifact_to_extid(metadata)
         if res:
             (extid_type, extid) = res
@@ -122,7 +124,12 @@ def handle_tar_row(revision_swhid: CoreSWHID, metadata: Dict) -> Optional[ExtID]
             target=revision_swhid,
         )
 
-    if url.startswith("https://deposit.softwareheritage.org/") or provider.startswith("https://deposit.softwareheritage.org/") or "{http://www.w3.org/2005/Atom}client" in metadata or "@xmlns:codemeta" in metadata:
+    if (
+        url.startswith("https://deposit.softwareheritage.org/")
+        or provider.startswith("https://deposit.softwareheritage.org/")
+        or "{http://www.w3.org/2005/Atom}client" in metadata
+        or "@xmlns:codemeta" in metadata
+    ):
         # Deposits don't have ExtIDs
         return None
 
