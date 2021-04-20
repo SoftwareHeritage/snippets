@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl apply -f d5-1.yaml"
+
+echo "$cmd"
+read
+eval $cmd

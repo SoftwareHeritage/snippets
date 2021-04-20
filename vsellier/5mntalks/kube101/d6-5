@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl scale --replicas=6 deployment d3"
+
+echo "$cmd"
+read
+eval $cmd

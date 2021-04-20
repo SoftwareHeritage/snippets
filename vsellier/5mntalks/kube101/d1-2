@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl describe nodes vse-k3s-2"
+
+echo "$cmd"
+read
+eval $cmd | less

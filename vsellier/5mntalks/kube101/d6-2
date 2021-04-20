@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl set image deployment/d3 d3=registry.demo/demo:v1 --record"
+
+echo "$cmd"
+read
+eval $cmd

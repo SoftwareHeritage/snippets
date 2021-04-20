@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: d3
+spec:
+  selector:
+    matchLabels:
+      app: d3
+  replicas: 2
+  strategy: 
+    rollingUpdate:
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: d3
+    spec:
+      containers:
+      - name: d3
+        image: registry.demo/demo:v0
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          httpGet:
+            port: 5000
+          periodSeconds: 2
+          failureThreshold: 1          
+        startupProbe:
+          httpGet:
+            port: 5000
+          periodSeconds: 2
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            port: 5000
+          periodSeconds: 2
+          failureThreshold: 1
+          successThreshold: 1

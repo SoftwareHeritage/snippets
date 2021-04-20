@@ -1,0 +1,3 @@
+#!/bin/bash
+
+watch "echo Nodes; kubectl get nodes; echo; echo Deployments; kubectl get deployments -o wide; echo; echo Services; kubectl get services; echo; echo Ingress; kubectl get ingress -o wide ; echo; echo Pods; kubectl get pods -o wide; echo; echo PV; kubectl get pv -o wide; echo; echo PVC; kubectl get pvc -o wide"

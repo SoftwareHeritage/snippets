@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="watch -n1 'curl -s http://demo; echo; curl -s http://demo/count'"
+
+echo "$cmd"
+read
+watch -n1 "echo HOME PAGE; curl -s http://demo; echo; echo count; curl -s http://demo/count"

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl describe pod debian | less"
+
+echo "$cmd"
+read
+eval $cmd

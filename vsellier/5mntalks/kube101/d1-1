@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl get nodes -o wide"
+
+echo "$cmd"
+read
+eval $cmd

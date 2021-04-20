@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl run -ti --rm --image debian debian"
+
+echo "$cmd"
+read
+eval $cmd

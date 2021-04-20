@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: d3-clusterip
+spec:
+  type: ClusterIP
+  selector:
+    app: d3
+  ports:
+  - port: 5000
+    targetPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: d3-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: d3
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30000 # 30000 <= nodePort < 32767
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: d3-externalname
+spec:
+  type: ExternalName
+  externalName: www.duckduckgo.com

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cmd="kubectl rollout undo deployment d3"
+
+echo "$cmd"
+read
+eval $cmd
