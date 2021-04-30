@@ -79,7 +79,7 @@ def print_commits(phab, commits):
             msg=c['fields']['message'].split('\n')[0]))
 
 
-def print_diffs(phab, reviews):
+def print_reviews(phab, reviews):
     """print a list of Phabricator diffs, with some context
 
     Args:
@@ -88,7 +88,7 @@ def print_diffs(phab, reviews):
     """
     for r in reviews:
         repo = lookup_repo(phab, r['fields']['repositoryPHID'])
-        print('- https://forge.softwareheritage.org/D{id} | {repo} | {title}'.format(
+        print('- D{id} | {repo} | {title}'.format(
             id=r['id'],
             repo=pp_repo(repo),
             title=r['fields']['title']))
