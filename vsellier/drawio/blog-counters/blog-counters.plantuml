@@ -1,0 +1,32 @@
+@startuml
+!include <logos/kafka.puml>
+!include <logos/prometheus.puml>
+!include <logos/redis.puml>
+!include <logos/python.puml>
+
+title Counters architecture
+
+component "VCS loaders" as loaders
+
+component "<$kafka>" as kafka {
+    queue content
+    queue "origin"
+    queue "..."
+    queue "revision"
+    queue "person"
+}
+
+
+component "<$prometheus> prometheus" as prometheus {
+
+}
+
+component "<$redis> redis" as redis
+component "<$python> kafka consumer" as journal_client
+component "<$python> counters" as counters
+
+
+loaders -right-> kafka : <b> 1</b>
+kafka -right-> journal_client: <b>2</b>
+
+@enduml
