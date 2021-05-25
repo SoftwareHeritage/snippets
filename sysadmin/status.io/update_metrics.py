@@ -48,18 +48,6 @@ prometheus_url = "http://pergamon.internal.softwareheritage.org:9090/api/v1/quer
 
 api = statusio.Api(api_id=api_id, api_key=api_key)
 
-# summary = api.StatusSummary(status_page_id)
-# print(summary)
-
-# print()
-
-# components = api.ComponentList(status_page_id)
-# print(components)
-
-# print()
-
-# http://pergamon.internal.softwareheritage.org:9090/api/v1/query_range?query=sum(swh_web_accepted_save_requests%7Benvironment%3D%22production%22%2C%20load_task_status%3D~%22scheduled%7Cnot_yet_scheduled%22%2C%20vhost_name%3D%22archive.softwareheritage.org%22%7D)&start=1621432297.968&end=1621518697.968&step=300&_=1621517926744
-
 current_time = datetime.utcnow()
 day_start = current_time - timedelta(days=1)
 hour_interval = 3600
@@ -67,17 +55,6 @@ day_interval = 3600*24
 
 week_start = current_time - timedelta(days=7)
 month_start = current_time - timedelta(days=30)
-# print(day_start)
-# print(day_start.strftime(API_DATE_FORMAT))
-
-# daily_average = get_average(day_start.timestamp(), current_time.timestamp())
-
-# daily_statistics = f'{prometheus_url}?query=sum(swh_web_accepted_save_requests{{environment="production", load_task_status=~"scheduled|not_yet_scheduled", vhost_name="archive.softwareheritage.org"}})&start=1621432297.968&end=1621518697.968&step=3600&_=1621517926744'
-
-# response = requests.get(daily_statistics)
-# if response.ok == False:
-#     print("Unable to get prometheus metrics")
-#     os.exit(1)
 
 raw_prometheus_data = get_scn_statistics(day_start.timestamp(), current_time.timestamp(), hour_interval)
 day_dates, day_values = extract_status_io_data(raw_prometheus_data)
