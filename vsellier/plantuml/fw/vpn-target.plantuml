@@ -1,0 +1,44 @@
+@startuml "vpn final"
+nwdiag {
+
+    opnsense 
+
+    network openvpn {
+        address = "192.168.101.0/24"
+
+        opnsense [address = "192.168.101.1"]
+    
+        users [address="192.168.101.x" description = "<&people*4.5>\n users"];
+    }
+
+    network ipsec {
+        address = "192.168.200.1/24"
+
+        opnsense
+        azure_nodes [address="192.168.200.x" description = "<&cloudy*4.5>\n Azure"]
+    }
+
+    network VLAN440 {
+        address = "192.168.100.0/24"
+
+        opnsense [address = "192.168.100.1"]
+    }
+
+    network staging {
+        address = "192.168.130.0/24"
+
+        opnsense [address="192.168.130.1"]
+    }
+
+    network admin {
+        address = "192.168.130.1/24"
+
+        opnsense [address="192.168.50.1"]
+    }
+
+    legend
+    Final configuration
+    end legend
+}
+
+@enduml
