@@ -8,6 +8,7 @@ Tools
 #####
 
 terraform >= 13.0
+vagrant >= 2.2.3 [for local tests only]
 
 Credentials
 ###########
@@ -28,6 +29,34 @@ The public key will be installed on the nodes
 
 Run
 ---
+
+### Local (on vagrant)
+
+The `Vagrantfile` is configured to provision 3 nodes, install cassandra and the configure the cluster using the ansible configuration:
+
+```
+vagrant up
+vagrant ssh cassandra1
+sudo -i
+nodetool status
+```
+
+If everything is ok, the `nodetool` command line returns:
+```
+root@cassandra1:~# nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens  Owns (effective)  Host ID                               Rack 
+UN  10.168.180.12  15.78 KiB  256     67.9%             05d61a24-832a-4936-b0a5-39926f800d09  rack1
+UN  10.168.180.11  73.28 KiB  256     67.0%             23d855cc-37d6-43a7-886e-9446e7774f8d  rack1
+UN  10.168.180.13  15.78 KiB  256     65.0%             c6bc1eff-fa0d-4b67-bc53-fc31c6ced5bb  rack1
+```
+
+Cassandra can take some time to start, so you have to wait before the cluster stabilize itself.
+
+### On Grid5000
 
 * Initialize terraform modules (first time only)
 ```

@@ -1,0 +1,60 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+vms = {
+    "cassandra1" => {
+        :ip          => "10.168.180.11",
+        :memory      => 2048,
+        :cpus        => 2,
+    },
+    "cassandra2" => {
+        :ip          => "10.168.180.12",
+        :memory      => 2048,
+        :cpus        => 2,
+    },
+    "cassandra3" => {
+        :ip          => "10.168.180.13",
+        :memory      => 2048,
+        :cpus        => 2,
+    },
+}  
+
+# Images/remote configuration
+$global_debian10_box = "debian10-20210517-1348"
+$global_debian10_box_url = "https://annex.softwareheritage.org/public/isos/libvirt/debian/swh-debian-10.9-amd64-20210517-1348.qcow2"
+
+vms.each { | vm_name, vm_props |
+
+    Vagrant.configure("2") do |global_config|
+        unless Vagrant.has_plugin?("libvirt")
+            $stderr.puts <<-MSG
+            vagrant-libvirt plugin is required for this.
+            To install: `$ sudo apt install vagrant-libvirt
+        MSG
+            exit 1
+        end
+        
+        global_config.vm.define vm_name do |config|
+            config.vm.box                     = $global_debian10_box
+            config.vm.box_url                 = $global_debian10_box_url
+            config.vm.box_check_update        = false
+            config.vm.hostname                = vm_name
+            config.vm.network   :private_network, ip: vm_props[:ip], netmask: "255.255.0.0"
+
+            config.vm.synced_folder ".", "/vagrant", type: 'nfs'
+
+            config.vm.provision :ansible do |ansible|
+                ansible.verbose = true
+                ansible.become = true
+                ansible.playbook = "ansible/playbook.yml"
+                ansible.inventory_path = "ansible/hosts.yml"
+            end
+
+            config.vm.provider :libvirt do |provider|
+                provider.memory = vm_props[:memory]
+                provider.cpus = vm_props[:cpus]
+                provider.driver = 'kvm'
+            end
+        end
+    end
+}

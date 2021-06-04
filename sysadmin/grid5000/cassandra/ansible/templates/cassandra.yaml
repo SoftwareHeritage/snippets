@@ -1,0 +1,37 @@
+cluster_name: swh-storage # default 'Test Cluster'
+num_tokens: 256 # default 256
+allocate_tokens_for_local_replication_factor: 3
+data_file_directories:
+  - {{ cassandra_data_dir }} # TODO use several disks
+local_system_data_file_directory: {{ cassandra_data_dir_system }}
+commitlog_directory: {{ cassandra_commitlogs_dir }}
+
+disk_optimization_strategy: spinning # spinning | ssd
+
+# listen_address: 0.0.0.0 # always wrong according to the documentation
+listen_interface: {{ cassandra_listen_interface }} # always wrong according to the documentation
+
+concurrent_compactors: 1 # should be min(nb core, nb disks)
+
+internode_compression: dc # default dc possible all|dc|none
+
+concurrent_reads: 16 # 16 x number of drives
+concurrent_writes: 32 # 8 x number of cores
+
+commitlog_sync: periodic # default periodic
+commitlog_sync_period_in_ms: 10000 # default 10000
+
+partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+endpoint_snitch: SimpleSnitch
+
+seed_provider:
+- class_name: org.apache.cassandra.locator.SimpleSeedProvider
+  parameters:
+      # seeds is actually a comma-delimited list of addresses.
+      # Ex: "<ip1>,<ip2>,<ip3>"
+      - seeds: "{{ cassandra_seed_ips }}"
+
+# TODO Test this options effects
+# disk_failure_policy: 
+# cdc_enabled
+#end
