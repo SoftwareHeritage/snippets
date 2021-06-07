@@ -1,6 +1,20 @@
 Grid5000 terraform provisioning
 ===============================
 
+- [Grid5000 terraform provisioning](#grid5000-terraform-provisioning)
+  - [Prerequisite](#prerequisite)
+  - [Run](#run)
+    - [Local (on vagrant)](#local-on-vagrant)
+    - [On Grid5000](#on-grid5000)
+      - [Via the custom script](#via-the-custom-script)
+        - [Reservation configuration](#reservation-configuration)
+        - [Nodes configuration](#nodes-configuration)
+        - [Execution](#execution)
+      - [(deprecated) With terraform](#deprecated-with-terraform)
+  - [Cleanup](#cleanup)
+  - [TODO](#todo)
+  - [Possible improvments](#possible-improvments)
+
 Prerequisite
 ------------
 
@@ -57,6 +71,86 @@ UN  10.168.180.13  15.78 KiB  256     65.0%             c6bc1eff-fa0d-4b67-bc53-
 Cassandra can take some time to start, so you have to wait before the cluster stabilize itself.
 
 ### On Grid5000
+
+Useful link:
+Hardware information: https://www.grid5000.fr/w/Hardware
+Resources availability: https://www.grid5000.fr/w/Status
+
+#### Via the custom script
+
+##### Reservation configuration
+
+The configuration is defined on the `environment.cfg` file.
+In this file, g5k sites, cluster, nodes and reparition can be configured.
+
+##### Nodes configuration
+
+The node installation is done by ansible. It needs to know the node topology to correctly configure the tools (zfs pools and dataset, cassandra seed, ...)
+
+The configuration is centralized in the `ansible/hosts.yml` file
+
+##### Execution
+
+1. Transfer the files on g5k on the right site:
+
+```
+rsync -avP --exclude .vagrant --exclude .terraform cassandra access.grid5000.fr:/<site name>
+```
+
+2. Connect to the right site
+
+```
+ssh access.grid5000.fr
+ssh <site>
+```
+
+3. Reserve the disks
+
+The disks must be reserved before the node creation or they will not be detected on the nodes
+
+```
+./00-reserve_disks.sh
+```
+
+check the status of the job / the resources status to be sure they are correctly reserved
+
+```
+$ oarstat -fj <OAR JOB ID> | grep state
+    state = Running
+```
+The state must be running
+
+4. Launch a complete run
+
+```
+./01-run.sh
+```
+
+DISCLAIMER: Actually, it only runs the following steps:
+- reserve the nodes
+- install the os on all the nodes
+- launch ansible on all the nodes
+
+The underlying scripts can by run indepedently if they need to be restarted:
+- `02-reserver-nodes.sh`: Reserve the node resources
+- `03-deploy-nodes.sh`: Install the os (only one time per reservation) and launch ansible on all the nodes. To force an os resinstalltion, remove the `<JOB_ID_>.os.stamp` file
+
+5. Cleanup the resources
+
+To release the nodes:
+
+```
+oarstat -u
+<job id>
+<job id>
+```
+
+```
+oardel <jobid>
+```
+#### (deprecated) With terraform
+
+Terraform can be greate to reserve the resources but it doesn't not allow manage the scheduled jobs
 
 * Initialize terraform modules (first time only)
 ```
@@ -141,10 +235,16 @@ rm terraform.tfstate
 
 ## TODO
 
-[ ] variablization of the script
-[ ] Ansible provisionning of the nodes
-[ ] disk initialization
-[ ] support different cluster topologies (nodes / disks / ...)
-[ ] cassandra installation
+[X] variablization of the script
+[X] Ansible provisionning of the nodes
+[X] disk initialization
+[X] support different cluster topologies (nodes / disks / ...)
+[X] cassandra installation
+[ ] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
 [ ] swh-storage installation
-[ ] ...
+[ ] journal client for mirroring
+[ ] monitoring by prometheus
+
+## Possible improvments
+
+[ ] Use several besteffort jobs for cassandra nodes. They can be interrupted but don't have duration restrictions.
