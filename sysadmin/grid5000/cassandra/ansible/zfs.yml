@@ -1,0 +1,76 @@
+---
+- name: Install contrib and non-free repositories
+  apt_repository:
+    repo: deb http://deb.debian.org/debian/ buster-backports main contrib non-free
+    filename: backports.sources
+
+- name: Install zfs packages
+  apt:
+    update_cache: true # force an apt update before
+    name:
+    - linux-image-amd64
+    - linux-headers-amd64
+    - libnvpair1linux
+    - libuutil1linux
+    - libzfs2linux
+    - libzpool2linux
+    - zfs-dkms
+    - zfs-zed
+    - zfsutils-linux
+  ignore_errors: True
+
+- name: Ensure zfs initialized
+  shell: /usr/sbin/modprobe zfs
+
+- name: Finalize zfs packages installation
+  apt:
+    update_cache: true # force an apt update before
+    name:
+    - linux-image-amd64
+    - linux-headers-amd64
+    - libnvpair1linux
+    - libuutil1linux
+    - libzfs2linux
+    - libzpool2linux
+    - zfs-dkms
+    - zfs-zed
+    - zfsutils-linux
+
+- name: Install zfs packages after modprobe
+  apt:
+    update_cache: true # force an apt update before
+    name:
+    - zfsutils-linux
+    - zfs-zed
+
+- name: test if zfs pools are configured
+  command: zfs list -o name
+  register: pool_list
+
+- name: zfs pool import
+  shell: "zpool import {{ item.key }}"
+  loop:  "{{ lookup('dict', zfs_pools) }}"
+  when: item.key not in pool_list.stdout_lines
+  ignore_errors: True
+
+- name: test if zfs pools are configured
+  command: zfs list -o name
+  register: pool_list
+
+- name: create zfs pools
+  shell: "zpool create -f {{ item.key }} {{ item.value.disks | join(' ') }}"
+  loop:  "{{ lookup('dict', zfs_pools) }}"
+  when: item.key not in pool_list.stdout_lines
+
+- name: call dataset creation
+  include: _zfs_create_dataset.yml obj={{ outside_item }}
+  loop: "{{ lookup('dict', zfs_pools) }}"
+  loop_control:
+    loop_var: outside_item
+
+- name: call dataset creation
+  include: _zfs_create_dataset.yml obj={{ outside_item }}
+  loop: "{{ lookup('dict', zfs_pools) }}"
+  loop_control:
+    loop_var: outside_item
+  when: outside_item.key not in pool_list.stdout_lines

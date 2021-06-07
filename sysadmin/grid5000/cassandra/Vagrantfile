@@ -6,16 +6,19 @@ vms = {
         :ip          => "10.168.180.11",
         :memory      => 2048,
         :cpus        => 2,
+        :type       => 'cassandra',
     },
     "cassandra2" => {
         :ip          => "10.168.180.12",
         :memory      => 2048,
         :cpus        => 2,
+        :type       => 'cassandra',
     },
     "cassandra3" => {
         :ip          => "10.168.180.13",
         :memory      => 2048,
         :cpus        => 2,
+        :type       => 'cassandra',
     },
 }  
 
@@ -41,7 +44,7 @@ vms.each { | vm_name, vm_props |
             config.vm.hostname                = vm_name
             config.vm.network   :private_network, ip: vm_props[:ip], netmask: "255.255.0.0"
 
-            config.vm.synced_folder ".", "/vagrant", type: 'nfs'
+            config.vm.synced_folder ".", "/vagrant", type: 'nfs', nfs_version: 4
 
             config.vm.provision :ansible do |ansible|
                 ansible.verbose = true
@@ -54,6 +57,12 @@ vms.each { | vm_name, vm_props |
                 provider.memory = vm_props[:memory]
                 provider.cpus = vm_props[:cpus]
                 provider.driver = 'kvm'
+                if vm_props[:type] == "cassandra"
+                    provider.storage :file, :size => '1G'
+                    provider.storage :file, :size => '1G'
+                    provider.storage :file, :size => '1G'
+                end
+    
             end
         end
     end

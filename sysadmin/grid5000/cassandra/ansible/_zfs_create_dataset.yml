@@ -1,0 +1,15 @@
+---
+
+- name: Prepare datasets
+  set_fact: 
+    datasets: "{{ datasets | default({}) | combine ({ [obj.key, item.key] | join('/') : item.value }) }}"
+  loop: "{{ lookup('dict', obj.value.datasets, wantlist=True) }}"
+
+- name: Create zfs dataset
+  shell: "zfs create -o mountpoint={{item.value}} {{item.key}}"
+  loop: "{{ lookup('dict', datasets, wantlist=True) }}"
+  when: item.key not in pool_list.stdout_lines
+
+- name: Clean local variable
+  set_fact: 
+    datasets: {}

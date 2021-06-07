@@ -3,7 +3,7 @@ num_tokens: 256 # default 256
 allocate_tokens_for_local_replication_factor: 3
 data_file_directories:
   - {{ cassandra_data_dir }} # TODO use several disks
-local_system_data_file_directory: {{ cassandra_data_dir_system }}
+# local_system_data_file_directory: {{ cassandra_data_dir_system }}
 commitlog_directory: {{ cassandra_commitlogs_dir }}
 
 disk_optimization_strategy: spinning # spinning | ssd
