@@ -4,3 +4,8 @@
   tasks:
     - include: zfs.yml
     - include: cassandra.yml
+
+- name: Install SWH Storage
+  hosts: swh-storage
+  task:
+    - include: swh-storage
