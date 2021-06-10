@@ -20,7 +20,7 @@ vms = {
         :cpus        => 2,
         :type       => 'cassandra',
     },
-    "swh-storage" => {
+    "swh-storage1" => {
         :ip          => "10.168.180.14",
         :memory      => 1024,
         :cpus        => 2,

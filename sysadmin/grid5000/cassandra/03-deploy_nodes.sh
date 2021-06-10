@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-# set -eu
+set -eu
 
 SCRIPT_DIR="$(pwd $(dirname @0))"
 
 source "${SCRIPT_DIR}/environment.cfg"
-
-INSTALL_USER=root
 
 echo "########### Nodes:"
 uniq "${OAR_FILE_NODES}"
@@ -23,9 +21,9 @@ uniq "${OAR_NODE_FILE}" > ${SCRIPT_DIR}/nodes.lst
 
 echo "${CASSANDRA_HOSTS}" | sed 's/ /,/' > ${SCRIPT_DIR}/cassandra_seeds.lst
 
-parallel rsync -avP . "${INSTALL_USER}"@{}:install < ${SCRIPT_DIR}/nodes.lst
+parallel --halt now,fail=1 rsync -avP  . "${SSH_USER}"@{}:install < ${SCRIPT_DIR}/nodes.lst
 
-time parallel -u ssh "${INSTALL_USER}"@{} install/_provision_node.sh < ${SCRIPT_DIR}/nodes.lst
+time parallel --halt now,fail=1 -u ssh ${SSH_OPTIONS} "${SSH_USER}"@{} install/_provision_node.sh < ${SCRIPT_DIR}/nodes.lst
 
 echo "########### Cassandra installation done"
 touch ${SCRIPT_DIR}/nodes.installed

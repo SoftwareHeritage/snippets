@@ -120,10 +120,11 @@ $ oarstat -fj <OAR JOB ID> | grep state
 ```
 The state must be running
 
-4. Launch a complete run
+4. Launch a complete run 
 
+For an interactive mode:
 ```
-./01-run.sh
+./01-run-interactive.sh
 ```
 
 DISCLAIMER: Actually, it only runs the following steps:
@@ -135,7 +136,12 @@ The underlying scripts can by run indepedently if they need to be restarted:
 - `02-reserver-nodes.sh`: Reserve the node resources
 - `03-deploy-nodes.sh`: Install the os (only one time per reservation) and launch ansible on all the nodes. To force an os resinstalltion, remove the `<JOB_ID_>.os.stamp` file
 
-5. Cleanup the resources
+
+In a reservation:
+
+TODO the scripts need to be reorganized to automatize the scheduled resource reservation
+
+1. Cleanup the resources
 
 To release the nodes:
 
@@ -248,3 +254,4 @@ rm terraform.tfstate
 ## Possible improvments
 
 [ ] Use several besteffort jobs for cassandra nodes. They can be interrupted but don't have duration restrictions.
+[ ] Create a cassandra base image to speedup the environment initialization 
