@@ -1,0 +1,13 @@
+# File managed by puppet (module swh-gunicorn), changes will be lost
+
+[Unit]
+Description=All gunicorn services
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true
+ExecReload=/bin/true
+RemainAfterExit=on
+
+[Install]
+WantedBy=multi-user.target

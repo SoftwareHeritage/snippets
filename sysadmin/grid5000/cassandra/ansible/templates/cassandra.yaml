@@ -31,6 +31,9 @@ seed_provider:
       # Ex: "<ip1>,<ip2>,<ip3>"
       - seeds: "{{ cassandra_seed_ips }}"
 
+# needed by swh-storage
+enable_user_defined_functions: true
+
 # TODO Test this options effects
 # disk_failure_policy: 
 # cdc_enabled

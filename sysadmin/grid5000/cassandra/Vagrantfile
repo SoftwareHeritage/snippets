@@ -20,6 +20,12 @@ vms = {
         :cpus        => 2,
         :type       => 'cassandra',
     },
+    "swh-storage" => {
+        :ip          => "10.168.180.14",
+        :memory      => 1024,
+        :cpus        => 2,
+        :type       => 'swh-storage',
+    },
 }  
 
 # Images/remote configuration

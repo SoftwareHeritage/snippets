@@ -7,5 +7,5 @@
 
 - name: Install SWH Storage
   hosts: swh-storage
-  task:
-    - include: swh-storage
+  tasks:
+    - include: swh-storage.yml

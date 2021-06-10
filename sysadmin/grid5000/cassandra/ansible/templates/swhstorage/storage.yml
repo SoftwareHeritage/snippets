@@ -1,0 +1,8 @@
+storage:
+  cls: cassandra
+  args:
+    hosts: {{cassandra_seed_ips}}
+    keyspace: swh
+    objstorage:
+      cls: memory
+      args: {}

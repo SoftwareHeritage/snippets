@@ -1,0 +1,101 @@
+---
+- name: Add Backports repository
+  apt_repository:
+    repo: deb http://deb.debian.org/debian/ buster-backports main contrib non-free
+    filename: backports.sources
+
+- name: swhstorage group
+  group:
+    name: swhstorage
+    
+- name: swhstorage user
+  user:
+    name: swhstorage
+    group: swhstorage
+
+- name: Add SWH repository
+  apt_repository:
+    repo: deb [trusted=yes] https://debian.softwareheritage.org/ buster-swh main
+    state: present
+    filename: cassandra.sources
+
+- name: Install packages
+  apt:
+    name:
+      - dstat
+      - python3
+      - python3-gunicorn
+
+- name: Install packages from backports
+  apt:
+    name:
+      - python3-typing-extensions
+      - gunicorn3
+    default_release: buster-backports
+
+- name: Install swh storage packages
+  apt:
+    name:
+      - python3-swh.storage
+
+- name: Create directories
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  with_items:
+    - /etc/gunicorn
+    - /etc/gunicorn/instances
+    - /run/gunicorn
+    - /run/gunicorn/swh-storage
+    - /etc/softwareheritage
+    - /etc/softwareheritage/storage
+
+- name: Create swh-storage directories
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: swhstorage
+    group: swhstorage
+    mode: "0755"
+  with_items:
+    - /run/gunicorn/swh-storage/
+
+- name: Configure gunicorn - default service
+  template:
+    src: "templates/gunicorn/gunicorn.service"
+    dest: "/etc/systemd/system/gunicorn.service"
+
+- name: Configure gunicorn - log configuration
+  template:
+    src: "templates/gunicorn/logconfig.ini"
+    dest: "/etc/gunicorn/logconfig.ini"
+
+- name: swh-storage gunicorn instance configuration
+  template:
+    src: "templates/gunicorn/gunicorn-instance.cfg"
+    dest: "/etc/gunicorn/instances/swh-storage.cfg"
+
+- name: swh-storage configuration directories
+  template:
+    src: "templates/swhstorage/storage.yml"
+    dest: "/etc/softwareheritage/storage/storage.yml"
+
+- name: swh-storage service configuration
+  template:
+    src: "templates/gunicorn/gunicorn-instance-service.cfg"
+    dest: "/etc/systemd/system/gunicorn-swh-storage.service" # TODO variabilize
+
+- name: swh-storage service
+  service:
+    name: gunicorn-swh-storage
+    enabled: true
+    state: started
+
+- name: swh-storage init cassandra script
+  template:
+    src: templates/swhstorage/init-cassandra.sh
+    dest: /usr/local/bin/swh-storage-init-cassandra.sh
+    mode: 0755

@@ -240,10 +240,10 @@ rm terraform.tfstate
 [X] disk initialization
 [X] support different cluster topologies (nodes / disks / ...)
 [X] cassandra installation
-[ ] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
-[ ] swh-storage installation
+[X] swh-storage installation
 [ ] journal client for mirroring
 [ ] monitoring by prometheus
+[ ] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
 
 ## Possible improvments
 
