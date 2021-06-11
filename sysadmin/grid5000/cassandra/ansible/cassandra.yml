@@ -25,6 +25,7 @@
       - cassandra
       - dstat
       - smartmontools
+      - facter
 
 - name: Create datadirs
   file:

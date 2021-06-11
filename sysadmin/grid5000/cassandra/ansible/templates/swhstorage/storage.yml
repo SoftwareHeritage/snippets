@@ -1,7 +1,7 @@
 storage:
   cls: cassandra
   args:
-    hosts: {{cassandra_seed_ips}}
+    hosts: {{ cassandra_seed_ips.split(',') }}
     keyspace: swh
     objstorage:
       cls: memory
