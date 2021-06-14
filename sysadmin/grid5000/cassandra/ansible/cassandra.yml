@@ -26,6 +26,7 @@
       - dstat
       - smartmontools
       - facter
+      - tcpdump
 
 - name: Create datadirs
   file:

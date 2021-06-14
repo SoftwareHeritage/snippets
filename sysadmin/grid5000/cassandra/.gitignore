@@ -2,3 +2,5 @@
 terraform.tfstate*
 .vagrant
 playbook.retry
+.credentials
+.vault_password

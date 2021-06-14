@@ -21,7 +21,7 @@ uniq "${OAR_NODE_FILE}" > ${SCRIPT_DIR}/nodes.lst
 
 echo "${CASSANDRA_HOSTS}" | sed 's/ /,/' > ${SCRIPT_DIR}/cassandra_seeds.lst
 
-parallel --halt now,fail=1 rsync -avP  . "${SSH_USER}"@{}:install < ${SCRIPT_DIR}/nodes.lst
+time parallel --halt now,fail=1 rsync -avP  . "${SSH_USER}"@{}:install < ${SCRIPT_DIR}/nodes.lst
 
 time parallel --halt now,fail=1 -u ssh ${SSH_OPTIONS} "${SSH_USER}"@{} install/_provision_node.sh < ${SCRIPT_DIR}/nodes.lst
 

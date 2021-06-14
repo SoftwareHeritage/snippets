@@ -1,0 +1,7 @@
+[Unit]
+Description=swh storage replayer {{ item }}
+Requires={% for idx in range(process_count | int) %}replayer-{{ item }}@{{idx + 1}}.service {% endfor %}
+
+
+[Install]
+WantedBy=multi-user.target

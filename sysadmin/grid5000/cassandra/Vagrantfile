@@ -57,6 +57,13 @@ vms.each { | vm_name, vm_props |
                 ansible.become = true
                 ansible.playbook = "ansible/playbook.yml"
                 ansible.inventory_path = "ansible/hosts.yml"
+                ansible.raw_arguments  = [
+                    "-v",
+                    "--connection=paramiko",
+                    "--private-key=/home/.../.vagrant/machines/.../private_key",
+                    "--extra-vars=@.credentials",
+                    "--vault-password-file=.vault_password"
+                  ]
             end
 
             config.vm.provider :libvirt do |provider|

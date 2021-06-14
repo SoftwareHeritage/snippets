@@ -6,6 +6,8 @@ SCRIPT_DIR="$(pwd $(dirname @0))"
 
 source "${SCRIPT_DIR}/environment.cfg"
 
+rm -f nodes.installed
+
 ${SCRIPT_DIR}/02-reserve_nodes.sh
 
 echo "########### Waiting for node installations"

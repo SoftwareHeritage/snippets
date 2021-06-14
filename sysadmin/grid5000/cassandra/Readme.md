@@ -7,6 +7,7 @@ Grid5000 terraform provisioning
     - [Local (on vagrant)](#local-on-vagrant)
     - [On Grid5000](#on-grid5000)
       - [Via the custom script](#via-the-custom-script)
+        - [Credentials](#credentials)
         - [Reservation configuration](#reservation-configuration)
         - [Nodes configuration](#nodes-configuration)
         - [Execution](#execution)
@@ -78,6 +79,18 @@ Resources availability: https://www.grid5000.fr/w/Status
 
 #### Via the custom script
 
+##### Credentials
+
+1. Create a file .vault_password with a password inside
+2. execute the following commands :
+```
+ansible-vault create --vault-password-file=.vault_password .credentials
+```
+It will open an editor
+3. Add the password of your journal user:
+```
+broker_consumer_password: <your password>
+```
 ##### Reservation configuration
 
 The configuration is defined on the `environment.cfg` file.

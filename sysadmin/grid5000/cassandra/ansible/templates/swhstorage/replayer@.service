@@ -1,0 +1,20 @@
+[Unit]
+Description=swh storage {{ item }} replayer
+ConditionPathExists=/etc/softwareheritage/replayer/replayer-{{ item }}.yml
+PartOf=replayer-{{item}}.target
+
+[Service]
+Type=forking
+User=swhstorage
+Group=swhstorage
+PIDFile=/run/replayer/replayer-{{item}}-%i.pid
+Environment=SWH_CONFIG_FILENAME=/etc/softwareheritage/replayer/replayer-{{ item }}.yml
+Environment=SWH_LOG_TARGET=journal
+ExecStart=daemonize -p /run/replayer/replayer-{{item}}-%i.pid /usr/bin/swh storage replay
+ExecStop=/bin/kill -TERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+# Restart=Always
+# RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

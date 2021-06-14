@@ -1,0 +1,23 @@
+---
+- name: swh replayer {{obj}} configuration files
+  template:
+    src: templates/swhstorage/replayer.yml
+    dest: /etc/softwareheritage/replayer/replayer-{{ obj }}.yml
+
+- name: swh replayer replayer-{{obj}}@
+  template:
+    src: templates/swhstorage/replayer@.service
+    dest: /etc/systemd/system/replayer-{{obj}}@.service
+
+- name: swh replayer {{obj}} target
+  template:
+    src: templates/swhstorage/replayer.target
+    dest: /etc/systemd/system/replayer-{{obj}}.target
+  vars:
+    process_count: "{{ hostvars[inventory_hostname]['journal']['replayer_count'][obj] }}"
+
+- name: start {{obj}} replayer target
+  service:
+    name: replayer-{{obj}}.target
+    enabled: true
+    state: started

@@ -1,0 +1,23 @@
+storage:
+  cls: cassandra
+  args:
+    hosts: {{ cassandra_seed_ips.split(',') }}
+    keyspace: swh
+    objstorage:
+      cls: memory
+      args: {}
+
+journal_client:
+      cls: kafka
+      brokers:
+{% for broker in journal.brokers %}
+        - {{ broker }}
+{% endfor %}
+      sasl.username: {{ journal.consumer.user }}
+      sasl.password: {{ journal_consumer_password }}
+      security.protocol: sasl_ssl
+      sasl.mechanism: SCRAM-SHA-512
+      # The prefix must match the username
+      group_id: {{ journal.consumer.group }}
+      object_types:
+        - {{ item }}
