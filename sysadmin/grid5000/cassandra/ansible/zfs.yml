@@ -67,10 +67,4 @@
   loop: "{{ lookup('dict', zfs_pools) }}"
   loop_control:
     loop_var: outside_item
-
-- name: call dataset creation
-  include: _zfs_create_dataset.yml obj={{ outside_item }}
-  loop: "{{ lookup('dict', zfs_pools) }}"
-  loop_control:
-    loop_var: outside_item
   when: outside_item.key not in pool_list.stdout_lines
