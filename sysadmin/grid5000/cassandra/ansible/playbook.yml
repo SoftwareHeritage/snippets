@@ -9,3 +9,8 @@
   hosts: swh-storage
   tasks:
     - include: swh-storage.yml
+
+- name: Install Monitoring
+  hosts: monitoring
+  tasks:
+    - include: monitoring.yml

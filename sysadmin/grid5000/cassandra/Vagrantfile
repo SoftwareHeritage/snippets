@@ -26,6 +26,12 @@ vms = {
         :cpus        => 2,
         :type       => 'swh-storage',
     },
+    "monitoring1" => {
+        :ip          => "10.168.180.15",
+        :memory      => 1024,
+        :cpus        => 2,
+        :type       => 'monitoring',
+    },
 }  
 
 # Images/remote configuration

@@ -1,0 +1,47 @@
+#! /usr/bin/env ruby
+
+require 'optparse'
+
+def main
+  options = {}
+  OptionParser.new do |opts|
+    opts.banner = "Usage: g5k-setup-docker [-it]\nInstall Docker locally and make Docker commands available without user needing to log out"
+    opts.on('-i', '--install', 'Just install Docker locally (user need to log out)') do |i|
+      options[:install] = i
+    end
+    opts.on('-t', '--tmp', 'Bind /tmp/docker to /var/lib/docker to provide more storage space for pulled images (WARNING : A reboot will erase it)') do |t|
+      options[:tmp] = t
+    end
+  end.parse!
+
+  ret = true
+  ret &= sh('sudo-g5k').first if Process.euid != 0
+  if options[:tmp]
+    ret &= sh('sudo mkdir /tmp/docker').first
+    ret &= sh('sudo mkdir /var/lib/docker').first
+    ret &= sh('sudo mount --bind /tmp/docker /var/lib/docker').first
+  end
+  cpu_arch = `uname -m`.strip
+  # Docker is not officially supported on ppc64
+  if cpu_arch == 'ppc64le'
+    ret &= sh('echo "deb http://packages.grid5000.fr/deb/docker-ce/buster /" | sudo tee /etc/apt/sources.list.d/docker-ce.list').first
+    ret &= sh('sudo apt-get update && sudo apt-get install -y docker-ce').first
+  else
+    ret &= sh('curl -sSL https://get.docker.com/ | sh').first
+  end
+  ret &= sh('sudo mkdir -p /etc/docker')
+  ret &= sh('echo "{ \"registry-mirrors\": [\"http://docker-cache.grid5000.fr\"] }" | sudo tee /etc/docker/daemon.json')
+  ret &= sh('sudo systemctl restart docker')
+  ret &= sh('sudo chmod o+rw /var/run/docker.sock').first if !options[:install]
+  ret
+end
+
+def sh(cmd)
+  puts(cmd)
+  output = `#{cmd}`.chomp
+  status = ($?.exitstatus == 0)
+  [status, output]
+end
+
+# MAIN PROGRAM
+exit(main)

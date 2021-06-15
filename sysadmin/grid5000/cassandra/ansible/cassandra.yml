@@ -21,12 +21,15 @@
     update_cache: true # force an apt update before
     name:
       ## TODO: check other version than jdk11
-      - openjdk-11-jdk
       - cassandra
       - dstat
-      - smartmontools
       - facter
+      - openjdk-11-jdk
+      - smartmontools
       - tcpdump
+
+- name: install prometheus node exporter
+  include: _install_prometheus_exporter.yml
 
 - name: Create datadirs
   file:
@@ -35,17 +38,28 @@
     owner: "cassandra"
     group: "cassandra"
     mode: "0755"
+    recurse: true
   with_items:
     - "{{ cassandra_data_dir_base }}"
     - "{{ cassandra_data_dir_system }}"
     - "{{ cassandra_data_dir }}"
     - "{{ cassandra_commitlogs_dir }}"
 
+- name: Download prometheus jmx exporter
+  get_url:
+    url: https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.15.0/jmx_prometheus_javaagent-0.15.0.jar
+    dest: /opt/jmx_prometheus_javaagent-0.15.0.jar
+
+- name: Download prometheus exporter configuration
+  get_url:
+    url: https://raw.githubusercontent.com/prometheus/jmx_exporter/master/example_configs/cassandra.yml
+    dest: /opt/jmx_exporter.yml
+
 - name: Configure cassandra
   template:
     src: "templates/{{item}}"
     dest: "{{cassandra_config_dir}}/{{item}}"
-  with_items: [cassandra.yaml, jvm.options]
+  with_items: [cassandra.yaml, jvm11-server.options]
   register: cassandra_configuration_files
 
 - name: Restart cassandra service
@@ -53,7 +67,5 @@
     name: cassandra
     state: restarted
   when: cassandra_configuration_files.changed
-
-
 
   # TODO test different read ahead

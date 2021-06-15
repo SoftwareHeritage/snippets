@@ -1,0 +1,45 @@
+---
+- name: Create grid5000 tools directories
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  with_items:
+    - /grid5000
+    - /grid5000/code
+    - /grid5000/code/bin
+  when: install_docker_install_script
+
+- name: Install docker installation script
+  copy:
+    src: "files/g5k-setup-docker"
+    dest: "/grid5000/code/bin/g5k-setup-docker"
+    owner: root
+    group: root
+    mode: "0755"
+  when: install_docker_install_script
+
+- name: Install docker
+  command:
+    cmd: "/grid5000/code/bin/g5k-setup-docker"
+
+- name: Create prometheus data directory
+  file:
+    state: directory
+    path: /tmp/prometheus
+    owner: nobody
+    group: nogroup
+
+- name: install prometheus node exporter
+  include: _install_prometheus_exporter.yml
+
+- name: Create prometheus configuration
+  template:
+    src: "templates/prometheus/prometheus.yml"
+    dest: "/etc/prometheus.yml"
+
+- name: Start prometheus
+  command:
+    cmd: "docker run -d -p 9090:9090 -v /etc/prometheus.yml:/etc/prometheus/prometheus.yml -v /tmp/prometheus:/prometheus --name prometheus prom/prometheus"

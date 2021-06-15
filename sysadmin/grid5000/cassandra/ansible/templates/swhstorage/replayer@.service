@@ -10,6 +10,7 @@ Group=swhstorage
 PIDFile=/run/replayer/replayer-{{item}}-%i.pid
 Environment=SWH_CONFIG_FILENAME=/etc/softwareheritage/replayer/replayer-{{ item }}.yml
 Environment=SWH_LOG_TARGET=journal
+Environment=STATSD_PORT=9125
 ExecStart=daemonize -p /run/replayer/replayer-{{item}}-%i.pid /usr/bin/swh storage replay
 ExecStop=/bin/kill -TERM $MAINPID
 ExecReload=/bin/kill -HUP $MAINPID

@@ -59,12 +59,12 @@
 
 - name: create zfs pools
   shell: "zpool create -f {{ item.key }} {{ item.value.disks | join(' ') }}"
-  loop:  "{{ lookup('dict', zfs_pools) }}"
+  loop:  "{{ lookup('dict', zfs_pools, wantlist=True) }}"
   when: item.key not in pool_list.stdout_lines
 
 - name: call dataset creation
   include: _zfs_create_dataset.yml obj={{ outside_item }}
-  loop: "{{ lookup('dict', zfs_pools) }}"
+  loop: "{{ lookup('dict', zfs_pools, wantlist=True) }}"
   loop_control:
     loop_var: outside_item
   when: outside_item.key not in pool_list.stdout_lines

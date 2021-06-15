@@ -100,4 +100,6 @@
 # inferior performance and risks exceeding MaxDirectMemory
 -Dio.netty.tryReflectionSetAccessible=true
 
+-javaagent:/opt/jmx_prometheus_javaagent-0.15.0.jar=7070:/opt/jmx_exporter.yml
+
 # The newline in the end of file is intentional

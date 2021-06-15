@@ -12,6 +12,7 @@
   user:
     name: swhstorage
     group: swhstorage
+    home: /var/lib/swhstorage # *big images mount homes via nfs so the user creation failed
 
 - name: Add SWH repository
   apt_repository:
@@ -25,6 +26,7 @@
       - daemonize
       - dstat
       - facter
+      - prometheus-statsd-exporter
       - python3
       - python3-gunicorn
       - tcpdump
@@ -41,6 +43,9 @@
     name:
       - python3-swh.storage
       - python3-swh.journal
+
+- name: install prometheus node exporter
+  include: _install_prometheus_exporter.yml
 
 - name: Create directories
   file:
