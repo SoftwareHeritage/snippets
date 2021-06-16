@@ -6,7 +6,7 @@ SCRIPT_DIR="$(pwd $(dirname @0))"
 
 source "${SCRIPT_DIR}/environment.cfg"
 
-rm -f nodes.installed
+rm -vf nodes.installed besteffort_nodes.installed nodes.lst besteffort_nodes.lst
 
 ${SCRIPT_DIR}/02-reserve_nodes.sh
 

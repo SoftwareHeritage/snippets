@@ -39,7 +39,19 @@
   template:
     src: "templates/prometheus/prometheus.yml"
     dest: "/etc/prometheus.yml"
+  register: prometheus_configuration
+
+- name: test if prometheus container exists
+  command: docker ps -a --format='{{ '{{' }}.Names{{ '}}' }}'
+  register: containers
+
 
 - name: Start prometheus
   command:
     cmd: "docker run -d -p 9090:9090 -v /etc/prometheus.yml:/etc/prometheus/prometheus.yml -v /tmp/prometheus:/prometheus --name prometheus prom/prometheus"
+  when: containers.stdout.find('prometheus') == -1
+
+- name: Restart prometheus
+  command:
+    cmd: "docker restart prometheus"
+  when: containers.stdout.find('prometheus') != -1
