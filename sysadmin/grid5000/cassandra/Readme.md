@@ -4,8 +4,9 @@ Grid5000 terraform provisioning
 - [Grid5000 terraform provisioning](#grid5000-terraform-provisioning)
   - [Prerequisite](#prerequisite)
   - [Run](#run)
-    - [Local (on vagrant)](#local-on-vagrant)
+    - [Testing locally (on vagrant)](#testing-locally-on-vagrant)
     - [On Grid5000](#on-grid5000)
+      - [Environment description](#environment-description)
       - [Via the custom script](#via-the-custom-script)
         - [Credentials](#credentials)
         - [Reservation configuration](#reservation-configuration)
@@ -45,7 +46,7 @@ The public key will be installed on the nodes
 Run
 ---
 
-### Local (on vagrant)
+### Testing locally (on vagrant)
 
 The `Vagrantfile` is configured to provision 3 nodes, install cassandra and the configure the cluster using the ansible configuration:
 
@@ -76,6 +77,12 @@ Cassandra can take some time to start, so you have to wait before the cluster st
 Useful link:
 Hardware information: https://www.grid5000.fr/w/Hardware
 Resources availability: https://www.grid5000.fr/w/Status
+
+#### Environment description
+
+This is a macro representation of the testing environment:
+
+![Grid5000 Environment](docs/environment.png)
 
 #### Via the custom script
 

@@ -1,0 +1,53 @@
+@startuml
+
+title Cassandra experiment environment
+
+package grid5000 {
+
+    node "cassandra cluster" as cassandra {
+        node cassandraX {
+            component cassandra as db{
+
+            }
+            component zfs {
+                database disks
+            }
+            db --> zfs
+        }
+    }
+
+    node replayers {
+        node "swh-storage1"
+        node "swh-storage2"
+        node "..." as storagex
+    }
+
+    node monitoring {
+        component docker {
+            component prometheus
+        }
+    }
+
+    cassandra <--> replayers
+    monitoring --> cassandra
+    monitoring --> replayers
+}
+
+package "Software Heritage" as swh {
+    component journal
+
+}
+
+replayers --> journal
+
+queue "SSH tunnel" as ssh
+
+node "Prometheus backup" as external_prometheus
+note right: Export the Grid5000 prometheus content\nvia the federation api
+
+
+ssh --> prometheus
+external_prometheus --> ssh
+
+
+@enduml

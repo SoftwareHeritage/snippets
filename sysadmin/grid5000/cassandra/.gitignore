@@ -4,3 +4,4 @@ terraform.tfstate*
 playbook.retry
 .credentials
 .vault_password
+out
