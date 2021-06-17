@@ -5,3 +5,4 @@ playbook.retry
 .credentials
 .vault_password
 out
+environment.cfg
