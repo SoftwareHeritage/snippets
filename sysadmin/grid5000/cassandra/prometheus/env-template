@@ -1,0 +1,6 @@
+# copy to .env
+
+# This directory must be 755 and owned by nobody:nogroup
+PROMETHEUS_DATA_DIR=/srv/tmp/data
+# The public ip of your laptop if the ssh tunneling is used
+FEDERATED_PROMETHEUS_IP=192.168.xxx.xxx
