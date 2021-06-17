@@ -38,3 +38,6 @@ enable_user_defined_functions: true
 # disk_failure_policy: 
 # cdc_enabled
 #end
+
+# Trying to reduce cassandra_compaction_pendingtasks
+compaction_throughput_mb_per_sec: 80
