@@ -304,7 +304,8 @@ rm terraform.tfstate
 [X] swh-storage installation
 [X] journal client for mirroring
 [X] monitoring by prometheus
-[ ] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
+[X] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
+[ ] Add some randome read load
 
 ## Possible improvments
 
