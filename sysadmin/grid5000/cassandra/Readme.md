@@ -12,6 +12,7 @@ Grid5000 terraform provisioning
         - [Reservation configuration](#reservation-configuration)
         - [Nodes configuration](#nodes-configuration)
         - [Execution](#execution)
+      - [Monitoring](#monitoring)
       - [(deprecated) With terraform](#deprecated-with-terraform)
   - [Cleanup](#cleanup)
   - [TODO](#todo)
@@ -174,6 +175,40 @@ oarstat -u
 ```
 oardel <jobid>
 ```
+
+#### Monitoring
+
+To backup the grid5000 monitoring data and made them persistent accross the environment restarts, they can be replicated in a local docker environment.
+
+
+1. Create the local prometheus data dir
+```
+sudo mkdir -m 777 -p /srv/tmp/prometheus
+```
+2. In a terminal, launch a ssh tunnel to the gird5000 prometheus node
+   
+   Your ssh environment must be configured as explained in this page: 
+   https://www.grid5000.fr/w/SSH#SSH_configuration_for_Grid.275000.2C_and_first_basic_connections
+
+   Section `Easing SSH connections from the outside to Grid'5000`
+
+For example, if the current prometheus node is `paravance-2`:
+```
+ ssh -L 9090:paravance-2:9090 rennes.g5k
+```
+
+3. in the `monitoring` directory:
+   1. copy the `env-template` file to `.env`
+   2. customize the content according your needs
+   3. Start the containers
+   ```
+    docker-compose up
+   ```
+
+The local prometheus is accessible at http://localhost:9092
+
+The local grafana is accessible at http://localhost:9093
+   
 #### (deprecated) With terraform
 
 Terraform can be greate to reserve the resources but it doesn't not allow manage the scheduled jobs
@@ -267,8 +302,8 @@ rm terraform.tfstate
 [X] support different cluster topologies (nodes / disks / ...)
 [X] cassandra installation
 [X] swh-storage installation
-[ ] journal client for mirroring
-[ ] monitoring by prometheus
+[X] journal client for mirroring
+[X] monitoring by prometheus
 [ ] Add a tool to erase the reserved disks (useful to avoid zfs to detect the previous pools and be able to restart from scratch)
 
 ## Possible improvments

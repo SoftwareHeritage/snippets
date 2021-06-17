@@ -6,3 +6,4 @@ playbook.retry
 .vault_password
 out
 environment.cfg
+.env
