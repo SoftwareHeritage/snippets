@@ -20,7 +20,7 @@ echo "Stopping cassandra"
 echo -n ${CASSANDRA_NODES} | parallel -v -d' ' ssh "${SSH_USER}"@{} systemctl stop cassandra 
 
 echo "Removing data"
-echo -n ${CASSANDRA_NODES} | parallel -v -d' ' ssh "${SSH_USER}"@{} rm -rf "/srv/cassandra/commitlog/*" "/srv/cassandra/data/*"
+echo -n ${CASSANDRA_NODES} | parallel -v -d' ' ssh "${SSH_USER}"@{} rm -rf "/srv/cassandra/commitlogs/*" "/srv/cassandra/data/*"
 
 echo "Starting cassandra"
 echo -n ${CASSANDRA_NODES} | parallel -v -d' ' ssh "${SSH_USER}"@{} systemctl start cassandra 
