@@ -43,6 +43,9 @@
     - zfsutils-linux
     - zfs-zed
 
+- name: Remove possible old lvm volumes
+  shell: vgscan | awk '{print $4}'| grep -v volume | xargs -r -n1 vgremove -y
+
 - name: test if zfs pools are configured
   command: zfs list -o name
   register: pool_list
