@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eux
+#set -eux
 
 apt update
 apt install -y ansible

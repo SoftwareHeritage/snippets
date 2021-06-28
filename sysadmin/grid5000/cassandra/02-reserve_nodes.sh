@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eu
+# set -eu
 
 SCRIPT_DIR="$(pwd $(dirname @0))"
 
@@ -19,7 +19,8 @@ if [ -e OAR_JOB_ID ]; then
   ${SCRIPT_DIR}/03-deploy_nodes.sh
 else
   echo "Reserving and installing nodes"
-  oarsub -l "{host in (${NODE_FILTER})}/nodes=${NODE_COUNT},walltime=${NODE_RESERVATION_DURATION}" -t deploy ${SCRIPT_DIR}/03-deploy_nodes.sh
+  # oarsub -l "{host in (${NODE_FILTER})}/nodes=${NODE_COUNT},walltime=${NODE_RESERVATION_DURATION}" -t deploy ${SCRIPT_DIR}/03-deploy_nodes.sh
+  oarsub -r '2021-06-17 19:05:00' -l "{host in (${NODE_FILTER})}/nodes=${NODE_COUNT},walltime=${NODE_RESERVATION_DURATION}" -t deploy ${SCRIPT_DIR}/03-deploy_nodes.sh
   # -t besteffort
   # -r '2021-06-08 19:05:00'
 fi

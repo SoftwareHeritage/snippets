@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eux
+# set -eux
 
 SCRIPT_DIR="$(pwd $(dirname @0))"
 
