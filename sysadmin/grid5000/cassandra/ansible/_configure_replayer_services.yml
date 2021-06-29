@@ -20,4 +20,4 @@
   service:
     name: replayer-{{obj}}.target
     enabled: true
-    state: started
+    state: stopped

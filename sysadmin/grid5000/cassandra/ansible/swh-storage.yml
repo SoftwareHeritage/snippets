@@ -107,7 +107,7 @@
 
 - name: swh-storage init cassandra script
   template:
-    src: templates/swhstorage/init-cassandra.sh
+    src: templates/swhstorage/init-cassandra-keyspace.sh
     dest: /usr/local/bin/swh-storage-init-cassandra.sh
     mode: 0755
 
@@ -123,3 +123,6 @@
     - release
     - revision
     - snapshot
+
+- name: reload systemd
+  command: systemctl daemon-reload

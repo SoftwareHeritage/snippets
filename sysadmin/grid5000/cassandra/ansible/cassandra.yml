@@ -68,4 +68,25 @@
     state: restarted
   when: cassandra_configuration_files.changed
 
+- name: cassandra replication configuration script
+  template:
+    src: templates/swhstorage/change-cassandra-replication.sh
+    dest: /usr/local/bin/change-cassandra-replication.sh
+    mode: 0755
+
   # TODO test different read ahead
+
+- name: Install object count exporter
+  copy:
+    src: "files/cassandra/prometheus-object-count.sh"
+    dest: "/usr/local/bin/prometheus-object-count.sh"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Send object count to prometheus
+  cron:
+    name: "object count"
+    minute: "*"
+    hour: "*"
+    job: "/usr/local/bin/prometheus-object-count.sh > /dev/null"

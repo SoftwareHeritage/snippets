@@ -16,11 +16,11 @@ while [ ! -e ${SCRIPT_DIR}/nodes.installed ]; do
 done
 echo "########### Node installations done"
 
-echo "########### Initialize cassandra"
-FIRST_STORAGE_HOST="$(echo ${STORAGE_HOSTS} | cut -f1 -d' ')"
-STORAGE_NODE="${FIRST_STORAGE_HOST}.${G5K_SITE}"
+${SCRIPT_DIR}/05-initialize_cassandra.sh
 
-ssh "${SSH_USER}@${STORAGE_NODE}" /usr/local/bin/swh-storage-init-cassandra.sh
+${SCRIPT_DIR}/10-start_replayers.sh
+
+
 
 echo "####### FINISHED"
 
