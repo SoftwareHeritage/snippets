@@ -4,13 +4,13 @@ set -eu
 
 NODES=$*
 
-if [ -z "${NODES}" ]; then
-  NODES=${STORAGE_HOSTS}
-fi
-
 SCRIPT_DIR="$(pwd $(dirname @0))"
 
 source "${SCRIPT_DIR}/environment.cfg"
+
+if [ -z "${NODES}" ]; then
+  NODES=${STORAGE_HOSTS}
+fi
 
 for NODE in $NODES; do
     echo "########### Stopping replayers on $NODE..."
