@@ -67,7 +67,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "delta(cassandra_clientrequest_timeouts_count[$__rate_interval]) >0",
+          "expr": "increase(cassandra_clientrequest_timeouts_count[$__rate_interval]) >0",
           "interval": "",
           "legendFormat": "{{instance}} - {{clientrequest}}",
           "refId": "A"

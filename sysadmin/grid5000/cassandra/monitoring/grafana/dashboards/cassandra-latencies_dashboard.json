@@ -1,0 +1,2364 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 1,
+    "id": 13,
+    "iteration": 1625118554711,
+    "links": [],
+    "panels": [
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 40,
+        "title": "Client requests timeouts",
+        "type": "row"
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 1
+        },
+        "hiddenSeries": false,
+        "id": 38,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.4",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "repeat": "cassandra",
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          }
+        },
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(increase(cassandra_clientrequest_timeouts_count{instance=\"${cassandra}\"}[$__rate_interval]))>=0",
+            "interval": "",
+            "legendFormat": "timeouts",
+            "refId": "A"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "${cassandra}",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "$$hashKey": "object:235",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "$$hashKey": "object:236",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 1
+        },
+        "hiddenSeries": false,
+        "id": 41,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.4",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 38,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          }
+        },
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(increase(cassandra_clientrequest_timeouts_count{instance=\"${cassandra}\"}[$__rate_interval]))>=0",
+            "interval": "",
+            "legendFormat": "timeouts",
+            "refId": "A"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "${cassandra}",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "$$hashKey": "object:235",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "$$hashKey": "object:236",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "aliasColors": {},
+        "bars": false,
+        "dashLength": 10,
+        "dashes": false,
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "fill": 1,
+        "fillGradient": 0,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 1
+        },
+        "hiddenSeries": false,
+        "id": 42,
+        "legend": {
+          "avg": false,
+          "current": false,
+          "max": false,
+          "min": false,
+          "show": true,
+          "total": false,
+          "values": false
+        },
+        "lines": true,
+        "linewidth": 1,
+        "nullPointMode": "null",
+        "options": {
+          "alertThreshold": true
+        },
+        "percentage": false,
+        "pluginVersion": "7.5.4",
+        "pointradius": 2,
+        "points": false,
+        "renderer": "flot",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 38,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          }
+        },
+        "seriesOverrides": [],
+        "spaceLength": 10,
+        "stack": false,
+        "steppedLine": false,
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "sum(increase(cassandra_clientrequest_timeouts_count{instance=\"${cassandra}\"}[$__rate_interval]))>=0",
+            "interval": "",
+            "legendFormat": "timeouts",
+            "refId": "A"
+          }
+        ],
+        "thresholds": [],
+        "timeFrom": null,
+        "timeRegions": [],
+        "timeShift": null,
+        "title": "${cassandra}",
+        "tooltip": {
+          "shared": true,
+          "sort": 0,
+          "value_type": "individual"
+        },
+        "type": "graph",
+        "xaxis": {
+          "buckets": null,
+          "mode": "time",
+          "name": null,
+          "show": true,
+          "values": []
+        },
+        "yaxes": [
+          {
+            "$$hashKey": "object:235",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          },
+          {
+            "$$hashKey": "object:236",
+            "format": "short",
+            "label": null,
+            "logBase": 1,
+            "max": null,
+            "min": null,
+            "show": true
+          }
+        ],
+        "yaxis": {
+          "align": false,
+          "alignLevel": null
+        }
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 9
+        },
+        "id": 10,
+        "panels": [],
+        "repeat": "metrics",
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_clientrequest_latency_seconds",
+            "value": "cassandra_clientrequest_latency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 10
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 2,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_clientrequest_latency_seconds",
+            "value": "cassandra_clientrequest_latency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 10
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 55,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_clientrequest_latency_seconds",
+            "value": "cassandra_clientrequest_latency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 10
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 56,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_clientrequest_latency_seconds",
+            "value": "cassandra_clientrequest_latency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 19
+        },
+        "id": 43,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_readlatency_seconds",
+            "value": "cassandra_keyspace_readlatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 44,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_readlatency_seconds",
+            "value": "cassandra_keyspace_readlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 57,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 44,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_readlatency_seconds",
+            "value": "cassandra_keyspace_readlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 58,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 44,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_readlatency_seconds",
+            "value": "cassandra_keyspace_readlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 29
+        },
+        "id": 45,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_writelatency_seconds",
+            "value": "cassandra_keyspace_writelatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 30
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 46,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_writelatency_seconds",
+            "value": "cassandra_keyspace_writelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 30
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 59,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 46,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_writelatency_seconds",
+            "value": "cassandra_keyspace_writelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 30
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 60,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 46,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_writelatency_seconds",
+            "value": "cassandra_keyspace_writelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 39
+        },
+        "id": 47,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_crossnodelatency_seconds",
+            "value": "cassandra_messaging_crossnodelatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 40
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 48,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_crossnodelatency_seconds",
+            "value": "cassandra_messaging_crossnodelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 40
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 61,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 48,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_crossnodelatency_seconds",
+            "value": "cassandra_messaging_crossnodelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 40
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 62,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 48,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_crossnodelatency_seconds",
+            "value": "cassandra_messaging_crossnodelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 49
+        },
+        "id": 49,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_rangelatency_seconds",
+            "value": "cassandra_keyspace_rangelatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 50
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 50,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_rangelatency_seconds",
+            "value": "cassandra_keyspace_rangelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 50
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 63,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 50,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_rangelatency_seconds",
+            "value": "cassandra_keyspace_rangelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 50
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 64,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 50,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_keyspace_rangelatency_seconds",
+            "value": "cassandra_keyspace_rangelatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 59
+        },
+        "id": 51,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_req_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_req_waitlatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 60
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 52,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_req_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_req_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 60
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 65,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 52,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_req_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_req_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 60
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 66,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 52,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_req_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_req_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 69
+        },
+        "id": 53,
+        "panels": [],
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 10,
+        "scopedVars": {
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_rsp_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_rsp_waitlatency_seconds"
+          }
+        },
+        "title": "${metrics}",
+        "type": "row"
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 70
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 54,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeat": "cassandra",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 2,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-2:7070",
+            "value": "parasilo-2:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_rsp_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_rsp_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 70
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 67,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 54,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-3:7070",
+            "value": "parasilo-3:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_rsp_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_rsp_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      },
+      {
+        "cards": {
+          "cardPadding": null,
+          "cardRound": null
+        },
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScale": "sqrt",
+          "colorScheme": "interpolateOranges",
+          "exponent": 0.5,
+          "mode": "spectrum"
+        },
+        "dataFormat": "timeseries",
+        "datasource": null,
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 70
+        },
+        "heatmap": {},
+        "hideZeroBuckets": false,
+        "highlightCards": true,
+        "id": 68,
+        "legend": {
+          "show": true
+        },
+        "pluginVersion": "7.5.4",
+        "repeatDirection": "h",
+        "repeatIteration": 1625118554711,
+        "repeatPanelId": 54,
+        "repeatedByRow": true,
+        "reverseYBuckets": false,
+        "scopedVars": {
+          "cassandra": {
+            "selected": false,
+            "text": "parasilo-4:7070",
+            "value": "parasilo-4:7070"
+          },
+          "metrics": {
+            "selected": false,
+            "text": "cassandra_messaging_ping_rsp_waitlatency_seconds",
+            "value": "cassandra_messaging_ping_rsp_waitlatency_seconds"
+          }
+        },
+        "targets": [
+          {
+            "exemplar": true,
+            "expr": "${metrics}{instance=\"${cassandra}\"}",
+            "interval": "",
+            "legendFormat": "",
+            "refId": "A"
+          }
+        ],
+        "title": "${cassandra}",
+        "tooltip": {
+          "show": true,
+          "showHistogram": false
+        },
+        "type": "heatmap",
+        "xAxis": {
+          "show": true
+        },
+        "xBucketNumber": null,
+        "xBucketSize": null,
+        "yAxis": {
+          "decimals": null,
+          "format": "dtdurations",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true,
+          "splitFactor": null
+        },
+        "yBucketBound": "auto",
+        "yBucketNumber": null,
+        "yBucketSize": null
+      }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "style": "dark",
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "allValue": null,
+          "current": {
+            "selected": false,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "datasource": null,
+          "definition": "label_values(cassandra_clientrequest_latency_seconds, instance)",
+          "description": "",
+          "error": null,
+          "hide": 0,
+          "includeAll": true,
+          "label": null,
+          "multi": true,
+          "name": "cassandra",
+          "options": [
+            {
+              "selected": true,
+              "text": "All",
+              "value": "$__all"
+            },
+            {
+              "selected": false,
+              "text": "parasilo-2:7070",
+              "value": "parasilo-2:7070"
+            },
+            {
+              "selected": false,
+              "text": "parasilo-3:7070",
+              "value": "parasilo-3:7070"
+            },
+            {
+              "selected": false,
+              "text": "parasilo-4:7070",
+              "value": "parasilo-4:7070"
+            }
+          ],
+          "query": {
+            "query": "label_values(cassandra_clientrequest_latency_seconds, instance)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 0,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "tagValuesQuery": "",
+          "tags": [],
+          "tagsQuery": "",
+          "type": "query",
+          "useTags": false
+        },
+        {
+          "allValue": null,
+          "current": {
+            "selected": false,
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "description": null,
+          "error": null,
+          "hide": 0,
+          "includeAll": true,
+          "label": null,
+          "multi": true,
+          "name": "metrics",
+          "options": [
+            {
+              "selected": true,
+              "text": "All",
+              "value": "$__all"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_clientrequest_latency_seconds",
+              "value": "cassandra_clientrequest_latency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_keyspace_readlatency_seconds",
+              "value": "cassandra_keyspace_readlatency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_keyspace_writelatency_seconds",
+              "value": "cassandra_keyspace_writelatency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_messaging_crossnodelatency_seconds",
+              "value": "cassandra_messaging_crossnodelatency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_keyspace_rangelatency_seconds",
+              "value": "cassandra_keyspace_rangelatency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_messaging_ping_req_waitlatency_seconds",
+              "value": "cassandra_messaging_ping_req_waitlatency_seconds"
+            },
+            {
+              "selected": false,
+              "text": "cassandra_messaging_ping_rsp_waitlatency_seconds",
+              "value": "cassandra_messaging_ping_rsp_waitlatency_seconds"
+            }
+          ],
+          "query": "cassandra_clientrequest_latency_seconds,cassandra_keyspace_readlatency_seconds,cassandra_keyspace_writelatency_seconds,cassandra_messaging_crossnodelatency_seconds,cassandra_keyspace_rangelatency_seconds,,cassandra_messaging_ping_req_waitlatency_seconds,cassandra_messaging_ping_rsp_waitlatency_seconds",
+          "queryValue": "",
+          "skipUrlSync": false,
+          "type": "custom"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Cassandra - Latencies",
+    "uid": "4ANIzxznz",
+    "version": 23
+  }
