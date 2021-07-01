@@ -8,7 +8,7 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-cqlsh "$(facter networking.ip)" -k swh -e "copy object_count (object_type, count) to '/tmp/count'"
+cqlsh "$(facter networking.ip)" -k swh -e "consistency local_quorum; copy object_count (object_type, count) to '/tmp/count'"
 
 echo '# TYPE swh_objects_total gauge' >"${tmpfile}"
 
