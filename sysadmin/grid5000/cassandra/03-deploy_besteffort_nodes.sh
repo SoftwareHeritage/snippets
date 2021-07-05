@@ -33,6 +33,9 @@ time rsync -avP  . "${SSH_USER}"@${MONITORING_HOSTS}:install
 time ssh ${SSH_OPTIONS} "${SSH_USER}"@${MONITORING_HOSTS} install/_provision_node.sh
 ssh ${SSH_OPTIONS} "${SSH_USER}"@${MONITORING_HOSTS} docker restart prometheus
 
+# Start the replayers
+${SCRIPT_DIR}/10-start_replayers.sh ${NODE}
+
 # The script must not exit to avoid the oar job to be killed
 echo "########### Sleeping"
 sleep infinity
