@@ -3,14 +3,19 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "Prometheus",
+        "datasource": "-- Grafana --",
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "limit": 100,
+        "matchAny": true,
         "name": "Annotations & Alerts",
         "showIn": 0,
-        "type": "dashboard"
+        "tags": [
+          "configuration",
+          "admin"
+        ],
+        "type": "tags"
       }
     ]
   },
@@ -18,7 +23,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1625489329509,
+  "iteration": 1625491226760,
   "links": [],
   "panels": [
     {
@@ -671,7 +676,7 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
+          "selected": false,
           "text": [
             "All"
           ],
@@ -712,5 +717,5 @@
   "timezone": "",
   "title": "System",
   "uid": "i-x02ognk",
-  "version": 7
+  "version": 12
 }

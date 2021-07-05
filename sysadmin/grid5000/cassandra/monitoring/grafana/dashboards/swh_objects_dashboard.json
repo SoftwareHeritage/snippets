@@ -7,8 +7,14 @@
           "enable": true,
           "hide": true,
           "iconColor": "rgba(0, 211, 255, 1)",
+          "limit": 100,
+          "matchAny": true,
           "name": "Annotations & Alerts",
-          "type": "dashboard"
+          "tags": [
+            "configuration",
+            "admin"
+          ],
+          "type": "tags"
         }
       ]
     },
@@ -16,7 +22,7 @@
     "gnetId": null,
     "graphTooltip": 1,
     "id": 1,
-    "iteration": 1625476711015,
+    "iteration": 1625491283427,
     "links": [],
     "panels": [
       {
@@ -393,5 +399,5 @@
     "timezone": "",
     "title": "SWH objects",
     "uid": "8PmeIpz7z",
-    "version": 3
+    "version": 4
   }
