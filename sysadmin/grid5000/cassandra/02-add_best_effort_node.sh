@@ -8,7 +8,9 @@ source "${SCRIPT_DIR}/environment.cfg"
 
 EXCLUDED_HOSTS=""
 
-for h in ${BEST_EFFORT_EXCLUDED_NODES}; do
+TO_EXCLUDE="$(echo ${BEST_EFFORT_EXCLUDED_NODES} | sed 's/,/ /g')"
+
+for h in ${TO_EXCLUDE}; do
   EXCLUDED_HOSTS="${EXCLUDED_HOSTS},'${h}.${G5K_SITE}'"
 done
 EXCLUDED_HOSTS="$(echo ${EXCLUDED_HOSTS} | cut -b2-)"
