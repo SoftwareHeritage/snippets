@@ -746,7 +746,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(cassandra_table_repairjobsstarted[$__rate_interval])",
+          "expr": "cassandra_table_repairjobsstarted - cassandra_table_repairjobscompleted",
           "interval": "",
           "legendFormat": "{{instance}}",
           "refId": "A"
