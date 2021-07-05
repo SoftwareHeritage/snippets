@@ -19,6 +19,6 @@ journal_client:
       sasl.mechanism: SCRAM-SHA-512
       # The prefix must match the username
       group_id: {{ journal.consumer.group }}-{{ item }}
-      batch_size: 500
+      batch_size: 250
       object_types:
         - {{ item }}

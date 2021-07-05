@@ -8,7 +8,8 @@
 #  GC SETTINGS  #
 #################
 
-
+-Xmx16G
+-Xms16G
 
 ### CMS Settings
 -XX:+UseConcMarkSweepGC
