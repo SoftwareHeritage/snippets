@@ -3,6 +3,7 @@ storage:
   args:
     hosts: {{ cassandra_seed_ips.split(',') }}
     keyspace: swh
+    consistency_level: LOCAL_QUORUM
     objstorage:
       cls: memory
       args: {}
