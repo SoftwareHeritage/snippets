@@ -12,7 +12,8 @@
         "name": "Annotations & Alerts",
         "tags": [
           "configuration",
-          "admin"
+          "admin",
+          "run"
         ],
         "type": "tags"
       }
@@ -194,7 +195,7 @@
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         },
         {
@@ -627,7 +628,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "cassandra_table_maxpartitionsize > 0",
+          "expr": "cassandra_table_maxpartitionsize{keyspace=\"\"} > 0",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -785,5 +786,5 @@
   "timezone": "",
   "title": "Cassandra",
   "uid": "ta3ruAgnk",
-  "version": 8
+  "version": 17
 }

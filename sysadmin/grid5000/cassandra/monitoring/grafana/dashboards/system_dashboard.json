@@ -13,7 +13,8 @@
         "showIn": 0,
         "tags": [
           "configuration",
-          "admin"
+          "admin",
+          "run"
         ],
         "type": "tags"
       }
@@ -23,7 +24,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1625491226760,
+  "iteration": 1625678661883,
   "links": [],
   "panels": [
     {
@@ -667,7 +668,7 @@
       }
     }
   ],
-  "refresh": false,
+  "refresh": "10s",
   "schemaVersion": 30,
   "style": "dark",
   "tags": [],
@@ -717,5 +718,5 @@
   "timezone": "",
   "title": "System",
   "uid": "i-x02ognk",
-  "version": 12
+  "version": 14
 }
