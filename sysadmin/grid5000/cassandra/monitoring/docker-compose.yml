@@ -12,6 +12,7 @@ services:
       - ${PROMETHEUS_DATA_DIR}:/prometheus
     ports:
       - 9092:9090
+    restart: always
 
   grafana:
     image: grafana/grafana
@@ -20,9 +21,10 @@ services:
     ports:
       - 80:3000
     environment:
-      GF_SERVER_ROOT_URL: http://localhost:9093/
+      GF_SERVER_ROOT_URL: http://192.168.130.165/
       GF_AUTH_ANONYMOUS_ENABLED: "true"
     volumes:
       - "./grafana/provisioning:/etc/grafana/provisioning:ro"
       - "./grafana/dashboards:/var/lib/grafana/dashboards"
       - "grafana-data:/var/lib/grafana"
+    restart: always
