@@ -22,6 +22,7 @@ concurrent_counter_writes: 48
 commitlog_sync: periodic # default periodic
 commitlog_sync_period_in_ms: 10000 # default 10000
 commitlog_total_space_in_mb: 16384 # default 8192
+commitlog_segment_size_in_mb: 64 # default 32 (due to oversize mutation on revision table)
 
 partitioner: org.apache.cassandra.dht.Murmur3Partitioner
 endpoint_snitch: SimpleSnitch
