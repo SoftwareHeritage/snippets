@@ -102,7 +102,7 @@ def print_calendar(tables):
                 if start <= current_day and current_day+one_work_week <= end:
                     color = colorama.Fore.WHITE + colorama.Back.BLUE
                     status = "not working"
-                elif current_day <= start <= current_day+one_work_week or current_day <= end <= current_day+one_work_week:
+                elif current_day <= start < current_day+one_work_week or current_day <= end < current_day+one_work_week:
                     color = colorama.Fore.BLACK + colorama.Back.YELLOW
                     status = "partial"
             append_cell(status, color=color)
