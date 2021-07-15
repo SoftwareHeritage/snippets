@@ -51,6 +51,7 @@ class Parser(html.parser.HTMLParser):
         if tag == "h2":
             self.current_mode = Modes.IN_SECTION
         elif tag == "table":
+            self.current_table = self.current_table[1:]  # drop header
             self.tables[self.current_person] = self.current_table
             self.current_mode = Modes.IN_SECTION
             self.current_table = None
@@ -91,8 +92,8 @@ def print_calendar(tables):
 
     for (person, table) in tables.items():
         current_day = START_DAY
-        intervals = [INTERVAL_RE.match(row[0]) for row in table]
-        intervals = [tuple(map(datetime.date.fromisoformat, interval.groups())) for interval in intervals if interval]
+        intervals = [INTERVAL_RE.match(row[0]) for row in table if "holiday" in row[1].lower() or "vacation" in row[1].lower()]
+        intervals = [tuple(map(datetime.date.fromisoformat, interval.groups())) for interval in intervals]
         append_cell(person)
         while current_day < END_DAY:
             color = colorama.Fore.WHITE + colorama.Back.BLACK
