@@ -80,10 +80,13 @@ def print_calendar(tables):
         current_line = []
 
     # header
-    append_cell("")
+    append_cell("week:")
     while current_day < END_DAY:
         append_cell(current_day.isoformat())
         current_day += one_week
+    flush_row()
+
+    append_cell("(date=monday)")
     flush_row()
 
     for (person, table) in tables.items():
