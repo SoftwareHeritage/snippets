@@ -68,6 +68,7 @@ class Parser(html.parser.HTMLParser):
 
 def print_calendar(tables):
     one_week = datetime.timedelta(weeks=1)
+    six_days = datetime.timedelta(days=1)
     current_day = START_DAY
 
     current_line = []
@@ -94,12 +95,12 @@ def print_calendar(tables):
             color = colorama.Fore.WHITE + colorama.Back.BLACK
             status = "working"
             for (start, end) in intervals:
-                if current_day <= start <= current_day+one_week or current_day <= end <= current_day+one_week:
-                    color = colorama.Fore.BLACK + colorama.Back.YELLOW
-                    status = "partial"
-                elif start <= current_day and current_day+one_week <= end:
+                if start <= current_day and current_day+six_days <= end:
                     color = colorama.Fore.WHITE + colorama.Back.BLUE
                     status = "not working"
+                elif current_day <= start <= current_day+six_days or current_day <= end <= current_day+six_days:
+                    color = colorama.Fore.BLACK + colorama.Back.YELLOW
+                    status = "partial"
             append_cell(status, color=color)
             current_day += one_week
         flush_row()
