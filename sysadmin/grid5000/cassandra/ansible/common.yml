@@ -1,0 +1,5 @@
+---
+- name: remove incorrect radeon repo
+  file:
+    state: absent
+    path: /etc/apt/sources.list.d/repo.radeon.com.list

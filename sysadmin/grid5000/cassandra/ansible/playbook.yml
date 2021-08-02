@@ -1,4 +1,9 @@
 ---
+- name: Common
+  hosts: all
+  tasks:
+    - include: common.yml
+
 - name: Install cassandra
   hosts: cassandra
   tasks:
