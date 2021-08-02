@@ -7,6 +7,9 @@ services:
       context: prometheus
       args:
         FEDERATED_PROMETHEUS_IP: ${FEDERATED_PROMETHEUS_IP}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=365d'
 
     volumes:
       - ${PROMETHEUS_DATA_DIR}:/prometheus
