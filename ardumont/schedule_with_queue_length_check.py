@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2017-2018  The Software Heritage developers
+# Copyright (C) 2017-2021  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -10,8 +10,12 @@ import click
 import sys
 import time
 
-from swh.model.hashutil import hash_to_hex
+from kombu.utils.uuid import uuid
 
+from typing import Optional
+from swh.core.config import load_from_envvar
+from swh.model.hashutil import hash_to_hex
+from celery.exceptions import NotRegistered
 try:
     from swh.indexer.producer import gen_sha1
 except ImportError:
@@ -44,6 +48,33 @@ def stdin_to_mercurial_tasks(batch_size):
                     'origin_url': origin_url,
                     'archive_path': archive_path,
                     'visit_date': 'Tue, 3 May 2016 17:16:32 +0200',
+                },
+             },
+        }
+
+
+def stdin_to_bitbucket_mercurial_tasks(batch_size):
+    """Generates from stdin the proper task argument for the
+       bitbucket loader-mercurial worker.
+
+    Args:
+        batch_size (int): Not used
+
+    Yields:
+        expected dictionary of 'arguments' key
+
+    """
+    for line in sys.stdin:
+        line = line.rstrip()
+        origin_url, directory, visit_date_day, visit_date_hour = line.split(' ')
+        visit_date = ' '.join([visit_date_day, visit_date_hour])
+        yield {
+            'arguments': {
+                'args': [],
+                'kwargs': {
+                    'url': origin_url,
+                    'directory': directory,
+                    'visit_date': visit_date,
                 },
              },
         }
@@ -138,6 +169,13 @@ QUEUES = {
         'task_generator_fn': stdin_to_mercurial_tasks,
         'print_fn': print,
     },
+    'bitbucket-mercurial':{
+        'task_name': 'oneshot:swh.loader.mercurial.tasks.LoadMercurial',
+        'threshold': None,
+        # to_task the function to use to transform the input in task
+        'task_generator_fn': stdin_to_bitbucket_mercurial_tasks,
+        'print_fn': print,
+    },
     'indexer': {  # for indexer, we schedule using the orchestrator's queue
                   # we check the length on the mimetype queue though
         'task_name': 'swh.indexer.tasks.OrchestratorAllContents',
@@ -148,7 +186,7 @@ QUEUES = {
 }
 
 
-def queue_length_get(app, queue_name):
+def queue_length_get(app, queue_name: str) -> Optional[int]:
     """Read the queue's current length.
 
     Args:
@@ -156,10 +194,14 @@ def queue_length_get(app, queue_name):
         queue_name: fqdn queue name to retrieve queue length from
 
     Returns:
-        queue_name's length
+        queue_name's length if any
 
     """
-    return app.get_queue_length(app.tasks[queue_name].task_queue)
+    try:
+        queue_length = app.get_queue_length(app.tasks[queue_name].task_queue)
+    except:
+        queue_length = None
+    return queue_length
 
 
 def send_new_tasks(app, queues_to_check):
@@ -184,17 +226,18 @@ def send_new_tasks(app, queues_to_check):
         threshold = queue_to_check['threshold']
 
         _queue_length = queue_length_get(app, queue_name)
-        if _queue_length >= threshold:
+        if _queue_length is not None and _queue_length >= threshold:
             return False
 
     return True
 
 
 @click.command(help='Read from stdin and send message to queue ')
-@click.option('--queue-name', help='Queue concerned')
+@click.option('--queue-name', help='Queue concerned',
+              type=click.Choice(QUEUES))
 @click.option('--threshold', help='Threshold for the queue',
               type=click.INT,
-              default=None)
+              default=1000)
 @click.option('--batch-size', help='Batch size if batching is possible',
               type=click.INT,
               default=1000)
@@ -211,7 +254,12 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
 
     queue_information = QUEUES[queue_name]
     task_name = queue_information['task_name']
-    scheduling_task = app.tasks[task_name]
+    if ":" in task_name:
+        task_name_without_prefix = task_name.split(":")[1]
+    else:
+        task_name_without_prefix = task_name
+
+    scheduling_task = app.tasks[task_name_without_prefix]
 
     if not threshold:
         threshold = queue_information['threshold']
@@ -220,7 +268,7 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     # or not.  If none is provided (default case), we use the
     # scheduling queue as checking queue
     queues_to_check = queue_information.get('queues_to_check', [{
-        'task_name': task_name,
+        'task_name': task_name_without_prefix,
         'threshold': threshold,
     }])
 
@@ -231,8 +279,11 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
 
         if send_new_tasks(app, queues_to_check):
             # we can send new tasks, compute how many we can send
-            queue_length = queue_length_get(app, task_name)
-            nb_tasks_to_send = threshold - queue_length
+            queue_length = queue_length_get(app, task_name_without_prefix)
+            if queue_length is not None:
+                nb_tasks_to_send = threshold - queue_length
+            else:
+                nb_tasks_to_send = threshold
         else:
             nb_tasks_to_send = 0
 
@@ -256,9 +307,13 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
 
             print_fn = queue_information.get('print_fn', print)
             for _task in pending_tasks:
-                args = _task['arguments']['args']
-                kwargs = _task['arguments']['kwargs']
-                scheduling_task.delay(*args, **kwargs)
+                app.send_task(
+                    task_name_without_prefix,
+                    task_id=uuid(),
+                    args=_task["arguments"]["args"],
+                    kwargs=_task["arguments"]["kwargs"],
+                    queue=task_name,
+                )
                 print_fn(_task['arguments'])
 
         else:
