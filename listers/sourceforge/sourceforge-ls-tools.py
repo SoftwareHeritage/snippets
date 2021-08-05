@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-"""list all SourceForge project "tools", starting from a project list
+"""list all SourceForge project "tools", starting from a namespaced project list
 
 output format is a list of records, each consisting of TAB-separated fields:
-project_name, tool_name, tool_url
+namespaced_project_name, tool_name, tool_url
 
 Example:
 
@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 
 SF_BASE_URL = "https://sourceforge.net"
-REST_URL_PREFIX = "https://sourceforge.net/rest/p/"
+REST_URL_PREFIX = "https://sourceforge.net/rest/"
 WORKERS = 8
 
 
@@ -32,9 +32,9 @@ def ls_all_tools(projects):
     session = FuturesSession(executor=ThreadPoolExecutor(max_workers=WORKERS))
     responses = []
 
-    for project in projects:  # schedule requests
-        rest_url = REST_URL_PREFIX + project
-        responses.append((project, session.get(rest_url)))
+    for namespaced_project in projects:  # schedule requests
+        rest_url = REST_URL_PREFIX + namespaced_project
+        responses.append((namespaced_project, session.get(rest_url)))
 
     for proj_name, res in tqdm(responses):  # extract tools from responses
         try:

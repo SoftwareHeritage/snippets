@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 SITEMAP_INDEX_URL = "https://sourceforge.net/allura_sitemap/sitemap.xml"
-PROJ_URL_RE = re.compile("^(https://sourceforge.net/p/)([^/]+)")
+PROJ_URL_RE = re.compile("^https://sourceforge.net/([^/]+)/([^/]+)/(.*)")
 CACHE_DIR = Path("~/.cache/swh/sourceforge-lister").expanduser()
 
 
@@ -56,11 +56,20 @@ def ls_projects(sitemap_url):
         for proj in sub_idx.findall(".//{*}url"):
             proj_url = proj.find("{*}loc").text
             if m := PROJ_URL_RE.match(proj_url):
+                namespace = m.group(1)
+                if namespace == "projects":
+                    # These have a `/p/` counterparts
+                    continue
                 proj_name = m.group(2)  # base project url
+                rest = m.group(3)
+                if rest.count("/") > 1:
+                    # This is a subproject
+                    proj_name = f"{proj_name}/{rest.rsplit('/', 2)[0]}"
+
                 h = hash(proj_name)
                 if h not in known_projs:
                     known_projs.add(h)
-                    yield proj_name
+                    yield f"{namespace}/{proj_name}"
 
 
 def main():
