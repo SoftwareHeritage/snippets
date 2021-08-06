@@ -119,7 +119,7 @@ def list_projects(ctx: Dict) -> Dict[str, Any]:
 
 @main.command('issues')
 @click.option('--project-slug', '-p', required=1,
-               help="Project's slug identifier")
+              help="Project's slug identifier")
 @click.pass_context
 def issues(ctx, project_slug):
     """List all projects's issues. This returns a mapping from their id to their
