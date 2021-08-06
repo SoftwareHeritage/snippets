@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-# Copyright (C) 2017-2018 the Software Heritage developers
+# Copyright (C) 2017-2021 the Software Heritage developers
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 # Configuration file at ~/.config/swh/kibana/query.yml
-# (configuration sample at https://forge.softwareheritage.org/P221)
+# configuration sample:
+# - https://forge.softwareheritage.org/P221
+# - https://forge.softwareheritage.org/P221#7494
 
 # Use:
 # ./kibana_fetch_logs.py | tee temporary-error-file
@@ -15,7 +17,44 @@ import click
 import logging
 import requests
 
-from swh.core.config import SWHConfig
+from typing import Any, Dict
+from swh.core.config import load_from_envvar
+
+
+DEFAULT_CONFIG = {
+    # ssh tunnel required now: ssh -L 9200:<ip>:9200 <hostname>
+    'server': 'http://localhost:9200',
+    'indexes': [
+        'swh_workers-2017.05.*', 'swh_workers-2017.06.*'
+    ],
+    'size': 10,
+    'from': 0,
+    '_source': [
+        'message',
+        'swh_task_args_0',
+    ],
+    'sort': [{
+        '@timestamp': 'asc'
+    }],
+    'query': {
+        'bool': {
+            'must': [
+                {
+                    'match': {
+                        'systemd_unit.keyword': {
+                            'query': 'swh-worker@loader_svn.service',
+                        }
+                    }
+                },
+                {
+                    'term': {
+                        'priority': '3'
+                    }
+                }
+            ]
+        }
+    },
+}
 
 
 logger = logging.getLogger(__name__)
@@ -107,50 +146,14 @@ def parse_task_kwargs(source, keys=[]):
     return kwargs
 
 
-class KibanaFetchLog(SWHConfig):
+class KibanaFetchLog:
     """Kibana fetch log class to permit log retrieval.
 
     """
     CONFIG_BASE_FILENAME = 'kibana/query'
 
-    DEFAULT_CONFIG = {
-        'server': ('str', 'http://esnode3.internal.softwareheritage.org:9200'),
-        'indexes': ('list[str]', [
-            'swh_workers-2017.05.*', 'swh_workers-2017.06.*']),
-        'size': ('int', 10),
-        'from': ('int', 0),
-        '_source': ('list[str]', [
-            'message',
-            'swh_task_args_0',
-        ]),
-        'sort': ('list', [{
-            '@timestamp': 'asc'
-        }]),
-        'query': ('dict', {
-            'bool': {
-                'must': [
-                    {
-                        'match': {
-                            'systemd_unit.keyword': {
-                                'query': 'swh-worker@loader_svn.service',
-                            }
-                        }
-                    },
-                    {
-                        'term': {
-                            'priority': '3'
-                        }
-                    }
-                ]
-            }
-        }),
-    }
-
-    ADDITIONAL_CONFIG = {}
-
     def __init__(self, config=None):
-        self.config = self.parse_config_file(
-            additional_configs=[self.ADDITIONAL_CONFIG])
+        self.config: Dict[str, Any] = load_from_envvar(DEFAULT_CONFIG)
         if config:  # permit to amend the configuration file if it exists
             self.config.update(config)
 
@@ -255,7 +258,7 @@ class KibanaFetchLog(SWHConfig):
             if not data:
                 break
 
-            total_hits = data['total_hits']
+            total_hits = data['total_hits']['value']
             last_sort_time = data['last_sort_time']
 
             for row in data['all']:
