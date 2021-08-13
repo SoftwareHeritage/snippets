@@ -24,7 +24,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1625678661883,
+  "iteration": 1628630431997,
   "links": [],
   "panels": [
     {
@@ -74,7 +74,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -182,7 +182,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -276,7 +276,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -393,7 +393,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -499,7 +499,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -593,7 +593,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.0.4",
+      "pluginVersion": "8.0.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -666,6 +666,232 @@
         "align": false,
         "alignLevel": null
       }
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "node_filesystem_size_bytes{device=\"data/data\", fstype=\"zfs\", instance=\"parasilo-2.rennes.grid5000.fr:9100\", job=\"Node exporter\", mountpoint=\"/srv/cassandra/data\"}"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 0,
+        "y": 28
+      },
+      "id": 198,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "node_filesystem_size_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/data\"} - node_filesystem_free_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/data\"}",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "node_filesystem_size_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/data\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "B"
+        }
+      ],
+      "title": "Cassandra data",
+      "type": "timeseries"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "node_filesystem_size_bytes{device=\"commitlogs/commitlogs\", fstype=\"zfs\", instance=\"parasilo-2.rennes.grid5000.fr:9100\", job=\"Node exporter\", mountpoint=\"/srv/cassandra/commitlogs\"}"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 9,
+        "y": 28
+      },
+      "id": 231,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "node_filesystem_size_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/commitlogs\"} - node_filesystem_free_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/commitlogs\"}",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "node_filesystem_size_bytes{instance=~\"${nodes}\", mountpoint=\"/srv/cassandra/commitlogs\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "B"
+        }
+      ],
+      "title": "Cassandra commitlogs",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
@@ -679,10 +905,18 @@
         "current": {
           "selected": false,
           "text": [
-            "All"
+            "parasilo-2.rennes.grid5000.fr:9100",
+            "parasilo-3.rennes.grid5000.fr:9100",
+            "parasilo-4.rennes.grid5000.fr:9100",
+            "parasilo-5.rennes.grid5000.fr:9100",
+            "parasilo-6.rennes.grid5000.fr:9100"
           ],
           "value": [
-            "$__all"
+            "parasilo-2.rennes.grid5000.fr:9100",
+            "parasilo-3.rennes.grid5000.fr:9100",
+            "parasilo-4.rennes.grid5000.fr:9100",
+            "parasilo-5.rennes.grid5000.fr:9100",
+            "parasilo-6.rennes.grid5000.fr:9100"
           ]
         },
         "datasource": null,
@@ -711,12 +945,12 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "System",
   "uid": "i-x02ognk",
-  "version": 14
+  "version": 22
 }
