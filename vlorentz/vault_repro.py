@@ -193,7 +193,7 @@ def clone_repo(repo_path_or_url):
         ) as cloned_path:
             os.rmdir(cloned_path)
             subprocess.run(
-                ["git", "--bare", "clone", repo_path_or_url, cloned_path], check=True,
+                ["git", "clone", "--bare", repo_path_or_url, cloned_path], check=True,
             )
             yield cloned_path
 
