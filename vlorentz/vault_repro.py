@@ -34,19 +34,42 @@ def list_object_ids(path: pathlib.Path) -> Set[Sha1Git]:
         ["git", "rev-list", "--objects", "-g", "--no-walk", "--all"], cwd=path,
     )
     obj_ids = [
-        line.split()[0]
-        for line in (stdout1 + stdout2).decode("ascii").split("\n")
+        line.split()[0].decode("ascii")
+        for line in (stdout1 + stdout2).split(b"\n")
         if line
     ]
     return set(map(hash_to_bytes, obj_ids))
 
 
 def list_refs(path: pathlib.Path) -> Dict[bytes, bytes]:
-    return {
-        ref_name: open(ref_name).read()
-        for ref_name in path.glob("refs/**/*")
-        if ref_name.is_file()
-    }
+    packed_refs_path = path / "packed-refs"
+    if packed_refs_path.is_file():
+        refs = {
+            ref_name: target
+            for (target, ref_name) in [
+                line.split()
+                for line in open(packed_refs_path)
+                if (
+                    line
+                    and not line.startswith("#")  # header
+                    and not line.startswith("^")  # wat?
+                )
+            ]
+        }
+    else:
+        refs = {}
+
+    # refs/ takes precedence over packed-refs (although it's unlikely they would
+    # ever disagree on a target)
+    refs.update(
+        {
+            str(ref_name.relative_to(path)): open(ref_name).read()
+            for ref_name in path.glob("refs/**/*")
+            if ref_name.is_file()
+        }
+    )
+
+    return refs
 
 
 def load_repo(path: pathlib.Path, storage_config) -> CoreSWHID:
