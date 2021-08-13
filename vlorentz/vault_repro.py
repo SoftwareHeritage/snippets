@@ -160,9 +160,9 @@ def repro_repo(config_path, path: pathlib.Path) -> None:
     missing_refs = set(original_refs) - set(cooked_refs)
     extra_refs = set(cooked_refs) - set(original_refs)
     if missing_refs:
-        print("Missing refs:", " ".join(map(str, missing_refs)))
+        print("Missing refs:", " ".join(map(repr, missing_refs)))
     if extra_refs:
-        print("Extra refs:", " ".join(map(str, missing_refs)))
+        print("Extra refs:", " ".join(map(repr, extra_refs)))
     mismatched_refs = False
     for ref_name in original_refs:
         if original_refs[ref_name] != cooked_refs[ref_name]:
