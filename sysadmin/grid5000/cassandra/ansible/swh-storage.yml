@@ -117,6 +117,7 @@
     - content
     - skipped_content
     - directory
+    - extid
     - origin
     - origin_visit
     - origin_visit_status
