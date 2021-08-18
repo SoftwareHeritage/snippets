@@ -17,16 +17,15 @@ if [ ! -e "${SCRIPT_DIR}/${INSTALLED_OS_STAMP}" ]; then
     touch "${SCRIPT_DIR}/${INSTALLED_OS_STAMP}"
 fi
 
-NODE=$(uniq "${OAR_NODE_FILE}")
-echo "${NODE}" >> ${SCRIPT_DIR}/besteffort_nodes.lst
-sort besteffort_nodes.lst | uniq > besteffort_nodes.lst.tmp
-mv besteffort_nodes.lst.tmp besteffort_nodes.lst
-
 echo "${CASSANDRA_HOSTS}" | sed 's/ /,/g' > ${SCRIPT_DIR}/cassandra_seeds.lst
 
 time rsync -avP  . "${SSH_USER}"@${NODE}:install 
 time ssh ${SSH_OPTIONS} "${SSH_USER}"@${NODE} install/_provision_node.sh
 
+NODE=$(uniq "${OAR_NODE_FILE}")
+echo "${NODE}" >> ${SCRIPT_DIR}/besteffort_nodes.lst
+sort besteffort_nodes.lst | uniq > besteffort_nodes.lst.tmp
+mv besteffort_nodes.lst.tmp besteffort_nodes.lst
 
 # Refresh the monitoring configuration
 time rsync -avP  . "${SSH_USER}"@${MONITORING_HOSTS}:install 
