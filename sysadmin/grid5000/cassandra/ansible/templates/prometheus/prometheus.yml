@@ -52,3 +52,22 @@ scrape_configs:
       '{{node}}:9102',
 {% endfor %}
       ]
+
+{% if federated_prometheus is defined %}
+  - job_name: 'federate'
+    scrape_interval: 15s
+
+    honor_labels: true
+    metrics_path: '/federate'
+
+    params:
+      'match[]':
+        - '{__name__=~".*"}'
+
+    static_configs:
+      - targets: [
+{% for node in federated_prometheus %}
+      '{{node}}',
+{% endfor %}
+      ]
+{% endif %}

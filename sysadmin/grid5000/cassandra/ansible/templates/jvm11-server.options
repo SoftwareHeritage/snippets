@@ -8,8 +8,8 @@
 #  GC SETTINGS  #
 #################
 
--Xmx16G
--Xms16G
+-Xmx{{ cassandra_memory }}
+-Xms{{ cassandra_memory }}
 
 ### CMS Settings
 -XX:+UseConcMarkSweepGC

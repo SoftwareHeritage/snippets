@@ -59,7 +59,7 @@
   template:
     src: "templates/{{item}}"
     dest: "{{cassandra_config_dir}}/{{item}}"
-  with_items: [cassandra.yaml, jvm11-server.options]
+  with_items: [cassandra.yaml, cassandra-rackdc.properties, jvm11-server.options]
   register: cassandra_configuration_files
 
 - name: Restart cassandra service

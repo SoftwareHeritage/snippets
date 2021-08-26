@@ -24,7 +24,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1628630431997,
+  "iteration": 1629414615884,
   "links": [],
   "panels": [
     {
@@ -706,6 +706,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -724,20 +725,20 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "node_filesystem_size_bytes{device=\"data/data\", fstype=\"zfs\", instance=\"parasilo-2.rennes.grid5000.fr:9100\", job=\"Node exporter\", mountpoint=\"/srv/cassandra/data\"}"
+              "id": "byRegexp",
+              "options": "/node_filesystem_size_bytes/"
             },
             "properties": [
-              {
-                "id": "custom.fillOpacity",
-                "value": 30
-              },
               {
                 "id": "color",
                 "value": {
                   "fixedColor": "blue",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 43
               }
             ]
           }
@@ -837,20 +838,20 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "node_filesystem_size_bytes{device=\"commitlogs/commitlogs\", fstype=\"zfs\", instance=\"parasilo-2.rennes.grid5000.fr:9100\", job=\"Node exporter\", mountpoint=\"/srv/cassandra/commitlogs\"}"
+              "id": "byRegexp",
+              "options": "/node_filesystem_size_bytes/"
             },
             "properties": [
-              {
-                "id": "custom.fillOpacity",
-                "value": 30
-              },
               {
                 "id": "color",
                 "value": {
                   "fixedColor": "blue",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 42
               }
             ]
           }
@@ -903,7 +904,7 @@
       {
         "allValue": null,
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "parasilo-2.rennes.grid5000.fr:9100",
             "parasilo-3.rennes.grid5000.fr:9100",
@@ -945,12 +946,12 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "System",
   "uid": "i-x02ognk",
-  "version": 22
+  "version": 26
 }

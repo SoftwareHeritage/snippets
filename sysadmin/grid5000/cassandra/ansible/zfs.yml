@@ -3,6 +3,10 @@
   apt_repository:
     repo: deb http://deb.debian.org/debian/ buster-backports main contrib non-free
     filename: backports.sources
+- name: Install contrib
+  apt_repository:
+    repo: deb http://deb.debian.org/debian/ buster contrib non-free
+    filename: buster-contrib.sources
 
 - name: Install zfs packages
   apt:
@@ -44,7 +48,7 @@
     - zfs-zed
 
 - name: Remove possible old lvm volumes
-  shell: vgscan | awk '{print $4}'| grep -v volume | xargs -r -n1 vgremove -y
+  shell: vgscan | awk '{print $4}'| grep -v -e volume -e swh-debian | xargs -r -n1 vgremove -y
 
 - name: test if zfs pools are configured
   command: zfs list -o name

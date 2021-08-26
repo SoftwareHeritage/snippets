@@ -20,6 +20,12 @@ vms = {
         :cpus        => 2,
         :type       => 'cassandra',
     },
+    "cassandra4" => {
+        :ip          => "10.168.180.24",
+        :memory      => 2048,
+        :cpus        => 2,
+        :type       => 'cassandra',
+    },
     "swh-storage1" => {
         :ip          => "10.168.180.14",
         :memory      => 1024,
@@ -35,8 +41,9 @@ vms = {
 }  
 
 # Images/remote configuration
-$global_debian10_box = "debian10-20210517-1348"
+$global_debian10_box = "debian10-20210820-1622"
 $global_debian10_box_url = "https://annex.softwareheritage.org/public/isos/libvirt/debian/swh-debian-10.9-amd64-20210517-1348.qcow2"
+$global_debian10_box_url = "file:///home/vsellier/src/swh/puppet-environment/packer/builds/swh-debian-10.10-amd64-20210820-1622.qcow2"
 
 vms.each { | vm_name, vm_props |
 
