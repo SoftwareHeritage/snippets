@@ -18,11 +18,11 @@ if [ ! -e "${SCRIPT_DIR}/${INSTALLED_OS_STAMP}" ]; then
 fi
 
 echo "${CASSANDRA_HOSTS}" | sed 's/ /,/g' > ${SCRIPT_DIR}/cassandra_seeds.lst
+NODE=$(uniq "${OAR_NODE_FILE}")
 
 time rsync -avP  . "${SSH_USER}"@${NODE}:install 
 time ssh ${SSH_OPTIONS} "${SSH_USER}"@${NODE} install/_provision_node.sh
 
-NODE=$(uniq "${OAR_NODE_FILE}")
 echo "${NODE}" >> ${SCRIPT_DIR}/besteffort_nodes.lst
 sort besteffort_nodes.lst | uniq > besteffort_nodes.lst.tmp
 mv besteffort_nodes.lst.tmp besteffort_nodes.lst
