@@ -56,7 +56,7 @@
 
 - name: zfs pool import
   shell: "zpool import {{ item.key }}"
-  loop:  "{{ lookup('dict', zfs_pools) }}"
+  loop:  "{{ lookup('dict', zfs_pools, wantlist=True) }}"
   when: item.key not in pool_list.stdout_lines
   ignore_errors: True
 
