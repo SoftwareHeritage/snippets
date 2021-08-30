@@ -23,7 +23,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": 6,
-  "iteration": 1629968819671,
+  "iteration": 1630320261967,
   "links": [],
   "panels": [
     {
@@ -490,7 +490,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "cassandra_commitlog_totalcommitlogsize",
+          "expr": "cassandra_commitlog_totalcommitlogsize{instance=~\"${cluster}.*\"}",
           "interval": "",
           "legendFormat": "{{instance}}",
           "refId": "A"
@@ -1013,7 +1013,7 @@
       {
         "allValue": null,
         "current": {
-          "selected": false,
+          "selected": true,
           "text": [
             "parasilo"
           ],
@@ -1060,5 +1060,5 @@
   "timezone": "",
   "title": "Cassandra",
   "uid": "ta3ruAgnk",
-  "version": 34
+  "version": 35
 }
