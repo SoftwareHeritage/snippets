@@ -5,7 +5,7 @@
     - include: common.yml
 
 - name: Install cassandra
-  hosts: cassandra
+  hosts: cassandra:zfs
   tasks:
     - include: zfs.yml
     - include: cassandra.yml
