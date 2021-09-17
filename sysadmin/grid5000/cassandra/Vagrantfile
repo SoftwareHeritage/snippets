@@ -83,7 +83,7 @@ vms.each { | vm_name, vm_props |
                 provider.memory = vm_props[:memory]
                 provider.cpus = vm_props[:cpus]
                 provider.driver = 'kvm'
-                if vm_props[:type] == "cassandra"
+                if vm_props[:type] == "cassandra" || vm_props[:type] == "monitoring"
                     provider.storage :file, :size => '1G'
                     provider.storage :file, :size => '1G'
                     provider.storage :file, :size => '1G'
