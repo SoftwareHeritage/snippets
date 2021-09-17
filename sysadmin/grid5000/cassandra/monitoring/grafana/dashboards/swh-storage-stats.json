@@ -22,8 +22,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 1,
-  "id": 1,
-  "iteration": 1631014090658,
+  "id": 20,
+  "iteration": 1631017061345,
   "links": [],
   "panels": [
     {
@@ -51,7 +51,7 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 1
       },
@@ -82,16 +82,15 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
           "exemplar": true,
-          "expr": "avg(rate(swh_objects_total{instance=~\"${cassandra}\", type=~\"${object}\"}[$inter]))",
-          "instant": false,
+          "expr": "sum by (instance, endpoint) (rate(swh_storage_operations_total{object_type=~\"${object}\"}[$inter]))",
+          "hide": false,
           "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "",
+          "legendFormat": "{{instance}} - {{endpoint}}",
           "refId": "A"
         }
       ],
@@ -137,98 +136,6 @@
         "align": false,
         "alignLevel": null
       }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": null,
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 1
-      },
-      "hiddenSeries": false,
-      "id": 4,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
-      "options": {
-        "alertThreshold": true
-      },
-      "percentage": false,
-      "pluginVersion": "8.0.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "swh_objects_total{instance=~\"${cassandra}\", type=~\"${object}\"}",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Total",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:57",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "$$hashKey": "object:58",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
     }
   ],
   "refresh": "10s",
@@ -241,27 +148,27 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "parasilo-3.rennes.grid5000.fr:9100",
-          "value": "parasilo-3.rennes.grid5000.fr:9100"
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": null,
-        "definition": "label_values(swh_objects_total, instance)",
+        "definition": "label_values(swh_storage_operations_total, instance)",
         "description": null,
         "error": null,
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": null,
-        "multi": false,
+        "multi": true,
         "name": "cassandra",
         "options": [],
         "query": {
-          "query": "label_values(swh_objects_total, instance)",
+          "query": "label_values(swh_storage_operations_total, instance)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tagsQuery": "",
         "type": "query",
@@ -279,7 +186,7 @@
           ]
         },
         "datasource": null,
-        "definition": "label_values(swh_objects_total, type)",
+        "definition": "label_values(swh_storage_operations_total, object_type)",
         "description": null,
         "error": null,
         "hide": 2,
@@ -289,7 +196,7 @@
         "name": "object",
         "options": [],
         "query": {
-          "query": "label_values(swh_objects_total, type)",
+          "query": "label_values(swh_storage_operations_total, object_type)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -381,7 +288,7 @@
     ]
   },
   "time": {
-    "from": "now-30d",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {
@@ -398,7 +305,7 @@
     ]
   },
   "timezone": "",
-  "title": "SWH objects",
-  "uid": "8PmeIpz7z",
-  "version": 15
+  "title": "SWH storage statsd",
+  "uid": "ydJXRa47z",
+  "version": 8
 }
