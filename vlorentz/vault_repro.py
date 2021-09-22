@@ -119,7 +119,7 @@ def cook_repo(config_path, storage, swhid: CoreSWHID, path: pathlib.Path) -> Non
                 str(config_path),
                 str(swhid),
                 str(tar_path),
-                "--cooker-type",
+                "--bundle-type",
                 "git_bare",
             ],
             check=True,
