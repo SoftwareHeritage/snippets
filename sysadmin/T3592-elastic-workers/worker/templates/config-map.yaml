@@ -32,7 +32,7 @@ data:
     exec python -m celery \
                 --app=swh.scheduler.celery_backend.config.app \
                 worker \
-                --pool=prefork --events \
+                --pool=solo --events \
                 --concurrency=${CONCURRENCY} \
                 --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
                 -Ofair --loglevel=${LOGLEVEL} \
