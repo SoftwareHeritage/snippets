@@ -54,8 +54,12 @@ spec:
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
             readOnly: true
+          - mountPath: /tmp
+            name: tmp-volume
       volumes:
         - name: config
           configMap:
             name: loaders
             defaultMode: 0777
+        - name: tmp-volume
+          emptyDir: {}
