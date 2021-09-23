@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loaders
+  labels:
+    app: loaders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loaders
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: loaders
+    spec:
+      containers:
+      - name: loaders
+        image: {{ .Values.swh.loader.image }}:{{ .Values.swh.loader.version }}
+        imagePullPolicy: Always
+        command:
+          - /entrypoint.sh
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "4000Mi"
+            cpu: "1200m"
+        lifecycle:
+          preStop:
+           exec:
+             command: ["kill", "1"]
+        env:
+        - name: CONCURRENCY
+          value: "1"
+        - name: MAX_TASKS_PER_CHILD
+          value: "5"
+        - name: LOGLEVEL
+          value: "INFO"
+        - name: SWH_CONFIG_FILENAME
+          value: /etc/softwareheritage/config.yml
+        volumeMounts:
+          - name: config
+            mountPath: /etc/softwareheritage/config.yml
+            subPath: config.yml
+            readOnly: true
+          - name: config
+            mountPath: /entrypoint.sh
+            subPath: entrypoint.sh
+            readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: loaders
+            defaultMode: 0777

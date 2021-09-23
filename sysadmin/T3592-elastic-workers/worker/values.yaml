@@ -9,3 +9,8 @@ amqp:
 
 storage:
   host: swh-storage
+
+swh:
+  loader:
+    image: swh/loaders
+    version: latest
