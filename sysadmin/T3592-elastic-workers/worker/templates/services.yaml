@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage
+spec:
+  type: ExternalName
+  externalName: {{ .Values.storage.host }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amqp
+spec:
+  type: ExternalName
+  externalName: {{ .Values.amqp.host }}
+

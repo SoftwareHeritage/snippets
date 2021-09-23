@@ -5,3 +5,7 @@
 amqp:
   user: guest
   password: guest
+  host: amqp
+
+storage:
+  host: swh-storage
