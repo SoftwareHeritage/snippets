@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loaders
+data:
+  config.yml: |
+    storage:
+      cls: pipeline
+      steps:
+      - cls: buffer
+        min_batch_size:
+          content: 10000
+          content_bytes: 104857600
+          directory: 10000
+          revision: 10000
+      - cls: filter
+      - cls: retry
+      - cls: remote
+        url: http://storage:5002/
+
+    celery:
+      task_broker: amqp://{{ .Values.amqp.user }}:{{ .Values.amqp.password }}@amqp//
+      task_queues:
+       - swh.loader.git.tasks.UpdateGitRepository
+  entrypoint.sh: |
+    #!/bin/bash
+
+    set -e
+
+    echo Starting the swh Celery worker
+    exec python -m celery \
+                --app=swh.scheduler.celery_backend.config.app \
+                worker \
+                --pool=prefork --events \
+                --concurrency=${CONCURRENCY} \
+                --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
+                -Ofair --loglevel=${LOGLEVEL} \
+                --hostname "${HOSTNAME}"
+
