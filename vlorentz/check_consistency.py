@@ -258,6 +258,13 @@ def handle_directory_mismatch(dir_, d):
     )
 
 
+def handle_release_mismatch(rel, d):
+    real_id = rel.compute_hash()
+    print(
+        f"Checksum mismatch on release: "
+        f"{rel.id.hex()} in journal, but recomputed as {real_id.hex()}.\n"
+    )
+
 def process_objects(all_objects):
     for (object_type, objects) in all_objects.items():
         cls = getattr(model, object_type.capitalize())
@@ -269,6 +276,8 @@ def process_objects(all_objects):
                     handle_revision_mismatch(object_, object_dict)
                 elif object_type == "directory":
                     handle_directory_mismatch(object_, object_dict)
+                elif object_type == "release":
+                    handle_release_mismatch(object_, object_dict)
                 else:
                     assert False, object_type
 
@@ -293,7 +302,7 @@ def main():
         brokers=[f"broker{i}.journal.softwareheritage.org:9093" for i in range(1, 5)],
         group_id="swh-vlorentz-T75-check-checksum-02",
         #object_types=["directory", "snapshot"],
-        object_types=["directory", "revision", "snapshot"],
+        object_types=["directory", "revision", "snapshot", "release"],
         auto_offset_reset="earliest",
         **config,
     )
