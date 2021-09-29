@@ -6,7 +6,7 @@ import sys
 
 import attr
 
-import swh.model.identifiers as identifiers
+import swh.model.git_objects as git_objects
 from swh.model.hashutil import bytehex_to_hash, hash_to_bytes
 import swh.model.model as model
 from swh.model.model import Person
@@ -198,52 +198,50 @@ def fixable_directory_with_changed_permissions(dir_, d):
 
 
 def directory_identifier_without_sorting(directory):
-    """Like swh.model.identifiers.directory_identifier, but does not sort entries."""
+    """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
     components = []
 
-    for entry in directory["entries"]:
+    for entry in directory.entries:
         components.extend(
             [
-                identifiers._perms_to_bytes(entry["perms"]),
+                git_objects._perms_to_bytes(entry.perms),
                 b"\x20",
-                entry["name"],
+                entry.name,
                 b"\x00",
-                identifiers.identifier_to_bytes(entry["target"]),
+                entry.target,
             ]
         )
-    git_object = identifiers.format_git_object_from_parts("tree", components)
+    git_object = git_objects.format_git_object_from_parts("tree", components)
     return hashlib.new("sha1", git_object).hexdigest()
 
 
 def directory_identifier_with_padding(directory):
-    """Like swh.model.identifiers.directory_identifier, but does not sort entries."""
+    """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
     components = []
 
-    for entry in sorted(directory["entries"], key=identifiers.directory_entry_sort_key):
+    for entry in sorted(directory.entries, key=git_objects.directory_entry_sort_key):
         components.extend(
             [
                 b"\x00",
                 "{:0>6}".format(  # zero-pad the perms
-                    identifiers._perms_to_bytes(entry["perms"]).decode()
+                    git_objects._perms_to_bytes(entry.perms).decode()
                 ).encode(),
                 b"\x20",
-                entry["name"],
-                identifiers.identifier_to_bytes(entry["target"]),
+                entry.name,
+                entry.target,
             ]
         )
-    git_object = identifiers.format_git_object_from_parts("tree", components)
+    git_object = git_objects.format_git_object_from_parts("tree", components)
     return hashlib.new("sha1", git_object).hexdigest()
 
 
 def handle_directory_mismatch(dir_, d):
-    id_without_sorting = hash_to_bytes(
-        directory_identifier_without_sorting(dir_.to_dict())
-    )
+    id_without_sorting = directory_identifier_without_sorting(dir_)
     if dir_.id == id_without_sorting:
         print(f"Weird directory checksum {dir_.id.hex()} (computed without sorting)")
         return
 
-    id_with_padding = hash_to_bytes(directory_identifier_with_padding(dir_.to_dict()))
+    id_with_padding = directory_identifier_with_padding(dir_)
     if dir_.id == id_with_padding:
         print(f"Fixable directory checksum {dir_.id.hex()}: padded perms")
         return
