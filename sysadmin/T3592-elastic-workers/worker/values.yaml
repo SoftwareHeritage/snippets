@@ -14,3 +14,4 @@ swh:
   loader:
     image: swh/loaders
     version: latest
+    default_replica: 5
