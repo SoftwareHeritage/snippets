@@ -17,10 +17,10 @@ data:
       - cls: filter
       - cls: retry
       - cls: remote
-        url: http://storage:5002/
+        url: http://{{ .Values.storage.host }}:5002/
 
     celery:
-      task_broker: amqp://{{ .Values.amqp.user }}:{{ .Values.amqp.password }}@amqp//
+      task_broker: amqp://{{ .Values.amqp.user }}:{{ .Values.amqp.password }}@{{ .Values.amqp.host }}//
       task_queues:
        - swh.loader.git.tasks.UpdateGitRepository
   entrypoint.sh: |
