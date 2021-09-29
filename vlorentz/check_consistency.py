@@ -263,6 +263,7 @@ def handle_release_mismatch(rel, d):
         f"{rel.id.hex()} in journal, but recomputed as {real_id.hex()}.\n"
     )
 
+
 def process_objects(all_objects):
     for (object_type, objects) in all_objects.items():
         cls = getattr(model, object_type.capitalize())
@@ -292,6 +293,8 @@ def main():
         "sasl.username": "swh-vlorentz",
         "sasl.password": os.environ["KAFKA_SASL_PASSWORD"],
         "privileged": True,
+        "message.max.bytes": 524288000,
+        # "debug": "consumer",
         # "debug": "all",
     }
 
