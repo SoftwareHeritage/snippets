@@ -111,14 +111,19 @@ def fixable_revision_extra_author_space(rev, d):
 def fixable_revision_missing_headers(rev, d):
     """item 4 on https://forge.softwareheritage.org/T75#12186"""
     # TODO: try other orders?
-    fixed_rev = attr.evolve(
-        rev, extra_headers=(*rev.extra_headers, (b"encoding", b"latin-1")),
-    )
-    if rev.id == fixed_rev.compute_hash():
-        print(f"Fixable revision {rev.id.hex()} (added 'encoding latin-1' header)")
-        return True
-    else:
-        return False
+    for new_extra_headers in [
+        [(b"encoding", b"latin-1")],
+        [(b"HG:rename-source", b"hg")],
+    ]:
+        fixed_rev = attr.evolve(
+            rev, extra_headers=(*rev.extra_headers, *new_extra_headers),
+        )
+        if rev.id == fixed_rev.compute_hash():
+            print(
+                f"Fixable revision {rev.id.hex()} (added headers: {new_extra_headers!r})"
+            )
+            return True
+    return False
 
 
 def handle_revision_mismatch(rev, d):
@@ -169,10 +174,10 @@ def handle_revision_mismatch(rev, d):
         if b"gpgsig" not in dict(rev.extra_headers):
             # Probably missing gpgsig header, nothing more we can do...
             return
-        #sys.stderr.flush()
-        #print("Exiting")
-        #sys.stdout.flush()
-        #exit(1)
+        # sys.stderr.flush()
+        # print("Exiting")
+        # sys.stdout.flush()
+        # exit(1)
 
 
 def fixable_directory_with_changed_permissions(dir_, d):
@@ -302,7 +307,7 @@ def main():
         "kafka",
         brokers=[f"broker{i}.journal.softwareheritage.org:9093" for i in range(1, 5)],
         group_id="swh-vlorentz-T75-check-checksum-02",
-        #object_types=["directory", "snapshot"],
+        # object_types=["directory", "snapshot"],
         object_types=["directory", "revision", "snapshot", "release"],
         auto_offset_reset="earliest",
         **config,
