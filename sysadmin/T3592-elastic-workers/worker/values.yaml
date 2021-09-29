@@ -14,4 +14,7 @@ swh:
   loader:
     image: swh/loaders
     version: latest
-    default_replica: 5
+    replicas:
+      min: 1
+      max: 10
+      default: 5

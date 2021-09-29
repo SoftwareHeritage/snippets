@@ -6,7 +6,7 @@ metadata:
   labels:
     app: loaders
 spec:
-  replicas: {{ .Values.default_replicas }}
+  replicas: {{ .Values.swh.loader.replicas.default }}
   selector:
     matchLabels:
       app: loaders
