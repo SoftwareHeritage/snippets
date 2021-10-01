@@ -1,4 +1,18 @@
 ---
+- name: Add SWH repository
+  apt_repository:
+    repo: deb [trusted=yes] https://debian.softwareheritage.org/ buster-swh main
+    state: present
+    filename: swh.sources
+
+- name: Install packages
+  apt:
+    name:
+      - dstat
+      - facter
+      - prometheus-statsd-exporter
+      - tcpdump
+
 - name: Create grid5000 tools directories
   file:
     state: directory

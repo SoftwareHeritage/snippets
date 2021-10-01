@@ -4,8 +4,13 @@
   tasks:
     - include: common.yml
 
+- name: Install ZFS
+  hosts: zfs
+  tasks:
+  - include: zfs.yml
+
 - name: Install cassandra
-  hosts: cassandra:zfs
+  hosts: cassandra
   tasks:
     - include: zfs.yml
     - include: cassandra.yml

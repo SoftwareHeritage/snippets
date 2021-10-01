@@ -18,7 +18,7 @@
   apt_repository:
     repo: deb [trusted=yes] https://debian.softwareheritage.org/ buster-swh main
     state: present
-    filename: cassandra.sources
+    filename: swh.sources
 
 - name: Install packages
   apt:

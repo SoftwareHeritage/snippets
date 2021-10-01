@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amqp
+  labels:
+    app: amqp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: amqp
+  template:
+    metadata:
+      labels:
+        app: amqp
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - parasilo-19.rennes.grid5000.fr
+      containers:
+      - name: amqp
+        image: rabbitmq:3.6-management
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5672
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amqp
+spec:
+  type: ClusterIP
+  selector:
+    app: amqp
+  ports:
+    - port: 5672
+      targetPort: 5672
+      name: rabbitmq
+    - port: 15672
+      targetPort: 15672
+      name: rabbitmq-admin
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: amqp
+spec:
+  rules:
+  - host: rabbitmq.default
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: amqp
+            port:
+              number: 15672
