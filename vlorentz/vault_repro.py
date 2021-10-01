@@ -136,7 +136,9 @@ def repro_repo(config_path, path: pathlib.Path) -> None:
 
     swhid = load_repo(path, vault_config["storage"])
 
-    with tempfile.TemporaryDirectory(prefix="vault-repro-") as cooked_output_path_str:
+    with tempfile.TemporaryDirectory(
+        prefix="vault-repro-", dir="/home/dev/tmp/"
+    ) as cooked_output_path_str:
         cooked_output_path = pathlib.Path(cooked_output_path_str)
         cook_repo(config_path, storage, swhid, cooked_output_path)
         cooked_ids = list_object_ids(cooked_output_path / f"{swhid}.git")

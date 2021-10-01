@@ -3,7 +3,9 @@ import difflib
 import hashlib
 import multiprocessing
 import multiprocessing.dummy
+import os
 import pathlib
+import pickle
 import re
 import socket
 import ssl
@@ -24,6 +26,10 @@ import tqdm
 
 from swh.core.utils import grouper
 from swh.graph.client import RemoteGraphClient, GraphArgumentException
+from swh.loader.git.converters import (
+    dulwich_tree_to_directory,
+    dulwich_commit_to_revision,
+)
 from swh.model.hashutil import hash_to_bytes, hash_to_hex, hash_to_bytehex
 from swh.model.git_objects import directory_git_object, revision_git_object
 from swh.model.model import Directory, Origin, Person, RevisionType
@@ -57,12 +63,14 @@ ENCODINGS = (
     b"Shift-JIS",
     b"shift-jis",
     b"shift_jis",
+    b"Shift_JIS",
     b"SJIS",
     b"iso8859-1",
     b"iso-8859-1",
     b"ISO-8859-1",
     b" ISO-8859-1",
     b"iso8859-15",
+    b"ISO-8859-1]",
     b"UTF8]",
     b"UTF-8 UTF8",
     b"{utf-8}",
@@ -79,8 +87,9 @@ ENCODINGS = (
     b"iso8859-2",
     b"ru_RU.KOI8-R",
     b"cp1250",
-    b"CP-1252",
+    b"CP-1250",
     b"cp-1251",
+    b"CP-1252",
     b"cp932",
     b"latin-1",
     b"Latin-1",
@@ -110,6 +119,7 @@ ENCODINGS = (
     b"cp866",
     b"CP-1251",
     b"cp1251",
+    b"cp949",
     b"latin2",
     b"'windows-1252'",
     b"utf-8logoutputencoding=gbk",  # wat
@@ -124,6 +134,7 @@ ENCODINGS = (
     b"zh_CN.GB18030",
     b"window-1252",
     b"iso-2022-jp",
+    b"en_US.UTF-8",
 )
 
 
@@ -192,11 +203,11 @@ def main(input_fd):
         handle_line(digest, line)
 
     # preload revisions in batches
-    revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:200]
+    # revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:100]
     # revision_id_groups = list(grouper(digest["mismatch_hg_to_git"], 1000))
-    # revision_id_groups = list(
-    #    grouper(digest["mismatch_misc_revision"] | digest["mismatch_hg_to_git"], 1000)
-    # )
+    revision_id_groups = list(
+        grouper(digest["mismatch_misc_revision"] | digest["mismatch_hg_to_git"], 1000)
+    )
     with multiprocessing.dummy.Pool(10) as p:
         for revisions in tqdm.tqdm(
             p.imap_unordered(_load_revisions, revision_id_groups),
@@ -208,8 +219,6 @@ def main(input_fd):
 
     # Try to fix objects one by one
     with multiprocessing.Pool(32) as p:
-        # for key in ("mismatch_misc_revision",):
-        # for key in ("mismatch_hg_to_git",):
         for key in (
             "mismatch_misc_revision",
             "mismatch_hg_to_git",
@@ -225,7 +234,28 @@ def main(input_fd):
                 digest[new_key].add(obj_id)
 
     for (type_, obj_ids) in sorted(digest.items()):
-        print(f"{(type_ + ':'):20} {len(obj_ids)}")
+        print(f"{len(obj_ids)}\t{(type_ + ':')}")
+
+    with open("analyze_consistency_failures/results.pickle", "wb") as fd:
+        pickle.dump(dict(digest), fd)
+
+
+def write_fixed_manifest(swhid, manifest):
+    dir_path = os.path.join(
+        "analyze_consistency_failures", hash_to_hex(swhid.object_id)[0:2]
+    )
+    os.makedirs(dir_path, exist_ok=True)
+    with open(f"{dir_path}/{swhid}.git_manifest", "wb") as fd:
+        fd.write(manifest)
+
+
+def write_fixed_object(swhid, obj):
+    dir_path = os.path.join(
+        "analyze_consistency_failures", hash_to_hex(swhid.object_id)[0:2]
+    )
+    os.makedirs(dir_path, exist_ok=True)
+    with open(f"{dir_path}/{swhid}.pickle", "wb") as fd:
+        pickle.dump(obj.to_dict(), fd)
 
 
 def handle_line(digest, line):
@@ -320,7 +350,90 @@ def _try_recovery(obj_type, obj_id):
     assert obj_id == stored_obj.id
     assert obj_id != stored_obj.compute_hash(), "Hash matches this time?!"
 
+    # Try adding leading space to email
+    # (very crude, this assumes author = committer)
+    fullname = stored_obj.author.fullname.replace(b" <", b" < ")
+    fixed_stored_obj = attr.evolve(
+        stored_obj,
+        author=Person(fullname=fullname, name=b"", email=b""),
+        committer=Person(fullname=fullname, name=b"", email=b""),
+    )
+    if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
+        return "fixable_author_email_leading_space"
+
+    # Try adding trailing spaces to email
+    for trailing in [b" " * i for i in range(8)] + [b"\r", b" \r", b"\t"]:
+        for (pad_author, pad_committer) in ((1, 0), (0, 1), (1, 1)):
+            fixed_stored_obj = attr.evolve(
+                stored_obj,
+                author=attr.evolve(
+                    stored_obj.author,
+                    fullname=stored_obj.author.fullname[0:-1] + trailing + b">",
+                )
+                if pad_author
+                else stored_obj.author,
+                committer=attr.evolve(
+                    stored_obj.committer,
+                    fullname=stored_obj.committer.fullname[0:-1] + trailing + b">",
+                )
+                if pad_committer
+                else stored_obj.committer,
+            )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_author_email_trailing_whitespace"
+
+    # Try adding carriage return to name *and* email
+    for (pad_author, pad_committer) in ((1, 0), (0, 1), (1, 1)):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            author=attr.evolve(
+                stored_obj.author,
+                fullname=stored_obj.author.fullname.replace(b" <", b"\r <").replace(
+                    b">", b"\r>"
+                ),
+            )
+            if pad_author
+            else stored_obj.author,
+            committer=attr.evolve(
+                stored_obj.committer,
+                fullname=stored_obj.committer.fullname.replace(b" <", b"\r <").replace(
+                    b">", b"\r>"
+                ),
+            )
+            if pad_committer
+            else stored_obj.committer,
+        )
+    if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
+        return "fixable_author_name_email_trailing_whitespace"
+
+    # Try adding spaces before the name
+    for i in range(1, 4):
+        fullname = b" " * i + stored_obj.author.fullname
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            author=Person(fullname=fullname, name=b"", email=b""),
+            committer=Person(fullname=fullname, name=b"", email=b""),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_author_leading_spaces"
+
     # Try adding spaces between name and email
+    for i in range(1, 32):
+        fullname = stored_obj.author.fullname.replace(b" <", b" " * i + b"<", 1)
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            author=Person(fullname=fullname, name=b"", email=b""),
+            committer=Person(fullname=fullname, name=b"", email=b""),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_author_middle_spaces"
+
+    # Try again but with differing values
     for committer_padding in (0, 1, 2, 4, 5, 8, 16, 32):
         for author_padding in (0, 1, 2, 4, 5, 8, 16, 32):
             fixed_stored_obj = attr.evolve(
@@ -343,60 +456,6 @@ def _try_recovery(obj_type, obj_id):
             if fixed_stored_obj.compute_hash() == obj_id:
                 return "fixable_author_middle_spaces"
 
-    # Try adding leading space to email
-    # (very crude, this assumes author = committer)
-    fullname = stored_obj.author.fullname.replace(b" <", b" < ")
-    fixed_stored_obj = attr.evolve(
-        stored_obj,
-        author=Person(fullname=fullname, name=b"", email=b""),
-        committer=Person(fullname=fullname, name=b"", email=b""),
-    )
-    if fixed_stored_obj.compute_hash() == obj_id:
-        return "fixable_author_email_leading_space"
-
-    # Try adding trailing spaces to email
-    for trailing in [b" " * i for i in range(8)] + [b"\r", b" \r", b"\t"]:
-        for (pad_author, pad_committer) in ((1, 0), (0, 1), (1, 1)):
-            fixed_stored_obj = attr.evolve(
-                stored_obj,
-                author=attr.evolve(
-                    stored_obj.author,
-                    fullname=stored_obj.author.fullname[0:-1] + trailing + b">",
-                )
-                if pad_author
-                else stored_obj.author,
-                committer=attr.evolve(
-                    stored_obj.committer,
-                    fullname=stored_obj.committer.fullname[0:-1] + trailing + b">",
-                )
-                if pad_committer
-                else stored_obj.committer,
-            )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            return "fixable_author_email_trailing_whitespace"
-
-    # Try adding spaces before the name
-    for i in range(1, 4):
-        fullname = b" " * i + stored_obj.author.fullname
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            author=Person(fullname=fullname, name=b"", email=b""),
-            committer=Person(fullname=fullname, name=b"", email=b""),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            return "fixable_author_leading_spaces"
-
-    # Try adding spaces between name and email
-    for i in range(1, 31):
-        fullname = stored_obj.author.fullname.replace(b" <", b" " * i + b"<", 1)
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            author=Person(fullname=fullname, name=b"", email=b""),
-            committer=Person(fullname=fullname, name=b"", email=b""),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            return "fixable_author_leading_spaces"
-
     # Try adding spaces around the name
     for i in range(1, 4):
         fullname = b" " * i + stored_obj.author.fullname.replace(
@@ -408,6 +467,7 @@ def _try_recovery(obj_type, obj_id):
             committer=Person(fullname=fullname, name=b"", email=b""),
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_author_leading_and_middle_spaces"
 
     # Try adding spaces after the fullname
@@ -418,12 +478,14 @@ def _try_recovery(obj_type, obj_id):
         committer=Person(fullname=fullname, name=b"", email=b""),
     )
     if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
         return "fixable_author_trailing_space"
     for _ in range(2):
         fixed_stored_obj = attr.evolve(
             fixed_stored_obj, message=b"\n" + (fixed_stored_obj.message or b"")
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_author_trailing_space_and_leading_newlines"
 
     # Try adding leading newlines
@@ -434,6 +496,7 @@ def _try_recovery(obj_type, obj_id):
                 fixed_stored_obj, message=b"\n" + fixed_stored_obj.message,
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "leading_newlines"
 
     # Try some hardcoded fullname susbstitutions
@@ -442,6 +505,7 @@ def _try_recovery(obj_type, obj_id):
         b"unknown <Cl\xc3\xa9ment@.(none)>": b"unknown <Cl\xe9ment@.(none)>",
         b"unknown <J\xef\xbf\xbdrgen@Aspire.(none)>": b"unknown <J\xfcrgen@Aspire.(none)>",
         b"from site <kevoree@kevoree.org>": b" from site  < kevoree@kevoree.org >",
+        b" <>": b"",
     }
     fixed_stored_obj = attr.evolve(
         stored_obj,
@@ -459,6 +523,7 @@ def _try_recovery(obj_type, obj_id):
         ),
     )
     if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
         return "fixable_author_hardcoded"
     if fixed_stored_obj.author.fullname == b"unknown <Cl\xe9ment@.(none)>":
         fixed_stored_obj = attr.evolve(
@@ -469,7 +534,20 @@ def _try_recovery(obj_type, obj_id):
             ),
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_author_and_encoding_hardcoded"
+
+    # Try removing leading space:
+    author = stored_obj.author
+    committer = stored_obj.committer
+    if author.fullname.startswith(b" "):
+        author = attr.evolve(author, fullname=author.fullname[1:])
+    if committer.fullname.startswith(b" "):
+        committer = attr.evolve(committer, fullname=committer.fullname[1:])
+    fixed_stored_obj = attr.evolve(stored_obj, author=author, committer=committer)
+    if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
+        return "fixable_author_fullname_strip_leading_space"
 
     # When the fullname is in both the name and the email
     # have: xxx<yyy@zzz> <xxx <yyy@zzz>>
@@ -477,19 +555,17 @@ def _try_recovery(obj_type, obj_id):
     author = stored_obj.author
     committer = stored_obj.committer
     if b">" in author.name and b">" in author.email:
-        email = author.email.replace(b" ", b"")
-        author = Person(
-            fullname=author.name + b" <" + email + b">", name=author.name, email=email
+        author = attr.evolve(
+            author,
+            fullname=b"<".join(author.fullname.rsplit(b" <", 1)),  # replace last occur
         )
     if b">" in committer.name and b">" in committer.email:
-        email = committer.email.replace(b" ", b"")
-        committer = Person(
-            fullname=committer.name + b" <" + email + b">",
-            name=committer.name,
-            email=email,
+        committer = attr.evolve(
+            committer, fullname=b"<".join(committer.fullname.rsplit(b" <", 1)),  # ditto
         )
     fixed_stored_obj = attr.evolve(stored_obj, author=author, committer=committer)
     if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
         return "fixable_author_fullname_in_name_and_email"
 
     # If the timezone is 0, try some other ones
@@ -523,21 +599,25 @@ def _try_recovery(obj_type, obj_id):
                 ),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "fixable_offset"
             fixable_offset = attr.evolve(
                 fixed_stored_obj, message=b"\n" + (fixed_stored_obj.message or b"")
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "fixable_offset_and_newline"
 
     if stored_obj.date.offset == stored_obj.committer_date.offset == (6 * 60 + 15):
         fixed_stored_manifest = stored_manifest.replace(b"+0615", b"+0575")
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+            write_fixed_manifest(swhid, fixed_stored_manifest)
             return "weird-offset=+0575"
 
     if stored_obj.date.offset == stored_obj.committer_date.offset == (7 * 60 + 0):
         fixed_stored_manifest = stored_manifest.replace(b"+0700", b"--700")
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+            write_fixed_manifest(swhid, fixed_stored_manifest)
             return "weird-offset=--700"
 
     for offset in (
@@ -552,6 +632,7 @@ def _try_recovery(obj_type, obj_id):
         b"+1558601",
         b"+1558010",
         b"+15094728",
+        b"+27455236",
     ):
         fixed_stored_manifest = stored_manifest.replace(
             b" +0000", b" " + offset
@@ -559,6 +640,7 @@ def _try_recovery(obj_type, obj_id):
         object_header, rest = fixed_stored_manifest.split(b"\x00", 1)
         fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+            write_fixed_manifest(swhid, fixed_stored_manifest)
             return f"weird-offset={offset.decode()}"
 
     # Try replacing +0002 with +02
@@ -576,6 +658,7 @@ def _try_recovery(obj_type, obj_id):
                 b"commit " + str(len(rest)).encode() + b"\x00" + rest
             )
             if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+                write_fixed_manifest(swhid, fixed_stored_manifest)
                 return f"weird-offset={offset.decode()}"
             if fixed_stored_manifest.endswith(b"\n"):
                 fixed_stored_manifest = fixed_stored_manifest.rstrip()
@@ -583,8 +666,9 @@ def _try_recovery(obj_type, obj_id):
                 fixed_stored_manifest = (
                     b"commit " + str(len(rest)).encode() + b"\x00" + rest
                 )
-                if fixed_stored_obj.compute_hash() == obj_id:
-                    return f"weird-offset={offset.decode()}_and_no_message"
+                if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+                    write_fixed_manifest(swhid, fixed_stored_manifest)
+                    return f"weird-offset={offset.decode()}"
 
     if (
         stored_obj.date.offset == stored_obj.committer_date.offset == 0
@@ -602,12 +686,14 @@ def _try_recovery(obj_type, obj_id):
             committer_date=attr.evolve(stored_obj.committer_date, negative_utc=True),
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return f"fixable_space_and_negative_utc"
 
         fixed_stored_obj = attr.evolve(
             fixed_stored_obj, message=(stored_obj.message or b"") + b"\n",
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return f"fixable_space_and_newline_and_negative_utc"
 
     # Try adding an encoding header
@@ -618,7 +704,8 @@ def _try_recovery(obj_type, obj_id):
                 extra_headers=(*stored_obj.extra_headers, (b"encoding", encoding)),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
-                return f"fixable_add_encoding_{encoding}"
+                write_fixed_object(swhid, fixed_stored_obj)
+                return f"fixable_add_encoding_{encoding.decode()}"
             if fixed_stored_obj.message is not None:
                 for _ in range(3):
                     fixed_stored_obj = attr.evolve(
@@ -626,7 +713,8 @@ def _try_recovery(obj_type, obj_id):
                         message=b"\n" + (fixed_stored_obj.message or b""),
                     )
                     if fixed_stored_obj.compute_hash() == obj_id:
-                        return f"fixable_add_encoding_{encoding}_and_leading_newlines"
+                        write_fixed_object(swhid, fixed_stored_obj)
+                        return f"fixable_add_encoding_{encoding.decode()}_and_leading_newlines"
 
     # Try capitalizing the 'parent' revision
     stored_manifest_lines = stored_manifest.split(b"\n")
@@ -638,6 +726,7 @@ def _try_recovery(obj_type, obj_id):
     ]
     fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
     if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return "capitalized_revision_parent"
 
     # Try removing leading zero in date offsets (very crude...)
@@ -662,7 +751,8 @@ def _try_recovery(obj_type, obj_id):
         object_header, rest = fixed_stored_manifest.split(b"\x00", 1)
         fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
-            return "unpadded_time_offset_{unpad_author}_{unpad_committer}"
+            write_fixed_manifest(swhid, fixed_stored_manifest)
+            return f"unpadded_time_offset_{unpad_author}_{unpad_committer}"
 
     # Try moving the nonce at the end
     if b"nonce" in dict(stored_obj.extra_headers):
@@ -674,6 +764,7 @@ def _try_recovery(obj_type, obj_id):
             ),
         )
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_move_nonce"
 
     for _ in range(10):
@@ -778,9 +869,10 @@ def _try_recovery(obj_type, obj_id):
                         # Repo not available
                         continue
                     elif any(
-                        code in status_line for code in (b"200", b"301", b"302", b"500")
+                        code in status_line
+                        for code in (b"200", b"301", b"302", b"429", b"500", b"502")
                     ):
-                        # 500 happens on gitlab for some reason
+                        # 500 and 502 happen on gitlab for some reason
                         pass
                     else:
                         assert False, (
@@ -829,6 +921,7 @@ def _try_recovery(obj_type, obj_id):
                 ),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "recoverable_missing_gpgsig"
 
         # Try adding mergetag (on top of gpgsig)
@@ -847,6 +940,7 @@ def _try_recovery(obj_type, obj_id):
                 extra_headers=(*mergetags, *stored_obj.extra_headers,),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "recoverable_missing_mergetag_and_maybe_gpgsig"
 
         # Try adding a magic string at the end of the message
@@ -855,6 +949,7 @@ def _try_recovery(obj_type, obj_id):
             assert cloned_obj.message.startswith(stored_obj.message)
             fixed_stored_obj = attr.evolve(stored_obj, message=cloned_obj.message)
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "recoverable_hg_branch_nullbytes_truncated"
 
         # Try copying extra headers (including gpgsig)
@@ -863,6 +958,7 @@ def _try_recovery(obj_type, obj_id):
             extra_headers = (*extra_headers, (b"gpgsig", cloned_obj.gpgsig))
         fixed_stored_obj = attr.evolve(stored_obj, extra_headers=extra_headers)
         if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
             return "recoverable_extra_headers"
         if {b"HG:extra", b"HG:rename-source", b"HG:rename"} & set(dict(extra_headers)):
             for n in range(4):
@@ -870,6 +966,7 @@ def _try_recovery(obj_type, obj_id):
                     fixed_stored_obj, message=b"\n" + fixed_stored_obj.message
                 )
                 if fixed_stored_obj.compute_hash() == obj_id:
+                    write_fixed_object(swhid, fixed_stored_obj)
                     return "recoverable_extra_headers_and_leading_newlines"
 
     print("=" * 100)
@@ -890,7 +987,25 @@ def _try_recovery(obj_type, obj_id):
         )
     )
     print("=" * 100)
-    return "recoverable_misc"
+
+    try:
+        if obj_type == ObjectType.REVISION:
+            cloned_obj = dulwich_commit_to_revision(cloned_obj)
+            roundtripped_cloned_manifest = revision_git_object(cloned_obj)
+        elif obj_type == ObjectType.DIRECTORY:
+            cloned_obj = dulwich_tree_to_directory(cloned_obj)
+            roundtripped_cloned_manifest = directory_git_object(cloned_obj)
+        else:
+            assert False, obj_type
+    except:
+        roundtripped_cloned_manifest = None
+
+    if roundtripped_cloned_manifest == cloned_manifest.split(b"\x00", 1)[1]:
+        write_fixed_object(swhid, cloned_obj)
+        return f"recoverable_misc_{obj_type.value}"
+    else:
+        write_fixed_manifest(swhid, cloned_manifest)
+        return f"weird_misc_{obj_type.value}"
 
 
 if __name__ == "__main__":
