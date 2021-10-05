@@ -7,11 +7,14 @@ import os
 import pathlib
 import pickle
 import re
+import secrets
+import signal
 import socket
 import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
 import urllib.parse
 
@@ -97,8 +100,12 @@ ENCODINGS = (
     b"Latin1",
     b"ISO-2022-JP",
     b"KOI8-R",
-    b"windows-1252",
     b"windows-1250",
+    b"window-1252",
+    b"windows-1252",
+    b"'windows-1252'",
+    b"WINDOWS-1251",
+    b"Windows-1257",
     b"euckr",
     b"ISO-88592",
     b"iso10646-1",
@@ -121,7 +128,6 @@ ENCODINGS = (
     b"cp1251",
     b"cp949",
     b"latin2",
-    b"'windows-1252'",
     b"utf-8logoutputencoding=gbk",  # wat
     b"gb18030",
     b"UTF-8-MAC UTF8-MAC",
@@ -132,9 +138,10 @@ ENCODINGS = (
     b"UTF-8",
     b"utf-8",
     b"zh_CN.GB18030",
-    b"window-1252",
     b"iso-2022-jp",
     b"en_US.UTF-8",
+    b"dos",
+    b"iso8859-13",
 )
 
 
@@ -166,7 +173,11 @@ def clone(origin_url):
 
 def get_object_from_clone(origin_url, obj_id):
     clone_path = get_clone_path(origin_url)
-    repo = dulwich.repo.Repo(str(clone_path))
+    try:
+        repo = dulwich.repo.Repo(str(clone_path))
+    except dulwich.errors.NotGitRepository:
+        return None
+
     try:
         return repo[hash_to_bytehex(obj_id)]
     except dulwich.errors.ObjectFormatException:
@@ -234,7 +245,7 @@ def main(input_fd):
                 digest[new_key].add(obj_id)
 
     for (type_, obj_ids) in sorted(digest.items()):
-        print(f"{len(obj_ids)}\t{(type_ + ':')}")
+        print(f"{len(obj_ids)}\t{type_}")
 
     with open("analyze_consistency_failures/results.pickle", "wb") as fd:
         pickle.dump(dict(digest), fd)
@@ -282,11 +293,11 @@ def handle_line(digest, line):
         return
     m = SVN_MISMATCH.fullmatch(line)
     if m:
-        digest["mismatch_svn"].add(hash_to_bytes(m.group("obj_id")))
+        digest["mismatch_misc_revision_svn"].add(hash_to_bytes(m.group("obj_id")))
         return
     m = FIXABLE.fullmatch(line)
     if m:
-        digest["fixable"].add(hash_to_bytes(m.group("obj_id")))
+        digest["fixable: " + m.group("how")].add(hash_to_bytes(m.group("obj_id")))
         return
     m = UNORDERED_DIRECTORY.fullmatch(line)
     if m:
@@ -314,11 +325,7 @@ def handle_line(digest, line):
 
 
 def try_revision_recovery(obj_id):
-    try:
-        return (obj_id, _try_recovery(ObjectType.REVISION, obj_id))
-    except KeyboardInterrupt:
-        # clean up stack traces a bit
-        raise KeyboardInterrupt from None
+    return (obj_id, _try_recovery(ObjectType.REVISION, obj_id))
 
 
 def _try_recovery(obj_type, obj_id):
@@ -326,7 +333,13 @@ def _try_recovery(obj_type, obj_id):
     obj_id = hash_to_bytes(obj_id)
     swhid = CoreSWHID(object_type=obj_type, object_id=obj_id)
     storage = get_storage(
-        "remote", url="http://webapp1.internal.softwareheritage.org:5002/"
+        "pipeline",
+        steps=[
+            dict(cls="retry"),
+            dict(
+                cls="remote", url="http://webapp1.internal.softwareheritage.org:5002/"
+            ),
+        ],
     )
 
     if obj_type == ObjectType.REVISION:
@@ -334,7 +347,7 @@ def _try_recovery(obj_type, obj_id):
         if stored_obj is None:
             return "revision_missing_from_storage"
         if stored_obj.type != RevisionType.GIT:
-            return f"mismatch_misc_revision_{stored_obj.type.value}"
+            return f"mismatch_misc_{stored_obj.type.value}"
         stored_manifest = revision_git_object(stored_obj)
     elif obj_type == ObjectType.DIRECTORY:
         stored_obj = Directory(
@@ -380,9 +393,9 @@ def _try_recovery(obj_type, obj_id):
                 if pad_committer
                 else stored_obj.committer,
             )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return "fixable_author_email_trailing_whitespace"
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return "fixable_author_email_trailing_whitespace"
 
     # Try adding carriage return to name *and* email
     for (pad_author, pad_committer) in ((1, 0), (0, 1), (1, 1)):
@@ -410,16 +423,22 @@ def _try_recovery(obj_type, obj_id):
         return "fixable_author_name_email_trailing_whitespace"
 
     # Try adding spaces before the name
-    for i in range(1, 4):
-        fullname = b" " * i + stored_obj.author.fullname
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            author=Person(fullname=fullname, name=b"", email=b""),
-            committer=Person(fullname=fullname, name=b"", email=b""),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return "fixable_author_leading_spaces"
+    for author_pad in range(0, 4):
+        for committer_pad in range(0, 4):
+            fixed_stored_obj = attr.evolve(
+                stored_obj,
+                author=attr.evolve(
+                    stored_obj.author,
+                    fullname=b" " * author_pad + stored_obj.author.fullname,
+                ),
+                committer=attr.evolve(
+                    stored_obj.committer,
+                    fullname=b" " * committer_pad + stored_obj.committer.fullname,
+                ),
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return "fixable_author_leading_spaces"
 
     # Try adding spaces between name and email
     for i in range(1, 32):
@@ -554,12 +573,17 @@ def _try_recovery(obj_type, obj_id):
     # want: xxx<yyy@zzz> <xxx<yyy@zzz>>
     author = stored_obj.author
     committer = stored_obj.committer
-    if b">" in author.name and b">" in author.email:
+    if author.name and author.email and b">" in author.name and b">" in author.email:
         author = attr.evolve(
             author,
             fullname=b"<".join(author.fullname.rsplit(b" <", 1)),  # replace last occur
         )
-    if b">" in committer.name and b">" in committer.email:
+    if (
+        committer.name
+        and committer.email
+        and b">" in committer.name
+        and b">" in committer.email
+    ):
         committer = attr.evolve(
             committer, fullname=b"<".join(committer.fullname.rsplit(b" <", 1)),  # ditto
         )
@@ -622,17 +646,27 @@ def _try_recovery(obj_type, obj_id):
 
     for offset in (
         b"-041800",
+        b"-12257",
         b"-12255",
         b"-72000",
+        b"-12242",
+        b"-12310",
+        b"-3600",
+        b"-1900",
         b"0000",
         b"+0575",
         b"+041800",
         b"+051800",
         b"+091800",
+        b"+1073603",
         b"+1558601",
         b"+1558010",
+        b"+1559432",
+        b"+1670119",
+        b"+15094352",
         b"+15094728",
         b"+27455236",
+        b"+40347417",
     ):
         fixed_stored_manifest = stored_manifest.replace(
             b" +0000", b" " + offset
@@ -641,7 +675,7 @@ def _try_recovery(obj_type, obj_id):
         fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
             write_fixed_manifest(swhid, fixed_stored_manifest)
-            return f"weird-offset={offset.decode()}"
+            return f"weird-offset-misc"
 
     # Try replacing +0002 with +02
     if stored_obj.date.offset == 2 or stored_obj.committer_date.offset == 2:
@@ -705,7 +739,7 @@ def _try_recovery(obj_type, obj_id):
             )
             if fixed_stored_obj.compute_hash() == obj_id:
                 write_fixed_object(swhid, fixed_stored_obj)
-                return f"fixable_add_encoding_{encoding.decode()}"
+                return f"fixable_add_encoding"
             if fixed_stored_obj.message is not None:
                 for _ in range(3):
                     fixed_stored_obj = attr.evolve(
@@ -714,7 +748,7 @@ def _try_recovery(obj_type, obj_id):
                     )
                     if fixed_stored_obj.compute_hash() == obj_id:
                         write_fixed_object(swhid, fixed_stored_obj)
-                        return f"fixable_add_encoding_{encoding.decode()}_and_leading_newlines"
+                        return f"fixable_add_encoding_and_leading_newlines"
 
     # Try capitalizing the 'parent' revision
     stored_manifest_lines = stored_manifest.split(b"\n")
@@ -752,7 +786,7 @@ def _try_recovery(obj_type, obj_id):
         fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
             write_fixed_manifest(swhid, fixed_stored_manifest)
-            return f"unpadded_time_offset_{unpad_author}_{unpad_committer}"
+            return f"unpadded_time_offset"
 
     # Try moving the nonce at the end
     if b"nonce" in dict(stored_obj.extra_headers):
@@ -868,17 +902,6 @@ def _try_recovery(obj_type, obj_id):
                     if b"401" in status_line or b"404" in status_line:
                         # Repo not available
                         continue
-                    elif any(
-                        code in status_line
-                        for code in (b"200", b"301", b"302", b"429", b"500", b"502")
-                    ):
-                        # 500 and 502 happen on gitlab for some reason
-                        pass
-                    else:
-                        assert False, (
-                            f"unexpected response when querying {hash_to_hex(obj_id)} "
-                            f"on {origin_url}: {status_line}\n{body}"
-                        )
                 try:
                     clone(origin_url)
                 except subprocess.CalledProcessError:
@@ -890,7 +913,7 @@ def _try_recovery(obj_type, obj_id):
             # try next origin
             continue
         if cloned_obj is None:
-            return b"found_but_unparseable"
+            return "found_but_unparseable"
         break
     else:
         return "unrecoverable_no-origin"
@@ -1000,7 +1023,7 @@ def _try_recovery(obj_type, obj_id):
     except:
         roundtripped_cloned_manifest = None
 
-    if roundtripped_cloned_manifest == cloned_manifest.split(b"\x00", 1)[1]:
+    if roundtripped_cloned_manifest == cloned_manifest:
         write_fixed_object(swhid, cloned_obj)
         return f"recoverable_misc_{obj_type.value}"
     else:
