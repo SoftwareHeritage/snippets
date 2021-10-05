@@ -801,21 +801,35 @@ def _try_recovery(obj_type, obj_id):
             write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_move_nonce"
 
-    for _ in range(10):
-        try:
+    dir_ = f"graph_backward_leaves/{hash_to_hex(swhid.object_id)[0:2]}"
+    os.makedirs(dir_, exist_ok=True)
+    graph_cache_file = f"{dir_}/{swhid}.txt"
+    if os.path.isfile(graph_cache_file):
+        with open(graph_cache_file) as fd:
             origin_swhids = [
-                ExtendedSWHID.from_string(line)
-                for line in graph.leaves(swhid, direction="backward")
-                if line.startswith("swh:1:ori:")
+                ExtendedSWHID.from_string(line.strip()) for line in fd if line.strip()
             ]
-        except GraphArgumentException:
-            return "unrecoverable_not-in-swh-graph"
-        except:
-            pass
-        else:
-            break
     else:
-        return "unrecoverable_swh-grap-crashes"
+        for _ in range(10):
+            try:
+                origin_swhids = [
+                    ExtendedSWHID.from_string(line)
+                    for line in graph.leaves(swhid, direction="backward")
+                    if line.startswith("swh:1:ori:")
+                ]
+            except GraphArgumentException:
+                return "unrecoverable_not-in-swh-graph"
+            except:
+                pass
+            else:
+                break
+        else:
+            return "unrecoverable_swh-graph-crashes"
+        tmp_path = graph_cache_file + ".tmp" + secrets.token_hex(8)
+        with open(tmp_path, "wt") as fd:
+            fd.write("\n".join(map(str, origin_swhids)))
+            fd.write("\n")
+        os.rename(tmp_path, graph_cache_file)  # atomic
     origins = [
         origin["url"]
         for origin in storage.origin_get_by_sha1(
