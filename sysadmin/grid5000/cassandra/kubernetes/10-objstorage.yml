@@ -50,11 +50,14 @@ spec:
     required:
       nodeSelectorTerms:
       - matchExpressions:
-        # TODO adapt for your needs
-        - key: kubernetes.io/hostname
+        # - key: kubernetes.io/hostname
+        #   operator: In
+        #   values:
+        #   - parasilo-19.rennes.grid5000.fr
+        - key: type
           operator: In
           values:
-          - parasilo-19.rennes.grid5000.fr
+          - loader   
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -75,7 +78,7 @@ metadata:
   labels:
     app: objstorage
 spec:
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: objstorage
@@ -93,10 +96,14 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: kubernetes.io/hostname
+              # - key: kubernetes.io/hostname
+              #   operator: In
+              #   values:
+              #   - parasilo-19.rennes.grid5000.fr
+              - key: type
                 operator: In
                 values:
-                - parasilo-19.rennes.grid5000.fr
+                - loader   
       containers:
       - name: objstorage
         image: vsellier/swh-base
