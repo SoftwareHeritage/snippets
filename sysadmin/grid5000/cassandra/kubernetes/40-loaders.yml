@@ -20,8 +20,8 @@ data:
         url: http://storage:5002/
     max_content_size: 104857600
     temp_file_cutoff: 536870912
-
     celery:
+      task_ignore_result: True
       task_broker: amqp://guest:guest@amqp//
       task_queues:
        - swh.loader.dir.tasks.LoadDirRepository
@@ -61,7 +61,7 @@ data:
     exec python -m celery \
                 --app=swh.scheduler.celery_backend.config.app \
                 worker \
-                --pool=solo --events \
+                --pool=prefork --events \
                 --concurrency=${CONCURRENCY} \
                 --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
                 -Ofair --loglevel=${LOGLEVEL} \

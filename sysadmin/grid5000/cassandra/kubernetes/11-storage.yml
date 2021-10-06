@@ -100,13 +100,13 @@ spec:
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
             readOnly: true
-        resources:
-          requests:
-            memory: "10000Mi"
-            cpu: "5000m"
-          limits:
-            memory: "15000Mi"
-            cpu: "10000m"
+        # resources:
+        #   requests:
+        #     memory: "10000Mi"
+        #     cpu: "5000m"
+        #   limits:
+        #     memory: "15000Mi"
+        #     cpu: "10000m"
       volumes:
         - name: config
           configMap:
