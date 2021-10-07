@@ -168,23 +168,42 @@ RELEASES = {}
 
 
 def get_clone_path(origin_url):
-    origin_id = Origin(url=origin_url).swhid()
-    dirname = f"{origin_id}_{origin_url.replace('/', '_')}"
-    return CLONES_BASE_DIR / dirname
+    if "linux" in origin_url:
+        # linux.git is very big and there are lots of forks... let's fetch them all
+        # in the same clone or it going to take forever to clone them all.
+        return CLONES_BASE_DIR / "linux.git"
+    else:
+        origin_id = Origin(url=origin_url).swhid()
+        dirname = f"{origin_id}_{origin_url.replace('/', '_')}"
+        return CLONES_BASE_DIR / dirname
 
 
 def clone(origin_url):
-    clone_path = get_clone_path(origin_url)
-    if clone_path.is_dir():
-        # already cloned
-        return
-    # print("Cloning", origin_url)
-    subprocess.run(
-        ["git", "clone", "--bare", origin_url, clone_path],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    if "linux" in origin_url:
+        # linux.git is very big and there are lots of forks... let's fetch them all
+        # in the same clone or it going to take forever to clone them all.
+        clone_path = get_clone_path(origin_url)
+        subprocess.run(
+            ["git", "-C", clone_path, "fetch", origin_url],
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+        )
+    else:
+        clone_path = get_clone_path(origin_url)
+        if clone_path.is_dir():
+            # already cloned
+            return
+        # print("Cloning", origin_url)
+        subprocess.run(
+            ["git", "clone", "--bare", origin_url, clone_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+        )
 
 
 def get_object_from_clone(origin_url, obj_id):
@@ -194,22 +213,23 @@ def get_object_from_clone(origin_url, obj_id):
     except dulwich.errors.NotGitRepository:
         return None
 
-    try:
-        return repo[hash_to_bytehex(obj_id)]
-    except dulwich.errors.ObjectFormatException:
-        # fallback to git if dulwich can't parse it
-        object_type = (
-            subprocess.check_output(
-                ["git", "-C", clone_path, "cat-file", "-t", hash_to_hex(obj_id)]
+    with repo:  # needed to avoid packfile fd leaks
+        try:
+            obj = repo[hash_to_bytehex(obj_id)]
+        except dulwich.errors.ObjectFormatException:
+            # fallback to git if dulwich can't parse it
+            object_type = (
+                subprocess.check_output(
+                    ["git", "-C", clone_path, "cat-file", "-t", hash_to_hex(obj_id)]
+                )
+                .decode()
+                .strip()
             )
-            .decode()
-            .strip()
-        )
-        manifest = subprocess.check_output(
-            ["git", "-C", clone_path, "cat-file", object_type, hash_to_hex(obj_id)]
-        )
-        print(f"Dulwich failed to parse: {manifest!r}")
-        traceback.print_exc()
+            manifest = subprocess.check_output(
+                ["git", "-C", clone_path, "cat-file", object_type, hash_to_hex(obj_id)]
+            )
+            print(f"Dulwich failed to parse: {manifest!r}")
+            traceback.print_exc()
 
 
 def _load_revisions(ids):
@@ -1094,6 +1114,11 @@ def get_origins(swhid, stored_obj):
                     clone(origin_url)
                 except subprocess.CalledProcessError:
                     continue
+        elif "linux" in origin_url:
+            try:
+                clone(origin_url)
+            except subprocess.CalledProcessError:
+                continue
 
         try:
             cloned_obj = get_object_from_clone(origin_url, obj_id)
