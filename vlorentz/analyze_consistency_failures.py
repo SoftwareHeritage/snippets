@@ -297,11 +297,11 @@ def handle_line(digest, line):
         return
     m = FIXABLE.fullmatch(line)
     if m:
-        digest["fixable: " + m.group("how")].add(hash_to_bytes(m.group("obj_id")))
+        digest["fixable_trivial"].add(hash_to_bytes(m.group("obj_id")))
         return
     m = UNORDERED_DIRECTORY.fullmatch(line)
     if m:
-        digest["unordered_dir"].add(hash_to_bytes(m.group("obj_id")))
+        digest["weird_unordered_dir"].add(hash_to_bytes(m.group("obj_id")))
         return
 
     # Two messages sometimes ended up on the same line; try to split it
@@ -516,7 +516,7 @@ def _try_recovery(obj_type, obj_id):
             )
             if fixed_stored_obj.compute_hash() == obj_id:
                 write_fixed_object(swhid, fixed_stored_obj)
-                return "leading_newlines"
+                return "fixable_leading_newlines"
 
     # Try some hardcoded fullname susbstitutions
     substitutions = {
@@ -625,7 +625,7 @@ def _try_recovery(obj_type, obj_id):
             if fixed_stored_obj.compute_hash() == obj_id:
                 write_fixed_object(swhid, fixed_stored_obj)
                 return "fixable_offset"
-            fixable_offset = attr.evolve(
+            fixed_stored_obj = attr.evolve(
                 fixed_stored_obj, message=b"\n" + (fixed_stored_obj.message or b"")
             )
             if fixed_stored_obj.compute_hash() == obj_id:
@@ -786,7 +786,7 @@ def _try_recovery(obj_type, obj_id):
         fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
         if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
             write_fixed_manifest(swhid, fixed_stored_manifest)
-            return f"unpadded_time_offset"
+            return f"weird-unpadded_time_offset"
 
     # Try moving the nonce at the end
     if b"nonce" in dict(stored_obj.extra_headers):
