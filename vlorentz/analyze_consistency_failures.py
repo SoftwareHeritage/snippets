@@ -34,8 +34,19 @@ from swh.loader.git.converters import (
     dulwich_commit_to_revision,
 )
 from swh.model.hashutil import hash_to_bytes, hash_to_hex, hash_to_bytehex
-from swh.model.git_objects import directory_git_object, revision_git_object
-from swh.model.model import Directory, Origin, Person, RevisionType
+from swh.model.git_objects import (
+    directory_git_object,
+    release_git_object,
+    revision_git_object,
+)
+from swh.model.model import (
+    Directory,
+    Origin,
+    Person,
+    RevisionType,
+    Timestamp,
+    TimestampWithTimezone,
+)
 from swh.model.swhids import ObjectType, CoreSWHID, ExtendedSWHID
 from swh.storage import get_storage
 
@@ -145,10 +156,15 @@ ENCODINGS = (
 )
 
 
+ZERO_TIMESTAMP = TimestampWithTimezone(
+    Timestamp(seconds=0, microseconds=0), offset=0, negative_utc=False
+)
+
 graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph/")
 
 
 REVISIONS = {}
+RELEASES = {}
 
 
 def get_clone_path(origin_url):
@@ -204,6 +220,14 @@ def _load_revisions(ids):
     return dict(zip(ids, storage.revision_get(ids)))
 
 
+def _load_releases(ids):
+    ids = list(ids)
+    storage = get_storage(
+        "remote", url="http://webapp1.internal.softwareheritage.org:5002/"
+    )
+    return dict(zip(ids, storage.release_get(ids)))
+
+
 def main(input_fd):
     digest = collections.defaultdict(set)
 
@@ -217,7 +241,11 @@ def main(input_fd):
     # revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:100]
     # revision_id_groups = list(grouper(digest["mismatch_hg_to_git"], 1000))
     revision_id_groups = list(
-        grouper(digest["mismatch_misc_revision"] | digest["mismatch_hg_to_git"], 1000)
+        grouper(
+            digest.get("mismatch_misc_revision", set())
+            | digest.get("mismatch_hg_to_git", set()),
+            1000,
+        )
     )
     with multiprocessing.dummy.Pool(10) as p:
         for revisions in tqdm.tqdm(
@@ -228,17 +256,28 @@ def main(input_fd):
         ):
             REVISIONS.update(revisions)
 
-    # Try to fix objects one by one
-    with multiprocessing.Pool(32) as p:
-        for key in (
-            "mismatch_misc_revision",
-            "mismatch_hg_to_git",
+    release_id_groups = list(grouper(digest.get("mismatch_misc_release", []), 1000))
+    with multiprocessing.dummy.Pool(10) as p:
+        for releases in tqdm.tqdm(
+            p.imap_unordered(_load_releases, release_id_groups),
+            desc="loading releases",
+            unit="k rels",
+            total=len(release_id_groups),
         ):
-            obj_ids = list(digest.pop(key))
+            RELEASES.update(releases)
+
+    # Try to fix objects one by one
+    with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
+        for (f, key) in (
+            (try_revision_recovery, "mismatch_misc_revision"),
+            (try_revision_recovery, "mismatch_hg_to_git"),
+            (try_release_recovery, "mismatch_misc_release"),
+        ):
+            obj_ids = list(digest.pop(key, []))
             for (obj_id, new_key) in tqdm.tqdm(
-                p.imap_unordered(try_revision_recovery, obj_ids, chunksize=100),
+                p.imap_unordered(f, obj_ids, chunksize=100),
                 desc=f"recovering {key}",
-                unit="rev",
+                unit="obj",
                 total=len(obj_ids),
                 smoothing=0.01,
             ):
@@ -328,6 +367,10 @@ def try_revision_recovery(obj_id):
     return (obj_id, _try_recovery(ObjectType.REVISION, obj_id))
 
 
+def try_release_recovery(obj_id):
+    return (obj_id, _try_recovery(ObjectType.RELEASE, obj_id))
+
+
 def _try_recovery(obj_type, obj_id):
     """Try fixing the given obj_id, and returns what digest key it should be added to"""
     obj_id = hash_to_bytes(obj_id)
@@ -349,6 +392,11 @@ def _try_recovery(obj_type, obj_id):
         if stored_obj.type != RevisionType.GIT:
             return f"mismatch_misc_{stored_obj.type.value}"
         stored_manifest = revision_git_object(stored_obj)
+    elif obj_type == ObjectType.RELEASE:
+        stored_obj = RELEASES[obj_id]
+        if stored_obj is None:
+            return "release_missing_from_storage"
+        stored_manifest = release_git_object(stored_obj)
     elif obj_type == ObjectType.DIRECTORY:
         stored_obj = Directory(
             id=obj_id,
@@ -362,6 +410,94 @@ def _try_recovery(obj_type, obj_id):
 
     assert obj_id == stored_obj.id
     assert obj_id != stored_obj.compute_hash(), "Hash matches this time?!"
+
+    if obj_type == ObjectType.REVISION:
+        bucket = try_fix_revision(swhid, stored_obj, stored_manifest)
+    elif obj_type == ObjectType.RELEASE:
+        bucket = try_fix_release(swhid, stored_obj, stored_manifest)
+    elif obj_type == ObjectType.DIRECTORY:
+        bucket = try_fix_directory(swhid, stored_obj, stored_manifest)
+    else:
+        assert False, obj_id
+
+    if bucket is not None:
+        return bucket
+
+    res = get_origins(swhid, stored_obj)
+    if res[0]:
+        (_, origin_url, cloned_obj) = res
+    else:
+        (_, bucket) = res
+        return bucket
+
+    object_header = (
+        cloned_obj.type_name + b" " + str(cloned_obj.raw_length()).encode() + b"\x00"
+    )
+    cloned_manifest = object_header + cloned_obj.as_raw_string()
+    rehash = hashlib.sha1(cloned_manifest).digest()
+    assert (
+        obj_id == rehash
+    ), f"Mismatch between origin hash and original object: {obj_id.hex()} != {rehash.hex()}"
+
+    if obj_type == ObjectType.REVISION:
+        bucket = try_recover_revision(
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+        )
+    elif obj_type == ObjectType.RELEASE:
+        bucket = try_recover_release(
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+        )
+    elif obj_type == ObjectType.DIRECTORY:
+        bucket = try_recover_directory(
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+        )
+    else:
+        assert False, obj_id
+
+    if bucket is not None:
+        return bucket
+
+    print("=" * 100)
+    print("Failed to fix:")
+    print("origin_url", origin_url)
+    print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
+    print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
+    print(
+        "\n".join(
+            difflib.ndiff(
+                cloned_manifest.split(b"\x00", 1)[1]
+                .decode(errors="backslashreplace")
+                .split("\n"),
+                stored_manifest.split(b"\x00", 1)[1]
+                .decode(errors="backslashreplace")
+                .split("\n"),
+            )
+        )
+    )
+    print("=" * 100)
+
+    try:
+        if obj_type == ObjectType.REVISION:
+            cloned_obj = dulwich_commit_to_revision(cloned_obj)
+            roundtripped_cloned_manifest = revision_git_object(cloned_obj)
+        elif obj_type == ObjectType.DIRECTORY:
+            cloned_obj = dulwich_tree_to_directory(cloned_obj)
+            roundtripped_cloned_manifest = directory_git_object(cloned_obj)
+        else:
+            assert False, obj_type
+    except:
+        roundtripped_cloned_manifest = None
+
+    if roundtripped_cloned_manifest == cloned_manifest:
+        write_fixed_object(swhid, cloned_obj)
+        return f"recoverable_misc_{obj_type.value}"
+    else:
+        write_fixed_manifest(swhid, cloned_manifest)
+        return f"weird_misc_{obj_type.value}"
+
+
+def try_fix_revision(swhid, stored_obj, stored_manifest):
+    obj_id = swhid.object_id
 
     # Try adding leading space to email
     # (very crude, this assumes author = committer)
@@ -801,6 +937,41 @@ def _try_recovery(obj_type, obj_id):
             write_fixed_object(swhid, fixed_stored_obj)
             return "fixable_move_nonce"
 
+    return None
+
+
+def try_fix_release(swhid, stored_obj, stored_manifest):
+    obj_id = swhid.object_id
+
+    # Try nullifying a zero date
+    if stored_obj.date is not None and stored_obj.date.timestamp.seconds == 0:
+        fixed_stored_obj = attr.evolve(stored_obj, date=None,)
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_nullify_zero_date"
+
+    # Try zeroing a null date
+    if stored_obj.date is None:
+        fixed_stored_obj = attr.evolve(stored_obj, date=ZERO_TIMESTAMP)
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_zero_null_date"
+
+    return None
+
+
+def get_origins(swhid, stored_obj):
+    obj_id = swhid.object_id
+
+    storage = get_storage(
+        "pipeline",
+        steps=[
+            dict(cls="retry"),
+            dict(
+                cls="remote", url="http://webapp1.internal.softwareheritage.org:5002/"
+            ),
+        ],
+    )
     dir_ = f"graph_backward_leaves/{hash_to_hex(swhid.object_id)[0:2]}"
     os.makedirs(dir_, exist_ok=True)
     graph_cache_file = f"{dir_}/{swhid}.txt"
@@ -818,13 +989,13 @@ def _try_recovery(obj_type, obj_id):
                     if line.startswith("swh:1:ori:")
                 ]
             except GraphArgumentException:
-                return "unrecoverable_not-in-swh-graph"
+                return (False, "unrecoverable_not-in-swh-graph")
             except:
                 pass
             else:
                 break
         else:
-            return "unrecoverable_swh-graph-crashes"
+            return (False, "unrecoverable_swh-graph-crashes")
         tmp_path = graph_cache_file + ".tmp" + secrets.token_hex(8)
         with open(tmp_path, "wt") as fd:
             fd.write("\n".join(map(str, origin_swhids)))
@@ -859,8 +1030,11 @@ def _try_recovery(obj_type, obj_id):
             continue
 
         data = b"0032want " + hash_to_bytehex(obj_id) + b"\n"
-        for parent in stored_obj.parents:
-            data += b"0032have " + hash_to_bytehex(parent) + b"\n"
+        if swhid.object_type == ObjectType.REVISION:
+            for parent in stored_obj.parents:
+                data += b"0032have " + hash_to_bytehex(parent) + b"\n"
+        elif swhid.object_type == ObjectType.RELEASE:
+            data += b"0032have " + hash_to_bytehex(stored_obj.target) + b"\n"
         data += b"0000"
         data += b"0009done\n"
 
@@ -904,10 +1078,10 @@ def _try_recovery(obj_type, obj_id):
                                 if not new_data:
                                     break
                                 response += new_data
-                except (TimeoutError, socket.gaierror):
+                except (TimeoutError, socket.gaierror, ssl.SSLCertVerificationError):
                     # Could not connect
                     continue
-                except ConnectionResetError:
+                except (ConnectionResetError, OSError):
                     # Could happen for variousreasons, let's try anyway
                     pass
                 else:
@@ -927,88 +1101,107 @@ def _try_recovery(obj_type, obj_id):
             # try next origin
             continue
         if cloned_obj is None:
-            return "found_but_unparseable"
+            return (False, "found_but_unparseable")
         break
     else:
-        return "unrecoverable_no-origin"
+        return (False, "unrecoverable_no-origin")
 
-    object_header = (
-        cloned_obj.type_name + b" " + str(cloned_obj.raw_length()).encode() + b"\x00"
-    )
-    cloned_manifest = object_header + cloned_obj.as_raw_string()
-    rehash = hashlib.sha1(cloned_manifest).digest()
-    assert (
-        obj_id == rehash
-    ), f"Mismatch between origin hash and original object: {obj_id.hex()} != {rehash.hex()}"
+    return (True, origin_url, cloned_obj)
 
-    if obj_type == ObjectType.REVISION:
-        fixed_stored_obj = stored_obj
 
-        # Try adding gpgsig
-        if (
-            b"gpgsig" not in dict(stored_obj.extra_headers)
-            and cloned_obj.gpgsig is not None
-        ):
-            fixed_stored_obj = attr.evolve(
-                stored_obj,
-                extra_headers=(
-                    *[(k, v) for (k, v) in stored_obj.extra_headers if k != b"nonce"],
-                    (b"gpgsig", cloned_obj.gpgsig),
-                    *[(k, v) for (k, v) in stored_obj.extra_headers if k == b"nonce"],
-                ),
-            )
-            if fixed_stored_obj.compute_hash() == obj_id:
-                write_fixed_object(swhid, fixed_stored_obj)
-                return "recoverable_missing_gpgsig"
+def try_recover_revision(
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+):
+    obj_id = swhid.object_id
+    fixed_stored_obj = stored_obj
 
-        # Try adding mergetag (on top of gpgsig)
-        if (
-            b"mergetag" not in dict(stored_obj.extra_headers)
-            and cloned_obj.mergetag is not None
-        ):
-            # fixed_stored_obj = stored_obj  # commented out to reuse the gpgsig-fixed
-            mergetags = []
-            for mergetag in cloned_obj.mergetag:
-                mergetag = mergetag.as_raw_string()
-                assert mergetag.endswith(b"\n")
-                mergetags.append((b"mergetag", mergetag[0:-1]))
-            fixed_stored_obj = attr.evolve(
-                fixed_stored_obj,
-                extra_headers=(*mergetags, *stored_obj.extra_headers,),
-            )
-            if fixed_stored_obj.compute_hash() == obj_id:
-                write_fixed_object(swhid, fixed_stored_obj)
-                return "recoverable_missing_mergetag_and_maybe_gpgsig"
-
-        # Try adding a magic string at the end of the message
-        if stored_obj.message and stored_obj.message.endswith(b"--HG--\nbranch : "):
-            # Probably https://github.com/GWBasic/ObjectCloud.git
-            assert cloned_obj.message.startswith(stored_obj.message)
-            fixed_stored_obj = attr.evolve(stored_obj, message=cloned_obj.message)
-            if fixed_stored_obj.compute_hash() == obj_id:
-                write_fixed_object(swhid, fixed_stored_obj)
-                return "recoverable_hg_branch_nullbytes_truncated"
-
-        # Try copying extra headers (including gpgsig)
-        extra_headers = cloned_obj.extra
-        if cloned_obj.gpgsig is not None:
-            extra_headers = (*extra_headers, (b"gpgsig", cloned_obj.gpgsig))
-        fixed_stored_obj = attr.evolve(stored_obj, extra_headers=extra_headers)
+    # Try adding gpgsig
+    if (
+        b"gpgsig" not in dict(stored_obj.extra_headers)
+        and cloned_obj.gpgsig is not None
+    ):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=(
+                *[(k, v) for (k, v) in stored_obj.extra_headers if k != b"nonce"],
+                (b"gpgsig", cloned_obj.gpgsig),
+                *[(k, v) for (k, v) in stored_obj.extra_headers if k == b"nonce"],
+            ),
+        )
         if fixed_stored_obj.compute_hash() == obj_id:
             write_fixed_object(swhid, fixed_stored_obj)
-            return "recoverable_extra_headers"
-        if {b"HG:extra", b"HG:rename-source", b"HG:rename"} & set(dict(extra_headers)):
-            for n in range(4):
-                fixed_stored_obj = attr.evolve(
-                    fixed_stored_obj, message=b"\n" + fixed_stored_obj.message
-                )
-                if fixed_stored_obj.compute_hash() == obj_id:
-                    write_fixed_object(swhid, fixed_stored_obj)
-                    return "recoverable_extra_headers_and_leading_newlines"
+            return "recoverable_missing_gpgsig"
 
-    print("=" * 100)
-    print("Failed to fix:")
-    print("origin_url", origin_url)
+    # Try adding mergetag (on top of gpgsig)
+    if (
+        b"mergetag" not in dict(stored_obj.extra_headers)
+        and cloned_obj.mergetag is not None
+    ):
+        # fixed_stored_obj = stored_obj  # commented out to reuse the gpgsig-fixed
+        mergetags = []
+        for mergetag in cloned_obj.mergetag:
+            mergetag = mergetag.as_raw_string()
+            assert mergetag.endswith(b"\n")
+            mergetags.append((b"mergetag", mergetag[0:-1]))
+        fixed_stored_obj = attr.evolve(
+            fixed_stored_obj, extra_headers=(*mergetags, *stored_obj.extra_headers,),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "recoverable_missing_mergetag_and_maybe_gpgsig"
+
+    # Try adding a magic string at the end of the message
+    if stored_obj.message and stored_obj.message.endswith(b"--HG--\nbranch : "):
+        # Probably https://github.com/GWBasic/ObjectCloud.git
+        assert cloned_obj.message.startswith(stored_obj.message)
+        fixed_stored_obj = attr.evolve(stored_obj, message=cloned_obj.message)
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "recoverable_hg_branch_nullbytes_truncated"
+
+    # Try copying extra headers (including gpgsig)
+    extra_headers = cloned_obj.extra
+    if cloned_obj.gpgsig is not None:
+        extra_headers = (*extra_headers, (b"gpgsig", cloned_obj.gpgsig))
+    fixed_stored_obj = attr.evolve(stored_obj, extra_headers=extra_headers)
+    if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
+        return "recoverable_extra_headers"
+    if {b"HG:extra", b"HG:rename-source", b"HG:rename"} & set(dict(extra_headers)):
+        for n in range(4):
+            fixed_stored_obj = attr.evolve(
+                fixed_stored_obj, message=b"\n" + fixed_stored_obj.message
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return "recoverable_extra_headers_and_leading_newlines"
+
+    return None
+
+
+def try_recover_release(
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+):
+    obj_id = swhid.object_id
+
+    if cloned_obj.signature is not None:
+        fixed_stored_obj = attr.evolve(
+            stored_obj, message=(stored_obj.message or b"") + cloned_obj.signature
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "recoverable_missing_gpgsig"
+
+    if cloned_obj.signature is not None:
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            date=ZERO_TIMESTAMP,
+            message=(stored_obj.message or b"") + cloned_obj.signature,
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "recoverable_missing_gpgsig_and_zero_date"
+
     print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
     print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
     print(
@@ -1023,27 +1216,14 @@ def _try_recovery(obj_type, obj_id):
             )
         )
     )
-    print("=" * 100)
 
-    try:
-        if obj_type == ObjectType.REVISION:
-            cloned_obj = dulwich_commit_to_revision(cloned_obj)
-            roundtripped_cloned_manifest = revision_git_object(cloned_obj)
-        elif obj_type == ObjectType.DIRECTORY:
-            cloned_obj = dulwich_tree_to_directory(cloned_obj)
-            roundtripped_cloned_manifest = directory_git_object(cloned_obj)
-        else:
-            assert False, obj_type
-    except:
-        roundtripped_cloned_manifest = None
 
-    if roundtripped_cloned_manifest == cloned_manifest:
-        write_fixed_object(swhid, cloned_obj)
-        return f"recoverable_misc_{obj_type.value}"
-    else:
-        write_fixed_manifest(swhid, cloned_manifest)
-        return f"weird_misc_{obj_type.value}"
+def handle_pdb(sig, frame):
+    import pdb
+
+    pdb.Pdb().set_trace(frame)
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGUSR1, handle_pdb)
     main(sys.stdin)
