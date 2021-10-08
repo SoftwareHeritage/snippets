@@ -20,9 +20,11 @@ data:
         url: http://{{ .Values.storage.host }}:5002/
 
     celery:
-      task_broker: amqp://{{ .Values.amqp.user }}:{{ .Values.amqp.password }}@{{ .Values.amqp.host }}//
+      task_broker: amqp://{{ .Values.amqp.username }}:{{ .Values.amqp.password }}@{{ .Values.amqp.host }}//
       task_queues:
-       - swh.loader.git.tasks.UpdateGitRepository
+    {{- range .Values.amqp.queues }}
+      - {{ . }}
+    {{- end }}
   entrypoint.sh: |
     #!/bin/bash
 
@@ -37,4 +39,3 @@ data:
                 --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
                 -Ofair --loglevel=${LOGLEVEL} \
                 --hostname "${HOSTNAME}"
-

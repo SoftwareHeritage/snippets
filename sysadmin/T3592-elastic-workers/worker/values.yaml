@@ -16,5 +16,5 @@ swh:
     version: latest
     replicas:
       min: 1
-      max: 10
-      default: 5
+      max: 5
+
