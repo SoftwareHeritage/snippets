@@ -68,7 +68,7 @@ MISMATCH_HG_TO_GIT = re.compile(
 )
 SVN_MISMATCH = re.compile("Possibly unfixable SVN revision: (?P<obj_id>[0-9a-f]{40})")
 FIXABLE = re.compile(
-    r"Fixable (?P<obj_type>[a-z]+) (?P<obj_id>[0-9a-f]{40}) \((?P<how>.*)\)"
+    r"Fixable (?P<obj_type>[a-z]+) (?P<obj_id>[0-9a-f]{40}) \((?P<how>[^)]*)\)"
 )
 UNORDERED_DIRECTORY = re.compile(
     r"Weird directory checksum (?P<obj_id>[0-9a-f]{40}) \(computed without sorting\)"
@@ -154,6 +154,7 @@ ENCODINGS = (
     b"zh_CN.GB18030",
     b"iso-2022-jp",
     b"en_US.UTF-8",
+    b"it_IT.UTF8",
     b"dos",
     b"iso8859-13",
 )
@@ -231,7 +232,7 @@ def get_object_from_clone(origin_url, obj_id):
 
     with repo:  # needed to avoid packfile fd leaks
         try:
-            obj = repo[hash_to_bytehex(obj_id)]
+            return repo[hash_to_bytehex(obj_id)]
         except dulwich.errors.ObjectFormatException:
             # fallback to git if dulwich can't parse it
             object_type = (
@@ -1029,14 +1030,17 @@ def get_origins(swhid, stored_obj):
                     for line in graph.leaves(swhid, direction="backward")
                     if line.startswith("swh:1:ori:")
                 ]
-            except GraphArgumentException:
-                return (False, "unrecoverable_not-in-swh-graph")
+            except GraphArgumentException as e:
+                return (
+                    False,
+                    "unrecoverable_{swhid.object_type.value}_not-in-swh-graph",
+                )
             except:
                 pass
             else:
                 break
         else:
-            return (False, "unrecoverable_swh-graph-crashes")
+            return (False, f"unrecoverable_{swhid.object_type.value}_swh-graph-crashes")
         tmp_path = graph_cache_file + ".tmp" + secrets.token_hex(8)
         with open(tmp_path, "wt") as fd:
             fd.write("\n".join(map(str, origin_swhids)))
@@ -1150,7 +1154,7 @@ def get_origins(swhid, stored_obj):
             return (False, "found_but_unparseable")
         break
     else:
-        return (False, "unrecoverable_no-origin")
+        return (False, f"unrecoverable_{swhid.object_type.value}_no-origin")
 
     return (True, origin_url, cloned_obj)
 
