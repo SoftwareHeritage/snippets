@@ -1,11 +1,13 @@
 import collections
 import difflib
+import json
 import hashlib
 import multiprocessing
 import multiprocessing.dummy
 import os
 import pathlib
 import pickle
+import random
 import re
 import secrets
 import signal
@@ -16,6 +18,7 @@ import sys
 import tempfile
 import time
 import traceback
+from typing import Dict
 import urllib.parse
 
 import attr
@@ -166,6 +169,17 @@ graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph
 REVISIONS = {}
 RELEASES = {}
 
+MANAGER = multiprocessing.Manager()
+
+CLONED_ORIGINS_PATH = "analyze_consistency_failures/cloned_origins.json"
+CLONED_ORIGINS: Dict[str, None]  # used like a set
+
+if os.path.exists(CLONED_ORIGINS_PATH):
+    with open(CLONED_ORIGINS_PATH, "rt") as fd:
+        CLONED_ORIGINS = MANAGER.dict(json.load(fd))
+else:
+    CLONED_ORIGINS = MANAGER.dict()
+
 
 def get_clone_path(origin_url):
     if "linux" in origin_url:
@@ -179,6 +193,8 @@ def get_clone_path(origin_url):
 
 
 def clone(origin_url):
+    if origin_url in CLONED_ORIGINS:
+        return
     if "linux" in origin_url:
         # linux.git is very big and there are lots of forks... let's fetch them all
         # in the same clone or it going to take forever to clone them all.
@@ -193,17 +209,17 @@ def clone(origin_url):
         )
     else:
         clone_path = get_clone_path(origin_url)
-        if clone_path.is_dir():
-            # already cloned
-            return
-        # print("Cloning", origin_url)
-        subprocess.run(
-            ["git", "clone", "--bare", origin_url, clone_path],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-        )
+        if not clone_path.is_dir():
+            # print("Cloning", origin_url)
+            subprocess.run(
+                ["git", "clone", "--bare", origin_url, clone_path],
+                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+    CLONED_ORIGINS[origin_url] = None
 
 
 def get_object_from_clone(origin_url, obj_id):
@@ -294,20 +310,25 @@ def main(input_fd):
             (try_release_recovery, "mismatch_misc_release"),
         ):
             obj_ids = list(digest.pop(key, []))
-            for (obj_id, new_key) in tqdm.tqdm(
+            for (i, (obj_id, new_key)) in enumerate(tqdm.tqdm(
                 p.imap_unordered(f, obj_ids, chunksize=100),
                 desc=f"recovering {key}",
                 unit="obj",
                 total=len(obj_ids),
                 smoothing=0.01,
-            ):
+            )):
                 digest[new_key].add(obj_id)
 
-    for (type_, obj_ids) in sorted(digest.items()):
-        print(f"{len(obj_ids)}\t{type_}")
+                if i % 100_000 == 0:
+                    data = json.dumps(dict(CLONED_ORIGINS))
+                    with open(CLONED_ORIGINS_PATH, "wt") as fd:
+                        fd.write(data)
 
-    with open("analyze_consistency_failures/results.pickle", "wb") as fd:
-        pickle.dump(dict(digest), fd)
+            for (type_, obj_ids) in sorted(digest.items()):
+                print(f"{len(obj_ids)}\t{type_}")
+
+            with open("analyze_consistency_failures/results.pickle", "wb") as fd:
+                pickle.dump(dict(digest), fd)
 
 
 def write_fixed_manifest(swhid, manifest):
