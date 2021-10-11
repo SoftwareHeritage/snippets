@@ -1,5 +1,6 @@
 import collections
 import difflib
+import gc
 import json
 import hashlib
 import multiprocessing
@@ -303,6 +304,11 @@ def main(input_fd):
         ):
             RELEASES.update(releases)
 
+
+    # Prevent the GC from collecting or moving existing objects; so the kernel does
+    # not need to CoW them in the worker processes.
+    gc.freeze()
+
     # Try to fix objects one by one
     with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
         for (f, key) in (
@@ -541,6 +547,39 @@ def _try_recovery(obj_type, obj_id):
 def try_fix_revision(swhid, stored_obj, stored_manifest):
     obj_id = swhid.object_id
 
+    # Try adding an encoding header
+    if b"encoding" not in dict(stored_obj.extra_headers):
+        for encoding in ENCODINGS:
+            fixed_stored_obj = attr.evolve(
+                stored_obj,
+                extra_headers=(*stored_obj.extra_headers, (b"encoding", encoding)),
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return f"fixable_add_encoding"
+            if fixed_stored_obj.message is not None:
+                for _ in range(3):
+                    fixed_stored_obj = attr.evolve(
+                        fixed_stored_obj,
+                        message=b"\n" + (fixed_stored_obj.message or b""),
+                    )
+                    if fixed_stored_obj.compute_hash() == obj_id:
+                        write_fixed_object(swhid, fixed_stored_obj)
+                        return f"fixable_add_encoding_and_leading_newlines"
+
+    # Try moving the nonce at the end
+    if b"nonce" in dict(stored_obj.extra_headers):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=(
+                *[(k, v) for (k, v) in stored_obj.extra_headers if k != b"nonce"],
+                *[(k, v) for (k, v) in stored_obj.extra_headers if k == b"nonce"],
+            ),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return "fixable_move_nonce"
+
     # Try adding leading space to email
     # (very crude, this assumes author = committer)
     fullname = stored_obj.author.fullname.replace(b" <", b" < ")
@@ -619,7 +658,7 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
                 return "fixable_author_leading_spaces"
 
     # Try adding spaces between name and email
-    for i in range(1, 32):
+    for i in (0, 1, 2, 4, 5, 8, 16, 32):
         fullname = stored_obj.author.fullname.replace(b" <", b" " * i + b"<", 1)
         fixed_stored_obj = attr.evolve(
             stored_obj,
@@ -631,8 +670,8 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
             return "fixable_author_middle_spaces"
 
     # Try again but with differing values
-    for committer_padding in (0, 1, 2, 4, 5, 8, 16, 32):
-        for author_padding in (0, 1, 2, 4, 5, 8, 16, 32):
+    for committer_padding in (0, 1, 2, 4, 5, 8):
+        for author_padding in (0, 1, 2, 4, 5, 8):
             fixed_stored_obj = attr.evolve(
                 stored_obj,
                 author=Person(
@@ -770,45 +809,69 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
         write_fixed_object(swhid, fixed_stored_obj)
         return "fixable_author_fullname_in_name_and_email"
 
-    # If the timezone is 0, try some other ones
-    offsets = {i * 60 + (+1 if i >= 0 else -1) * 59 for i in range(-12, 13)} | {
-        -22 * 60 - 0,
-        0,
-        12 * 60 + 0,
-        14 * 60 + 0,
-        20 * 60 + 0,
-        80 * 60 + 0,
-        stored_obj.committer_date.offset,
-        stored_obj.date.offset,
-    }
-    for committer_offset in (
-        offsets
-        if stored_obj.committer_date.offset == 0
-        else [stored_obj.committer_date.offset]
+    if (
+        stored_obj.date.offset == stored_obj.committer_date.offset == 0
+        and stored_obj.author.fullname.startswith(b" ")
     ):
-        for author_offset in (
-            offsets if stored_obj.date.offset == 0 else [stored_obj.date.offset]
-        ):
-            fixed_stored_obj = attr.evolve(
-                stored_obj,
-                date=attr.evolve(
-                    stored_obj.date, offset=author_offset, negative_utc=False
-                ),
-                committer_date=attr.evolve(
-                    stored_obj.committer_date,
-                    offset=committer_offset,
-                    negative_utc=False,
-                ),
-            )
-            if fixed_stored_obj.compute_hash() == obj_id:
-                write_fixed_object(swhid, fixed_stored_obj)
-                return "fixable_offset"
-            fixed_stored_obj = attr.evolve(
-                fixed_stored_obj, message=b"\n" + (fixed_stored_obj.message or b"")
-            )
-            if fixed_stored_obj.compute_hash() == obj_id:
-                write_fixed_object(swhid, fixed_stored_obj)
-                return "fixable_offset_and_newline"
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            author=attr.evolve(
+                stored_obj.author, fullname=stored_obj.author.fullname[1:]
+            ),
+            committer=attr.evolve(
+                stored_obj.committer, fullname=stored_obj.committer.fullname[1:]
+            ),
+            date=attr.evolve(stored_obj.date, negative_utc=True),
+            committer_date=attr.evolve(stored_obj.committer_date, negative_utc=True),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_space_and_negative_utc"
+
+        fixed_stored_obj = attr.evolve(
+            fixed_stored_obj, message=(stored_obj.message or b"") + b"\n",
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_space_and_newline_and_negative_utc"
+
+    # Try capitalizing the 'parent' revision
+    stored_manifest_lines = stored_manifest.split(b"\n")
+    fixed_stored_manifest_lines = [
+        b"parent " + line.split(b" ")[1].upper()
+        if line.startswith(b"parent ")
+        else line
+        for line in stored_manifest_lines
+    ]
+    fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
+    if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+        write_fixed_manifest(swhid, fixed_stored_manifest)
+        return "capitalized_revision_parent"
+
+    # Try removing leading zero in date offsets (very crude...)
+    stored_manifest_lines = stored_manifest.split(b"\n")
+    for (unpad_author, unpad_committer) in [(0, 1), (1, 0), (1, 1)]:
+        fixed_stored_manifest_lines = list(stored_manifest_lines)
+        if unpad_author:
+            fixed_stored_manifest_lines = [
+                re.sub(br"([+-])0", lambda m: m.group(1), line)
+                if line.startswith(b"author ")
+                else line
+                for line in fixed_stored_manifest_lines
+            ]
+        if unpad_committer:
+            fixed_stored_manifest_lines = [
+                re.sub(br"([+-])0", lambda m: m.group(1), line)
+                if line.startswith(b"committer ")
+                else line
+                for line in fixed_stored_manifest_lines
+            ]
+        fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
+        object_header, rest = fixed_stored_manifest.split(b"\x00", 1)
+        fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
+        if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+            write_fixed_manifest(swhid, fixed_stored_manifest)
+            return f"weird-unpadded_time_offset"
 
     if stored_obj.date.offset == stored_obj.committer_date.offset == (6 * 60 + 15):
         fixed_stored_manifest = stored_manifest.replace(b"+0615", b"+0575")
@@ -882,102 +945,45 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
                     write_fixed_manifest(swhid, fixed_stored_manifest)
                     return f"weird-offset={offset.decode()}"
 
-    if (
-        stored_obj.date.offset == stored_obj.committer_date.offset == 0
-        and stored_obj.author.fullname.startswith(b" ")
+    # If the timezone is 0, try some other ones
+    offsets = {i * 60 + (+1 if i >= 0 else -1) * 59 for i in range(-12, 13)} | {
+        -22 * 60 - 0,
+        0,
+        12 * 60 + 0,
+        14 * 60 + 0,
+        20 * 60 + 0,
+        80 * 60 + 0,
+        stored_obj.committer_date.offset,
+        stored_obj.date.offset,
+    }
+    for committer_offset in (
+        offsets
+        if stored_obj.committer_date.offset == 0
+        else [stored_obj.committer_date.offset]
     ):
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            author=attr.evolve(
-                stored_obj.author, fullname=stored_obj.author.fullname[1:]
-            ),
-            committer=attr.evolve(
-                stored_obj.committer, fullname=stored_obj.committer.fullname[1:]
-            ),
-            date=attr.evolve(stored_obj.date, negative_utc=True),
-            committer_date=attr.evolve(stored_obj.committer_date, negative_utc=True),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return f"fixable_space_and_negative_utc"
-
-        fixed_stored_obj = attr.evolve(
-            fixed_stored_obj, message=(stored_obj.message or b"") + b"\n",
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return f"fixable_space_and_newline_and_negative_utc"
-
-    # Try adding an encoding header
-    if b"encoding" not in dict(stored_obj.extra_headers):
-        for encoding in ENCODINGS:
+        for author_offset in (
+            offsets if stored_obj.date.offset == 0 else [stored_obj.date.offset]
+        ):
             fixed_stored_obj = attr.evolve(
                 stored_obj,
-                extra_headers=(*stored_obj.extra_headers, (b"encoding", encoding)),
+                date=attr.evolve(
+                    stored_obj.date, offset=author_offset, negative_utc=False
+                ),
+                committer_date=attr.evolve(
+                    stored_obj.committer_date,
+                    offset=committer_offset,
+                    negative_utc=False,
+                ),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
                 write_fixed_object(swhid, fixed_stored_obj)
-                return f"fixable_add_encoding"
-            if fixed_stored_obj.message is not None:
-                for _ in range(3):
-                    fixed_stored_obj = attr.evolve(
-                        fixed_stored_obj,
-                        message=b"\n" + (fixed_stored_obj.message or b""),
-                    )
-                    if fixed_stored_obj.compute_hash() == obj_id:
-                        write_fixed_object(swhid, fixed_stored_obj)
-                        return f"fixable_add_encoding_and_leading_newlines"
-
-    # Try capitalizing the 'parent' revision
-    stored_manifest_lines = stored_manifest.split(b"\n")
-    fixed_stored_manifest_lines = [
-        b"parent " + line.split(b" ")[1].upper()
-        if line.startswith(b"parent ")
-        else line
-        for line in stored_manifest_lines
-    ]
-    fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
-    if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
-        write_fixed_manifest(swhid, fixed_stored_manifest)
-        return "capitalized_revision_parent"
-
-    # Try removing leading zero in date offsets (very crude...)
-    stored_manifest_lines = stored_manifest.split(b"\n")
-    for (unpad_author, unpad_committer) in [(0, 1), (1, 0), (1, 1)]:
-        fixed_stored_manifest_lines = list(stored_manifest_lines)
-        if unpad_author:
-            fixed_stored_manifest_lines = [
-                re.sub(br"([+-])0", lambda m: m.group(1), line)
-                if line.startswith(b"author ")
-                else line
-                for line in fixed_stored_manifest_lines
-            ]
-        if unpad_committer:
-            fixed_stored_manifest_lines = [
-                re.sub(br"([+-])0", lambda m: m.group(1), line)
-                if line.startswith(b"committer ")
-                else line
-                for line in fixed_stored_manifest_lines
-            ]
-        fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
-        object_header, rest = fixed_stored_manifest.split(b"\x00", 1)
-        fixed_stored_manifest = b"commit " + str(len(rest)).encode() + b"\x00" + rest
-        if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
-            write_fixed_manifest(swhid, fixed_stored_manifest)
-            return f"weird-unpadded_time_offset"
-
-    # Try moving the nonce at the end
-    if b"nonce" in dict(stored_obj.extra_headers):
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            extra_headers=(
-                *[(k, v) for (k, v) in stored_obj.extra_headers if k != b"nonce"],
-                *[(k, v) for (k, v) in stored_obj.extra_headers if k == b"nonce"],
-            ),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return "fixable_move_nonce"
+                return "fixable_offset"
+            fixed_stored_obj = attr.evolve(
+                fixed_stored_obj, message=b"\n" + (fixed_stored_obj.message or b"")
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return "fixable_offset_and_newline"
 
     return None
 
