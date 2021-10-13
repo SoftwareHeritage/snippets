@@ -158,6 +158,7 @@ ENCODINGS = (
     b"it_IT.UTF8",
     b"dos",
     b"iso8859-13",
+    b"iso-8851-9",
 )
 
 
@@ -304,7 +305,6 @@ def main(input_fd):
         ):
             RELEASES.update(releases)
 
-
     # Prevent the GC from collecting or moving existing objects; so the kernel does
     # not need to CoW them in the worker processes.
     gc.freeze()
@@ -314,19 +314,25 @@ def main(input_fd):
         for (f, key) in (
             (try_revision_recovery, "mismatch_misc_revision"),
             (try_revision_recovery, "mismatch_hg_to_git"),
+            (try_revision_recovery, "unrecoverable_rev_not-in-swh-graph"),
+            (try_revision_recovery, "unrecoverable_rev_swh-graph-crashes"),
             (try_release_recovery, "mismatch_misc_release"),
+            (try_release_recovery, "unrecoverable_rel_not-in-swh-graph"),
+            (try_release_recovery, "unrecoverable_rel_swh-graph-crashes"),
         ):
             obj_ids = list(digest.pop(key, []))
-            for (i, (obj_id, new_key)) in enumerate(tqdm.tqdm(
-                p.imap_unordered(f, obj_ids, chunksize=100),
-                desc=f"recovering {key}",
-                unit="obj",
-                total=len(obj_ids),
-                smoothing=0.01,
-            )):
+            for (i, (obj_id, new_key)) in enumerate(
+                tqdm.tqdm(
+                    p.imap_unordered(f, obj_ids, chunksize=100),
+                    desc=f"recovering {key}",
+                    unit="obj",
+                    total=len(obj_ids),
+                    smoothing=0.01,
+                )
+            ):
                 digest[new_key].add(obj_id)
 
-                if i % 100_000 == 0:
+                if i % 10_000 == 0:
                     data = json.dumps(dict(CLONED_ORIGINS))
                     with open(CLONED_ORIGINS_PATH, "wt") as fd:
                         fd.write(data)
@@ -568,17 +574,18 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
                         return f"fixable_add_encoding_and_leading_newlines"
 
     # Try moving the nonce at the end
-    if b"nonce" in dict(stored_obj.extra_headers):
-        fixed_stored_obj = attr.evolve(
-            stored_obj,
-            extra_headers=(
-                *[(k, v) for (k, v) in stored_obj.extra_headers if k != b"nonce"],
-                *[(k, v) for (k, v) in stored_obj.extra_headers if k == b"nonce"],
-            ),
-        )
-        if fixed_stored_obj.compute_hash() == obj_id:
-            write_fixed_object(swhid, fixed_stored_obj)
-            return "fixable_move_nonce"
+    for header in (b"nonce", b"x-nonce"):
+        if header in dict(stored_obj.extra_headers):
+            fixed_stored_obj = attr.evolve(
+                stored_obj,
+                extra_headers=(
+                    *[(k, v) for (k, v) in stored_obj.extra_headers if k != header],
+                    *[(k, v) for (k, v) in stored_obj.extra_headers if k == header],
+                ),
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return "fixable_move_nonce"
 
     # Try adding leading space to email
     # (very crude, this assumes author = committer)
@@ -846,7 +853,7 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
     fixed_stored_manifest = b"\n".join(fixed_stored_manifest_lines)
     if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
         write_fixed_manifest(swhid, fixed_stored_manifest)
-        return "capitalized_revision_parent"
+        return "weird_capitalized_revision_parent"
 
     # Try removing leading zero in date offsets (very crude...)
     stored_manifest_lines = stored_manifest.split(b"\n")
