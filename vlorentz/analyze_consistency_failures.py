@@ -167,6 +167,7 @@ ZERO_TIMESTAMP = TimestampWithTimezone(
 )
 
 graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph/")
+graph2 = RemoteGraphClient("http://localhost:5009/graph/")
 
 
 REVISIONS = {}
@@ -282,7 +283,8 @@ def main(input_fd):
     revision_id_groups = list(
         grouper(
             digest.get("mismatch_misc_revision", set())
-            | digest.get("mismatch_hg_to_git", set()),
+            | digest.get("mismatch_hg_to_git", set())
+            | digest.get("unrecoverable_rev_not-in-swh-graph", set()),
             1000,
         )
     )
@@ -295,7 +297,14 @@ def main(input_fd):
         ):
             REVISIONS.update(revisions)
 
-    release_id_groups = list(grouper(digest.get("mismatch_misc_release", []), 1000))
+    release_id_groups = list(
+        grouper(
+            digest.get("mismatch_misc_release", set())
+            | digest.get("unrecoverable_rel_swh-graph-crashes", set())
+            | digest.get("unrecoverable_rel_not-in-swh-graph", set()),
+            1000,
+        )
+    )
     with multiprocessing.dummy.Pool(10) as p:
         for releases in tqdm.tqdm(
             p.imap_unordered(_load_releases, release_id_groups),
@@ -1044,10 +1053,22 @@ def get_origins(swhid, stored_obj):
                     if line.startswith("swh:1:ori:")
                 ]
             except GraphArgumentException as e:
-                return (
-                    False,
-                    "unrecoverable_{swhid.object_type.value}_not-in-swh-graph",
-                )
+                # try again with the local graph (more up to date, but partial)
+                try:
+                    origin_swhids = [
+                        ExtendedSWHID.from_string(line)
+                        for line in graph2.leaves(swhid, direction="backward")
+                        if line.startswith("swh:1:ori:")
+                    ]
+                except GraphArgumentException as e:
+                    return (
+                        False,
+                        f"unrecoverable_{swhid.object_type.value}_not-in-swh-graph",
+                    )
+                except:
+                    pass
+                else:
+                    break
             except:
                 pass
             else:
