@@ -83,15 +83,17 @@ REVISION_BUCKETS_TO_RECOVER = (
     "mismatch_hg_to_git",
     "unrecoverable_rev_not-in-swh-graph",
     "unrecoverable_rev_swh-graph-crashes",
+    "unrecoverable_rev_no-origin",
 )
 
 RELEASE_BUCKETS_TO_RECOVER = (
     "mismatch_misc_release",
     "unrecoverable_rel_swh-graph-crashes",
     "unrecoverable_rel_not-in-swh-graph",
+    "unrecoverable_rel_no-origin",
 )
 
-DIRECTORY_BUCKETS_TO_RECOVER = ("mismatch_misc_directory",)
+DIRECTORY_BUCKETS_TO_RECOVER = ("mismatch_misc_directory", "unrecoverable_dir_no-origin",)
 
 ENCODINGS = (
     b"SHIFT_JIS",
@@ -344,9 +346,8 @@ def main(input_fd):
         + [(try_release_recovery, bucket) for bucket in RELEASE_BUCKETS_TO_RECOVER]
         + [(try_directory_recovery, bucket) for bucket in DIRECTORY_BUCKETS_TO_RECOVER]
     )
-    with multiprocessing.Pool(12, maxtasksperchild=1000) as p:
+    with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
         for (f, key) in jobs:
-            print("=" * 100, f, key)
             obj_ids = list(digest.pop(key, []))
             assert all(isinstance(id_, bytes) for id_ in obj_ids)
             for (i, (obj_id, new_key)) in enumerate(
@@ -1210,60 +1211,10 @@ def get_origins(swhid, stored_obj):
 
         clone_path = get_clone_path(origin_url)
         if not clone_path.is_dir():
-            # First, check if we can access the origin and if it still has the
-            # commit we want.
-
-            parsed_url = urllib.parse.urlparse(origin_url)
-            if parsed_url.scheme == "git":
-                # TODO: use the dumb git proto to check?
-                try:
-                    clone(origin_url)
-                except subprocess.CalledProcessError:
-                    continue
-            elif parsed_url.scheme in ("http", "https"):
-                # This is silly, but neither requests or dulwich properly handle
-                # some connection terminations for some reason, so we need
-                # this home-made HTTP client
-                hostname = parsed_url.netloc
-                context = ssl.create_default_context()
-                try:
-                    with socket.create_connection((hostname, 443)) as sock:
-                        with context.wrap_socket(
-                            sock, server_hostname=hostname
-                        ) as ssock:
-                            ssock.write(
-                                b"POST "
-                                + parsed_url.path.encode()
-                                + b"/git-upload-pack HTTP/1.0\r\n"
-                            )
-                            ssock.write(b"Host: " + hostname.encode() + b"\r\n")
-                            ssock.write(
-                                b"Content-Type: application/x-git-upload-pack-request\r\n"
-                            )
-                            ssock.write(b"\r\n")
-                            ssock.write(data)
-                            response = b""
-                            while True:
-                                new_data = ssock.read()
-                                if not new_data:
-                                    break
-                                response += new_data
-                except (TimeoutError, socket.gaierror, ssl.SSLCertVerificationError):
-                    # Could not connect
-                    continue
-                except (ConnectionResetError, OSError):
-                    # Could happen for variousreasons, let's try anyway
-                    pass
-                else:
-                    (headers, body) = response.split(b"\r\n\r\n", 1)
-                    (status_line, headers) = headers.split(b"\r\n", 1)
-                    if b"401" in status_line or b"404" in status_line:
-                        # Repo not available
-                        continue
-                try:
-                    clone(origin_url)
-                except subprocess.CalledProcessError:
-                    continue
+            try:
+                clone(origin_url)
+            except subprocess.CalledProcessError:
+                continue
         elif "linux" in origin_url:
             try:
                 clone(origin_url)
