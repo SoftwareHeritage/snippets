@@ -1,14 +1,16 @@
 import collections
 import difflib
+import functools
 import gc
+import itertools
 import json
 import hashlib
 import multiprocessing
 import multiprocessing.dummy
+import operator
 import os
 import pathlib
 import pickle
-import random
 import re
 import secrets
 import signal
@@ -16,8 +18,6 @@ import socket
 import ssl
 import subprocess
 import sys
-import tempfile
-import time
 import traceback
 from typing import Dict
 import urllib.parse
@@ -28,9 +28,9 @@ import dulwich.errors
 import dulwich.object_store
 import dulwich.pack
 import dulwich.repo
-import requests
 import tqdm
 
+from swh.core.api.classes import stream_results_optional
 from swh.core.utils import grouper
 from swh.graph.client import RemoteGraphClient, GraphArgumentException
 from swh.loader.git.converters import (
@@ -42,6 +42,8 @@ from swh.model.git_objects import (
     directory_git_object,
     release_git_object,
     revision_git_object,
+    format_git_object_from_parts,
+    _perms_to_bytes,
 )
 from swh.model.model import (
     Directory,
@@ -75,6 +77,21 @@ UNORDERED_DIRECTORY = re.compile(
     r"Weird directory checksum (?P<obj_id>[0-9a-f]{40}) \(computed without sorting\)"
 )
 NOISE = re.compile(r"Called Ctrl-C\, exiting\.")
+
+REVISION_BUCKETS_TO_RECOVER = (
+    "mismatch_misc_revision",
+    "mismatch_hg_to_git",
+    "unrecoverable_rev_not-in-swh-graph",
+    "unrecoverable_rev_swh-graph-crashes",
+)
+
+RELEASE_BUCKETS_TO_RECOVER = (
+    "mismatch_misc_release",
+    "unrecoverable_rel_swh-graph-crashes",
+    "unrecoverable_rel_not-in-swh-graph",
+)
+
+DIRECTORY_BUCKETS_TO_RECOVER = ("mismatch_misc_directory",)
 
 ENCODINGS = (
     b"SHIFT_JIS",
@@ -181,8 +198,10 @@ CLONED_ORIGINS: Dict[str, None]  # used like a set
 if os.path.exists(CLONED_ORIGINS_PATH):
     with open(CLONED_ORIGINS_PATH, "rt") as fd:
         CLONED_ORIGINS = MANAGER.dict(json.load(fd))
+        # CLONED_ORIGINS = {k: None for (k, v) in json.load(fd).items() if "linux" in k}
 else:
     CLONED_ORIGINS = MANAGER.dict()
+    # CLONED_ORIGINS = dict()
 
 
 def get_clone_path(origin_url):
@@ -197,11 +216,11 @@ def get_clone_path(origin_url):
 
 
 def clone(origin_url):
-    if origin_url in CLONED_ORIGINS:
-        return
     if "linux" in origin_url:
         # linux.git is very big and there are lots of forks... let's fetch them all
         # in the same clone or it going to take forever to clone them all.
+        if origin_url in CLONED_ORIGINS:
+            return
         clone_path = get_clone_path(origin_url)
         subprocess.run(
             ["git", "-C", clone_path, "fetch", origin_url],
@@ -211,6 +230,7 @@ def clone(origin_url):
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
         )
+        CLONED_ORIGINS[origin_url] = None
     else:
         clone_path = get_clone_path(origin_url)
         if not clone_path.is_dir():
@@ -223,7 +243,6 @@ def clone(origin_url):
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
             )
-    CLONED_ORIGINS[origin_url] = None
 
 
 def get_object_from_clone(origin_url, obj_id):
@@ -268,25 +287,31 @@ def _load_releases(ids):
     return dict(zip(ids, storage.release_get(ids)))
 
 
+def get_buckets(digest, names):
+    """returns `digest[names[0]] | digest[names[1]] | ...`"""
+    return functools.reduce(operator.or_, (digest[name] for name in names), set())
+
+
 def main(input_fd):
     digest = collections.defaultdict(set)
 
+    """
     # Parse logs from check_consistency.py to 'digest'
     for line in tqdm.tqdm(
         list(input_fd), desc="parsing input", unit="line", unit_scale=True
     ):
         handle_line(digest, line)
+    """
+
+    digest.update(
+        pickle.load(open("analyze_consistency_failures/results.pickle", "rb"))
+    )
 
     # preload revisions in batches
     # revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:100]
     # revision_id_groups = list(grouper(digest["mismatch_hg_to_git"], 1000))
     revision_id_groups = list(
-        grouper(
-            digest.get("mismatch_misc_revision", set())
-            | digest.get("mismatch_hg_to_git", set())
-            | digest.get("unrecoverable_rev_not-in-swh-graph", set()),
-            1000,
-        )
+        grouper(get_buckets(digest, REVISION_BUCKETS_TO_RECOVER), 1000,)
     )
     with multiprocessing.dummy.Pool(10) as p:
         for revisions in tqdm.tqdm(
@@ -298,12 +323,7 @@ def main(input_fd):
             REVISIONS.update(revisions)
 
     release_id_groups = list(
-        grouper(
-            digest.get("mismatch_misc_release", set())
-            | digest.get("unrecoverable_rel_swh-graph-crashes", set())
-            | digest.get("unrecoverable_rel_not-in-swh-graph", set()),
-            1000,
-        )
+        grouper(get_buckets(digest, RELEASE_BUCKETS_TO_RECOVER), 1000,)
     )
     with multiprocessing.dummy.Pool(10) as p:
         for releases in tqdm.tqdm(
@@ -319,17 +339,16 @@ def main(input_fd):
     gc.freeze()
 
     # Try to fix objects one by one
-    with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
-        for (f, key) in (
-            (try_revision_recovery, "mismatch_misc_revision"),
-            (try_revision_recovery, "mismatch_hg_to_git"),
-            (try_revision_recovery, "unrecoverable_rev_not-in-swh-graph"),
-            (try_revision_recovery, "unrecoverable_rev_swh-graph-crashes"),
-            (try_release_recovery, "mismatch_misc_release"),
-            (try_release_recovery, "unrecoverable_rel_not-in-swh-graph"),
-            (try_release_recovery, "unrecoverable_rel_swh-graph-crashes"),
-        ):
+    jobs = (
+        [(try_revision_recovery, bucket) for bucket in REVISION_BUCKETS_TO_RECOVER]
+        + [(try_release_recovery, bucket) for bucket in RELEASE_BUCKETS_TO_RECOVER]
+        + [(try_directory_recovery, bucket) for bucket in DIRECTORY_BUCKETS_TO_RECOVER]
+    )
+    with multiprocessing.Pool(12, maxtasksperchild=1000) as p:
+        for (f, key) in jobs:
+            print("=" * 100, f, key)
             obj_ids = list(digest.pop(key, []))
+            assert all(isinstance(id_, bytes) for id_ in obj_ids)
             for (i, (obj_id, new_key)) in enumerate(
                 tqdm.tqdm(
                     p.imap_unordered(f, obj_ids, chunksize=100),
@@ -399,7 +418,9 @@ def handle_line(digest, line):
         return
     m = FIXABLE.fullmatch(line)
     if m:
-        digest["fixable_trivial"].add(hash_to_bytes(m.group("obj_id")))
+        digest["fixable_trivial_"] + m.group("obj_type").add(
+            hash_to_bytes(m.group("obj_id"))
+        )
         return
     m = UNORDERED_DIRECTORY.fullmatch(line)
     if m:
@@ -434,6 +455,18 @@ def try_release_recovery(obj_id):
     return (obj_id, _try_recovery(ObjectType.RELEASE, obj_id))
 
 
+def try_directory_recovery(obj_id):
+    try:
+        return (obj_id, _try_recovery(ObjectType.DIRECTORY, obj_id))
+    except KeyboardInterrupt:
+        raise
+    except:
+        import traceback
+
+        traceback.print_exc()
+        raise
+
+
 def _try_recovery(obj_type, obj_id):
     """Try fixing the given obj_id, and returns what digest key it should be added to"""
     obj_id = hash_to_bytes(obj_id)
@@ -463,16 +496,20 @@ def _try_recovery(obj_type, obj_id):
     elif obj_type == ObjectType.DIRECTORY:
         stored_obj = Directory(
             id=obj_id,
-            entries=list(
+            entries=tuple(
                 stream_results_optional(storage.directory_get_entries, obj_id)
             ),
         )
-        stored_manifest = revision_git_object(stored_obj)
+        stored_manifest = directory_git_object(stored_obj)
     else:
         assert False, obj_type
 
     assert obj_id == stored_obj.id
-    assert obj_id != stored_obj.compute_hash(), "Hash matches this time?!"
+    if obj_id == stored_obj.compute_hash():
+        # Wtf? the hash did not match when pulled from kafka, but it does when pulled
+        # from swh-storage?
+        write_fixed_object(swhid, stored_obj)
+        return "fine_in_storage"
 
     if obj_type == ObjectType.REVISION:
         bucket = try_fix_revision(swhid, stored_obj, stored_manifest)
@@ -484,6 +521,7 @@ def _try_recovery(obj_type, obj_id):
         assert False, obj_id
 
     if bucket is not None:
+        assert isinstance(bucket, str), repr(bucket)
         return bucket
 
     res = get_origins(swhid, stored_obj)
@@ -491,6 +529,7 @@ def _try_recovery(obj_type, obj_id):
         (_, origin_url, cloned_obj) = res
     else:
         (_, bucket) = res
+        assert isinstance(bucket, str), repr(bucket)
         return bucket
 
     object_header = (
@@ -518,26 +557,8 @@ def _try_recovery(obj_type, obj_id):
         assert False, obj_id
 
     if bucket is not None:
+        assert isinstance(bucket, str), repr(bucket)
         return bucket
-
-    print("=" * 100)
-    print("Failed to fix:")
-    print("origin_url", origin_url)
-    print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
-    print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
-    print(
-        "\n".join(
-            difflib.ndiff(
-                cloned_manifest.split(b"\x00", 1)[1]
-                .decode(errors="backslashreplace")
-                .split("\n"),
-                stored_manifest.split(b"\x00", 1)[1]
-                .decode(errors="backslashreplace")
-                .split("\n"),
-            )
-        )
-    )
-    print("=" * 100)
 
     try:
         if obj_type == ObjectType.REVISION:
@@ -1024,6 +1045,76 @@ def try_fix_release(swhid, stored_obj, stored_manifest):
     return None
 
 
+def directory_identifier_with_nongit_sort(directory):
+    """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
+    components = []
+
+    for entry in sorted(directory.entries, key=lambda entry: entry.name):
+        components.extend(
+            [_perms_to_bytes(entry.perms), b"\x20", entry.name, b"\x00", entry.target,]
+        )
+    git_object = format_git_object_from_parts("tree", components)
+    return hashlib.new("sha1", git_object).hexdigest()
+
+
+def try_fix_directory(swhid, stored_obj, stored_manifest):
+    obj_id = swhid.object_id
+
+    possible_rewrites = [
+        (0o40000, 0o40755),
+        (0o40000, 0o40775),
+        (0o40000, 0o40777),
+        (0o100755, 0o100744),
+        (0o100755, 0o100775),
+        (0o100755, 0o100777),
+        (0o100644, 0o100664),
+        (0o100644, 0o100666),
+    ]
+
+    assert stored_obj.compute_hash() != stored_obj.id
+
+    for nb_rewrites in range(1, len(possible_rewrites) + 1):
+        for rewrite in itertools.combinations(possible_rewrites, nb_rewrites):
+            rewrite_dict = dict(rewrite)
+            fixed_entries = tuple(
+                attr.evolve(entry, perms=rewrite_dict.get(entry.perms, entry.perms))
+                for entry in stored_obj.entries
+            )
+            fixed_obj = attr.evolve(stored_obj, entries=fixed_entries)
+            if fixed_obj == stored_obj:
+                # pointless to recompute the hash
+                continue
+            if fixed_obj.compute_hash() == stored_obj.id:
+                return "fixable_directory_perms"
+
+    fixed_stored_manifest = stored_manifest.replace(b"40000 ", b"040000 ")
+    (*_, rest) = fixed_stored_manifest.split(b"\x00", 1)
+    fixed_stored_manifest = b"tree " + str(len(rest)).encode() + b"\x00" + rest
+    if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+        write_fixed_manifest(swhid, fixed_stored_manifest)
+        return f"weird-padded_perms_40000"
+
+    if directory_identifier_with_nongit_sort(stored_obj) == stored_obj.id:
+        return f"weird-dir_with_nongit_sort"
+
+    # Replace '40000' with '040000' for all entries *but one*.
+    # There is a surprisingly large number of dirs where this is the issue!
+    parts = stored_manifest.split(b"40000 ")
+    for i in range(len(parts)):
+        fixed_stored_manifest = (
+            b"040000 ".join(parts[0 : i + 1])
+            + b"40000 "
+            + b"040000 ".join(parts[i + 1 :])
+        )
+        (*_, rest) = fixed_stored_manifest.split(b"\x00", 1)
+        fixed_stored_manifest = b"tree " + str(len(rest)).encode() + b"\x00" + rest
+        if hashlib.new("sha1", fixed_stored_manifest).digest() == obj_id:
+            write_fixed_manifest(swhid, fixed_stored_manifest)
+            return f"weird-padded_perms_40000_except_1"
+
+    return None
+
+
 def get_origins(swhid, stored_obj):
     obj_id = swhid.object_id
 
@@ -1260,6 +1351,25 @@ def try_recover_revision(
                 write_fixed_object(swhid, fixed_stored_obj)
                 return "recoverable_extra_headers_and_leading_newlines"
 
+    print("=" * 100)
+    print("Failed to fix:")
+    print("origin_url", origin_url)
+    print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
+    print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
+    print(
+        "\n".join(
+            difflib.ndiff(
+                cloned_manifest.split(b"\x00", 1)[1]
+                .decode(errors="backslashreplace")
+                .split("\n"),
+                stored_manifest.split(b"\x00", 1)[1]
+                .decode(errors="backslashreplace")
+                .split("\n"),
+            )
+        )
+    )
+    print("=" * 100)
+
     return None
 
 
@@ -1297,6 +1407,35 @@ def try_recover_release(
                 stored_manifest.split(b"\x00", 1)[1]
                 .decode(errors="backslashreplace")
                 .split("\n"),
+            )
+        )
+    )
+
+
+def try_recover_directory(
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+):
+    obj_id = swhid.object_id
+
+    print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
+    print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
+    print(
+        "\n".join(
+            difflib.ndiff(
+                [
+                    repr(entry)
+                    for entry in re.findall(
+                        b"[0-9]+ [^\x00]+\x00.{20}",
+                        cloned_manifest.split(b"\x00", 1)[1],
+                    )
+                ],
+                [
+                    repr(entry)
+                    for entry in re.findall(
+                        b"[0-9]+ [^\x00]+\x00.{20}",
+                        stored_manifest.split(b"\x00", 1)[1],
+                    )
+                ],
             )
         )
     )
