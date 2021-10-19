@@ -9,6 +9,12 @@ data:
       cls: cassandra
       hosts: 
         - parasilo-2.rennes.grid5000.fr
+        - parasilo-3.rennes.grid5000.fr
+        - parasilo-4.rennes.grid5000.fr
+        - parasilo-5.rennes.grid5000.fr
+        - parasilo-6.rennes.grid5000.fr
+        - parasilo-7.rennes.grid5000.fr
+        - parasilo-8.rennes.grid5000.fr
       keyspace: swh
       consistency_level: LOCAL_QUORUM
       objstorage:
@@ -23,8 +29,10 @@ data:
     echo Starting the swh-storage API server
     exec gunicorn --bind 0.0.0.0:5002 \
           --reload \
+          --access-logfile /dev/stdout \
+          --access-logformat "%(t)s %(s)s %(r)s %(M)s" \
           --workers 128 \
-          --log-level DEBUG \
+          --log-level INFO \
           --timeout 3600 \
           --config 'python:swh.core.api.gunicorn_config' \
           'swh.storage.api.server:make_app_from_configfile()'

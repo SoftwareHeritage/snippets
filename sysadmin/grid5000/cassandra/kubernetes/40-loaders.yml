@@ -10,10 +10,10 @@ data:
       steps:
       - cls: buffer
         min_batch_size:
-          content: 10000
+          content: 500
           content_bytes: 104857600
           directory: 1000
-          revision: 1000
+          revision: 50
       - cls: filter
       - cls: retry
       - cls: remote
@@ -61,7 +61,7 @@ data:
     exec python -m celery \
                 --app=swh.scheduler.celery_backend.config.app \
                 worker \
-                --pool=prefork --events \
+                --pool=prefork \
                 --concurrency=${CONCURRENCY} \
                 --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
                 -Ofair --loglevel=${LOGLEVEL} \
@@ -75,7 +75,7 @@ metadata:
   labels:
     app: loaders
 spec:
-  replicas: 1
+  replicas: 100
   selector:
     matchLabels:
       app: loaders
@@ -140,6 +140,8 @@ spec:
           value: "INFO"
         - name: SWH_CONFIG_FILENAME
           value: /etc/softwareheritage/config.yml
+        - name: TMPDIR
+          value: /srv/tmp
         volumeMounts:
           - name: config
             mountPath: /etc/softwareheritage/config.yml
@@ -150,7 +152,7 @@ spec:
             subPath: entrypoint.sh
             readOnly: true
           - name: tmp
-            mountPath: /tmp
+            mountPath: /srv/tmp
       volumes:
         - name: config
           configMap:
