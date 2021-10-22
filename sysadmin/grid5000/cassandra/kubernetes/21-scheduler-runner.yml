@@ -56,10 +56,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: kubernetes.io/hostname
+              - key: admin
                 operator: In
                 values:
-                - parasilo-19.rennes.grid5000.fr
+                - 'true'
       initContainers:
         - name: scheduler-runner-init
           image: vsellier/swh-base

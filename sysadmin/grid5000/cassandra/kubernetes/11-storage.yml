@@ -17,6 +17,11 @@ data:
         - parasilo-8.rennes.grid5000.fr
       keyspace: swh
       consistency_level: LOCAL_QUORUM
+      #select_missing_algo: concurrent
+      #select_missing_algo: grouped-naive
+      #select_missing_algo: grouped-pk-serial
+      select_missing_algo: grouped-pk-concurrent
+      directory_entries_insert_algo: batch
       objstorage:
         cls: remote
         url: http://objstorage:5003 
@@ -62,13 +67,24 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: type
+              - key: worker
                 operator: In
                 values:
-                - loader   
+                - 'true'
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1 
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - objstorage
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: storage
-        image: vsellier/swh-base
+        image: vsellier/swh-base:D6495
         imagePullPolicy: Always
         command:
           - /entrypoint.sh

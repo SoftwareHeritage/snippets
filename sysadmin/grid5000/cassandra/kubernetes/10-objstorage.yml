@@ -54,10 +54,10 @@ spec:
         #   operator: In
         #   values:
         #   - parasilo-19.rennes.grid5000.fr
-        - key: type
+        - key: worker
           operator: In
           values:
-          - loader   
+          - 'true'
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -96,14 +96,21 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              # - key: kubernetes.io/hostname
-              #   operator: In
-              #   values:
-              #   - parasilo-19.rennes.grid5000.fr
-              - key: type
+              - key: worker
                 operator: In
                 values:
-                - loader   
+                - 'true'
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1 
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - objstorage
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: objstorage
         image: vsellier/swh-base

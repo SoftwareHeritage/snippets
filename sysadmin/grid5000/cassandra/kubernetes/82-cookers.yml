@@ -2,44 +2,25 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: loaders
+  name: cookers
 data:
   config.yml: |
     storage:
-      cls: pipeline
-      steps:
-      - cls: buffer
-        min_batch_size:
-          content: 500
-          content_bytes: 104857600
-          directory: 1000
-          revision: 50
-      - cls: filter
-      - cls: retry
-      - cls: remote
-        url: http://storage:5002/
-    max_content_size: 104857600
-    temp_file_cutoff: 536870912
+      cls: remote
+      url: http://storage:5002/
+    vault:
+      cls: remote
+      url: http://vault:5005/
     celery:
-      task_ignore_result: True
       task_broker: amqp://guest:guest@amqp//
+      task_modules:
+        - swh.vault.cooking_tasks
       task_queues:
-       - swh.loader.dir.tasks.LoadDirRepository
-       - swh.loader.git.tasks.LoadDiskGitRepository
-       - swh.loader.git.tasks.UncompressAndLoadDiskGitRepository
-       - swh.loader.git.tasks.UpdateGitRepository
-       - swh.loader.package.archive.tasks.LoadArchive
-       - swh.loader.package.cran.tasks.LoadCRAN
-       - swh.loader.package.debian.tasks.LoadDebian
-       - swh.loader.package.npm.tasks.LoadNpm
-       - swh.loader.package.pypi.tasks.LoadPyPI
+        - swh.vault.cooking_tasks.SWHBatchCookingTask
+        - swh.vault.cooking_tasks.SWHCookingTask
 
-       - save_code_now:swh.loader.git.tasks.UpdateGitRepository
-       # - swh.loader.mercurial.tasks.LoadArchiveMercurial
-       # - swh.loader.mercurial.tasks.LoadMercurial
-       # - swh.loader.svn.tasks.DumpMountAndLoadSvnRepository
-       # - swh.loader.svn.tasks.LoadSvnRepository
-       # - swh.loader.svn.tasks.MountAndLoadSvnRepository
+    max_bundle_size: 536870912
+
   entrypoint-init.sh: |
     #!/bin/bash
 
@@ -50,18 +31,22 @@ data:
 
     # echo Register task types in scheduler database
     wait-for-it scheduler:5008 -s --timeout=0
-
     swh scheduler --url http://scheduler:5008 task-type register
+
+    # Wait for services to be up
+    wait-for-it vault:5005 -s --timeout=0
+    wait-for-it storage:5002 -s --timeout=0
+
   entrypoint.sh: |
     #!/bin/bash
 
     set -e
 
-    echo Starting the swh Celery worker
+    echo Starting the swh-vault Celery worker
     exec python -m celery \
                 --app=swh.scheduler.celery_backend.config.app \
                 worker \
-                --pool=prefork \
+                --pool=prefork --events \
                 --concurrency=${CONCURRENCY} \
                 --max-tasks-per-child=${MAX_TASKS_PER_CHILD} \
                 -Ofair --loglevel=${LOGLEVEL} \
@@ -71,14 +56,14 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: loaders
+  name: cookers
   labels:
-    app: loaders
+    app: cookers
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: loaders
+      app: cookers
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -86,7 +71,7 @@ spec:
   template:
     metadata:
       labels:
-        app: loaders
+        app: cookers
     spec:
       affinity:
         nodeAffinity:
@@ -98,8 +83,8 @@ spec:
                 values:
                 - 'true'
       initContainers:
-        - name: loaders-init
-          image: vsellier/swh-base:D6495
+        - name: cookers-init
+          image: vsellier/swh-base:latest
           imagePullPolicy: Always
           command:
             - /entrypoint.sh
@@ -113,20 +98,18 @@ spec:
               subPath: entrypoint-init.sh
               readOnly: true
       containers:
-      - name: loaders
-        image: vsellier/swh-base:D6495
+      - name: cookers
+        image: vsellier/swh-base:latest
         imagePullPolicy: Always
         command:
           - /entrypoint.sh
-        ports:
-        - containerPort: 5002
         resources:
           requests:
-            memory: "2000Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "4000Mi"
-            cpu: "1000m"
+            memory: "3000Mi"
+            cpu: "1200m"
         lifecycle:
           preStop:
            exec:
@@ -140,8 +123,6 @@ spec:
           value: "INFO"
         - name: SWH_CONFIG_FILENAME
           value: /etc/softwareheritage/config.yml
-        - name: TMPDIR
-          value: /srv/tmp
         volumeMounts:
           - name: config
             mountPath: /etc/softwareheritage/config.yml
@@ -151,12 +132,8 @@ spec:
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
             readOnly: true
-          - name: tmp
-            mountPath: /srv/tmp
       volumes:
         - name: config
           configMap:
-            name: loaders
+            name: cookers
             defaultMode: 0777
-        - name: tmp
-          emptyDir: {}                

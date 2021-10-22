@@ -2,36 +2,37 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: scheduler
+  name: vault
 data:
   config.yml: |
-    scheduler:
+    vault:
       cls: local
-      db: postgresql:///?service=swh-scheduler
-
-    celery:
-      task_broker: amqp://guest:guest@amqp/%2f
-      broker_transport_options:
-        max_retries: 1
+      db: postgresql:///?service=swh
+    cache:
+      cls: pathslicing
+      root: /srv/softwareheritage/vault
+      slicing: 0:5
+    storage:
+      cls: remote
+      url: http://storage:5002/
+    scheduler:
+      cls: remote
+      url: http://scheduler:5008/
   entrypoint-init-db.sh: |
     #!/bin/bash
 
     set -e
 
-    echo -n "waiting for database availability"
-    set +e
-    ko=1
-    while [[ $ko -gt 0 ]]; do PGCONNECT_TIMEOUT=2 psql --list &>/dev/null;ko=$?; echo -n .; sleep 0.5; done
-    echo
-    set -e
+    source /srv/softwareheritage/utils/pgsql.sh
+    wait_pgsql ${PGDATABASE}
 
-    echo Init swh-scheduler database
-
+    echo Init swh-vault database
     echo Creating extensions...
-    swh db init-admin --db-name ${PGDATABASE} scheduler
+    swh db init-admin --db-name ${PGDATABASE} vault
 
     echo Initializing the database...
-    swh db init --db-name ${PGDATABASE} scheduler
+    swh db init --db-name ${PGDATABASE} vault
+
   entrypoint.sh: |
     #!/bin/bash
 
@@ -46,26 +47,59 @@ data:
     user=${PGUSER}
     EOF
 
-    echo Starting the swh-scheduler API server
-    exec gunicorn --bind 0.0.0.0:5008 \
-         --log-level ${LOGLEVEL} \
-         --workers 8 \
-         --reload \
-         --timeout 3600 \
-         --config 'python:swh.core.api.gunicorn_config' \
-         'swh.scheduler.api.server:make_app_from_configfile()'
+    # source /srv/softwareheritage/utils/pgsql.sh
+    # setup_pgsql
+
+    echo Starting the swh-vault API server
+    exec swh vault rpc-serve -C ${SWH_CONFIG_FILENAME}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vault-cache-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: vault-cache-pv
+  local:
+    path: /srv/data/softwareheritage-kube/vault-cache
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        # TODO adapt for your needs
+        - key: storage
+          operator: In
+          values:
+          - 'true'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-cache-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: vault-cache-pv
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: scheduler
+  name: vault
   labels:
-    app: scheduler
+    app: vault
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: scheduler
+      app: vault
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -73,40 +107,40 @@ spec:
   template:
     metadata:
       labels:
-        app: scheduler
+        app: vault
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: admin
+              - key: storage
                 operator: In
                 values:
                 - 'true'
       initContainers:
-        - name: scheduler-init
-          image: vsellier/swh-base
+        - name: vault-init
+          image: vsellier/swh-base:latest
           imagePullPolicy: Always
           command:
             - /entrypoint.sh
           env:
           - name: PGHOST
-            value: "scheduler-db"
+            value: "vault-db"
           - name: PGUSER
             valueFrom:
               configMapKeyRef:
-                name: scheduler-db
+                name: vault-db
                 key: POSTGRES_USER
           - name: PGPASSWORD
             valueFrom:
               secretKeyRef:
-                name: scheduler-db
+                name: vault-db
                 key: POSTGRES_PASSWORD
           - name: PGDATABASE
             valueFrom:
               configMapKeyRef:
-                name: scheduler-db
+                name: vault-db
                 key: POSTGRES_DB
           - name: SWH_CONFIG_FILENAME
             value: /etc/softwareheritage/config.yml
@@ -124,41 +158,57 @@ spec:
               subPath: entrypoint-init-db.sh
               readOnly: true
       containers:
-      - name: scheduler
-        image: vsellier/swh-base
+      - name: vault
+        image: vsellier/swh-base:latest
         imagePullPolicy: Always
         command:
           - /entrypoint.sh
         ports:
-        - containerPort: 5008
+        - containerPort: 5005
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5005
+            scheme: "HTTP"
+          initialDelaySeconds: 0
+          failureThreshold: 2
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /
+            port: 5005
+            scheme: "HTTP"
+          initialDelaySeconds: 5
+          failureThreshold: 30
+          periodSeconds: 1
         env:
         - name: PORT
-          value: "5008"
+          value: "5005"
         - name: STATSD_HOST
           value: "prometheus-statsd-exporter"
         - name: STATSD_PORT
           value: "9125"
+        - name: POSTGRES_PASSWORD_FILE
+          value: "/run/secrets/postgres-password"
         - name: PGHOST
-          value: "scheduler-db"
+          value: "vault-db"
         - name: PGUSER
           valueFrom:
             configMapKeyRef:
-              name: scheduler-db
+              name: vault-db
               key: POSTGRES_USER
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
-              name: scheduler-db
+              name: vault-db
               key: POSTGRES_PASSWORD
         - name: PGDATABASE
           valueFrom:
             configMapKeyRef:
-              name: scheduler-db
+              name: vault-db
               key: POSTGRES_DB
         - name: SWH_CONFIG_FILENAME
           value: /etc/softwareheritage/config.yml
-        - name: LOGLEVEL
-          value: INFO
         volumeMounts:
           - name: db-password
             mountPath: /run/secrets/postgres-password
@@ -172,40 +222,52 @@ spec:
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
             readOnly: true
+          - name: vault-cache-pvc
+            mountPath: "/srv/softwareheritage/vault"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1536Mi"
+            cpu: "300m"
       volumes:
         - name: config
           configMap:
-            name: scheduler
+            name: vault
             defaultMode: 0777
         - name: db-password
           secret:
-            secretName: scheduler-db
+            secretName: vault-db
+        - name: vault-cache-pvc
+          persistentVolumeClaim:
+            claimName: vault-cache-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: scheduler
+  name: vault
 spec:
   type: ClusterIP
   selector:
-    app: scheduler
+    app: vault
   ports:
-    - port: 5008
-      targetPort: 5008
+    - port: 5005
+      targetPort: 5005
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: scheduler
+  name: vault
 spec:
   rules:
-  - host: scheduler.default
+  - host: vault.default
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: scheduler
+            name: vault
             port:
-              number: 5008
+              number: 5005

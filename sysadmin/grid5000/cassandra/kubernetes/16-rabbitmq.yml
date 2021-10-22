@@ -20,10 +20,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: kubernetes.io/hostname
+              - key: admin
                 operator: In
                 values:
-                - parasilo-19.rennes.grid5000.fr
+                - 'true'
       containers:
       - name: amqp
         image: rabbitmq:3.7-management
