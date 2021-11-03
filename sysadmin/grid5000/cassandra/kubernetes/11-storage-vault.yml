@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: storage
+  name: storage-vault
 data:
   config.yml: |
     storage:
@@ -24,7 +24,7 @@ data:
       directory_entries_insert_algo: batch
       objstorage:
         cls: remote
-        url: http://objstorage:5003 
+        url: http://objstorage-vault:5003 
 
   entrypoint.sh: |
     #!/bin/bash
@@ -45,14 +45,14 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: storage
+  name: storage-vault
   labels:
-    app: storage
+    app: storage-vault
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: storage
+      app: storage-vault
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -60,7 +60,7 @@ spec:
   template:
     metadata:
       labels:
-        app: storage
+        app: storage-vault
     spec:
       affinity:
         nodeAffinity:
@@ -83,7 +83,7 @@ spec:
                   - storage
               topologyKey: kubernetes.io/hostname
       containers:
-      - name: storage
+      - name: storage-vault
         image: vsellier/swh-base:D6495
         imagePullPolicy: Always
         command:
@@ -134,7 +134,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: storage
+            name: storage-vault
             defaultMode: 0777
         - name: db-password
           secret:
@@ -143,11 +143,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: storage
+  name: storage-vault
 spec:
   type: ClusterIP
   selector:
-    app: storage
+    app: storage-vault
   ports:
     - port: 5002
       targetPort: 5002
@@ -155,16 +155,16 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: storage
+  name: storage-vault
 spec:
   rules:
-  - host: storage.default
+  - host: storage-vault.default
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: storage
+            name: storage-vault
             port:
               number: 5002

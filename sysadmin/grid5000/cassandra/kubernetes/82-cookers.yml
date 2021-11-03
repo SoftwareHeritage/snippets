@@ -6,8 +6,11 @@ metadata:
 data:
   config.yml: |
     storage:
-      cls: remote
-      url: http://storage:5002/
+      cls: pipeline
+      steps:
+      - cls: retry
+      - cls: remote
+        url: http://storage-vault:5002/
     vault:
       cls: remote
       url: http://vault:5005/
@@ -35,7 +38,7 @@ data:
 
     # Wait for services to be up
     wait-for-it vault:5005 -s --timeout=0
-    wait-for-it storage:5002 -s --timeout=0
+    wait-for-it storage-vault:5002 -s --timeout=0
 
   entrypoint.sh: |
     #!/bin/bash

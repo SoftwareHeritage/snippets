@@ -13,8 +13,11 @@ data:
       root: /srv/softwareheritage/vault
       slicing: 0:5
     storage:
-      cls: remote
-      url: http://storage:5002/
+      cls: pipeline
+      steps:
+      - cls: retry
+      - cls: remote
+        url: http://storage-vault:5002/
     scheduler:
       cls: remote
       url: http://scheduler:5008/

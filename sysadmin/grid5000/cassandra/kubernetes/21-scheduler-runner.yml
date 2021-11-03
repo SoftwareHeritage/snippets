@@ -29,7 +29,7 @@ data:
     set -e
 
     echo "Starting the swh-scheduler"
-    swh --log-level ${LOGLEVEL} scheduler -C /etc/softwareheritage/config.yml start-runner --period 10
+    swh --log-level ${LOGLEVEL} scheduler -C /etc/softwareheritage/config.yml start-runner --period 10 ${PRIOTITY_ARG}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -112,31 +112,85 @@ spec:
             name: scheduler-runner
             defaultMode: 0777
 ---
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: scheduler-runner
+  name: scheduler-runner-priority
+  labels:
+    app: scheduler-runner-priority
 spec:
-  type: ClusterIP
+  replicas: 1
   selector:
-    app: scheduler-runner
-  ports:
-    - port: 5008
-      targetPort: 5008
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: scheduler-runner
-spec:
-  rules:
-  - host: scheduler-runner.default
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
+    matchLabels:
+      app: scheduler-runner-priority
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: scheduler-runner-priority
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: admin
+                operator: In
+                values:
+                - 'true'
+      initContainers:
+        - name: scheduler-runner-priority-init
+          image: vsellier/swh-base
+          imagePullPolicy: Always
+          command:
+          - /entrypoint-init.sh
+          volumeMounts:
+          - name: config
+            mountPath: /entrypoint-init.sh
+            subPath: entrypoint-init.sh
+            readOnly: true
+      containers:
+      - name: scheduler-runner-priority
+        image: vsellier/swh-base
+        imagePullPolicy: Always
+        command:
+        - /entrypoint.sh
+        ports:
+        - containerPort: 5008
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "100Mi"
+          limits:
+            cpu: "200m"
+            memory: "200Mi"
+        env:
+        - name: PORT
+          value: "5008"
+        - name: STATSD_HOST
+          value: "prometheus-statsd-exporter"
+        - name: STATSD_PORT
+          value: "9125"
+        - name: SWH_CONFIG_FILENAME
+          value: /etc/softwareheritage/config.yml
+        - name: LOGLEVEL
+          value: INFO
+        - name: PRIORITY_ARG
+          value: --with-priority
+        volumeMounts:
+          - name: config
+            mountPath: /etc/softwareheritage/config.yml
+            subPath: config.yml
+            readOnly: true
+          - name: config
+            mountPath: /entrypoint.sh
+            subPath: entrypoint.sh
+            readOnly: true
+      volumes:
+        - name: config
+          configMap:
             name: scheduler-runner
-            port:
-              number: 5008
+            defaultMode: 0777
