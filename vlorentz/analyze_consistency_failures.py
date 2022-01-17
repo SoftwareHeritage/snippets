@@ -44,6 +44,7 @@ from swh.model.git_objects import (
     revision_git_object,
     format_git_object_from_parts,
     _perms_to_bytes,
+    directory_entry_sort_key,
 )
 from swh.model.model import (
     Directory,
@@ -93,7 +94,18 @@ RELEASE_BUCKETS_TO_RECOVER = (
     "unrecoverable_rel_no-origin",
 )
 
-DIRECTORY_BUCKETS_TO_RECOVER = ("mismatch_misc_directory", "unrecoverable_dir_no-origin",)
+DIRECTORY_BUCKETS_TO_RECOVER = (
+    "mismatch_misc_directory",
+    "unrecoverable_dir_no-origin",
+    "recoverable_misc_dir",
+    "weird_misc_dir",
+    "recoverable_disordered_dir",
+    "weird_disordered_dir",
+    "recoverable_unordered_dir",
+    "weird_unordered_dir",
+    "weird_dir_perms_misc",
+    "weird-dir_with_unknown_sort", "weird-dir_with_unknown_sort_ok_in_kafka", "weird-dir_with_unknown_sort_ok_in_pg", "weird-dir_with_backfiller_partial_sort",
+)
 
 ENCODINGS = (
     b"SHIFT_JIS",
@@ -365,16 +377,17 @@ def main(input_fd):
     jobs = (
         [(try_revision_recovery, bucket) for bucket in REVISION_BUCKETS_TO_RECOVER]
         + [(try_release_recovery, bucket) for bucket in RELEASE_BUCKETS_TO_RECOVER]
-        + [(try_directory_recovery, bucket) for bucket in DIRECTORY_BUCKETS_TO_RECOVER]
+        + [(try_directory_recovery, bucket) for bucket in list(DIRECTORY_BUCKETS_TO_RECOVER) + [bucket for bucket in digest if bucket.startswith("weird-dir")]]
     )
     with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
-        for (f, key) in jobs:
-            obj_ids = list(digest.pop(key, []))
+        for (f, initial_bucket) in jobs:
+            f = functools.partial(f, initial_bucket=initial_bucket)
+            obj_ids = list(digest.pop(initial_bucket, []))
             assert all(isinstance(id_, bytes) for id_ in obj_ids)
             for (i, (obj_id, new_key)) in enumerate(
                 tqdm.tqdm(
                     p.imap_unordered(f, obj_ids, chunksize=100),
-                    desc=f"recovering {key}",
+                    desc=f"recovering {initial_bucket}",
                     unit="obj",
                     total=len(obj_ids),
                     smoothing=0.01,
@@ -440,7 +453,7 @@ def handle_line(digest, line):
         return
     m = FIXABLE.fullmatch(line)
     if m:
-        digest["fixable_trivial_"] + m.group("obj_type").add(
+        digest["fixable_trivial_" + m.group("obj_type")].add(
             hash_to_bytes(m.group("obj_id"))
         )
         return
@@ -469,17 +482,17 @@ def handle_line(digest, line):
         assert False, line
 
 
-def try_revision_recovery(obj_id):
-    return (obj_id, _try_recovery(ObjectType.REVISION, obj_id))
+def try_revision_recovery(obj_id, initial_bucket):
+    return (obj_id, _try_recovery(ObjectType.REVISION, obj_id, initial_bucket))
 
 
-def try_release_recovery(obj_id):
-    return (obj_id, _try_recovery(ObjectType.RELEASE, obj_id))
+def try_release_recovery(obj_id, initial_bucket):
+    return (obj_id, _try_recovery(ObjectType.RELEASE, obj_id, initial_bucket))
 
 
-def try_directory_recovery(obj_id):
+def try_directory_recovery(obj_id, initial_bucket):
     try:
-        return (obj_id, _try_recovery(ObjectType.DIRECTORY, obj_id))
+        return (obj_id, _try_recovery(ObjectType.DIRECTORY, obj_id, initial_bucket))
     except KeyboardInterrupt:
         raise
     except:
@@ -489,7 +502,7 @@ def try_directory_recovery(obj_id):
         raise
 
 
-def _try_recovery(obj_type, obj_id):
+def _try_recovery(obj_type, obj_id, initial_bucket):
     """Try fixing the given obj_id, and returns what digest key it should be added to"""
     obj_id = hash_to_bytes(obj_id)
     swhid = CoreSWHID(object_type=obj_type, object_id=obj_id)
@@ -507,7 +520,7 @@ def _try_recovery(obj_type, obj_id):
         stored_obj = REVISIONS[obj_id]
         if stored_obj is None:
             return "revision_missing_from_storage"
-        if stored_obj.type != RevisionType.GIT:
+        if stored_obj.type not in (RevisionType.GIT, RevisionType.SUBVERSION):
             return f"mismatch_misc_{stored_obj.type.value}"
         stored_manifest = revision_git_object(stored_obj)
     elif obj_type == ObjectType.RELEASE:
@@ -543,10 +556,20 @@ def _try_recovery(obj_type, obj_id):
         assert False, obj_id
 
     if bucket is not None:
+        print("fixed", bucket)
         assert isinstance(bucket, str), repr(bucket)
         return bucket
 
-    res = get_origins(swhid, stored_obj)
+    if initial_bucket in ("weird_unordered_dir", "weird-dir_with_unknown_sort_ok_in_kafka"):
+        return f"weird-dir_with_unknown_sort_ok_in_kafka"
+
+    if obj_type == ObjectType.REVISION and stored_obj.type != RevisionType.GIT:
+        print("not fixed", stored_obj.id.hex())
+        print("\t", get_origins(swhid, stored_obj))
+        print("\t", stored_obj)
+        return initial_bucket
+
+    res = get_object_from_origins(swhid, stored_obj)
     if res[0]:
         (_, origin_url, cloned_obj) = res
     else:
@@ -582,6 +605,7 @@ def _try_recovery(obj_type, obj_id):
         assert isinstance(bucket, str), repr(bucket)
         return bucket
 
+
     try:
         if obj_type == ObjectType.REVISION:
             cloned_obj = dulwich_commit_to_revision(cloned_obj)
@@ -595,8 +619,14 @@ def _try_recovery(obj_type, obj_id):
         roundtripped_cloned_manifest = None
 
     if roundtripped_cloned_manifest == cloned_manifest:
-        write_fixed_object(swhid, cloned_obj)
-        return f"recoverable_misc_{obj_type.value}"
+        if obj_type == ObjectType.DIRECTORY and [
+            (entry.name, entry.target) for entry in stored_obj.entries
+        ] == [(entry.name, entry.target) for entry in cloned_obj.entries]:
+            write_fixed_object(swhid, cloned_obj)
+            return f"weird_dir_perms_misc"
+        else:
+            write_fixed_object(swhid, cloned_obj)
+            return f"recoverable_misc_{obj_type.value}"
     else:
         write_fixed_manifest(swhid, cloned_manifest)
         return f"weird_misc_{obj_type.value}"
@@ -604,6 +634,22 @@ def _try_recovery(obj_type, obj_id):
 
 def try_fix_revision(swhid, stored_obj, stored_manifest):
     obj_id = swhid.object_id
+
+    if stored_obj.type == RevisionType.SUBVERSION:
+        for i in range(0, 10):
+            fixed_stored_obj = attr.evolve(
+                stored_obj,
+                date=attr.evolve(
+                    stored_obj.date, timestamp=attr.evolve(stored_obj.date.timestamp, microseconds=stored_obj.date.timestamp.microseconds+i)
+                ),
+                committer_date=attr.evolve(
+                    stored_obj.committer_date,
+                    timestamp=attr.evolve(stored_obj.committer_date.timestamp, microseconds=stored_obj.committer_date.timestamp.microseconds+i)
+                ),
+            )
+            if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
+                return f"fixable_truncated_microseconds_{i}"
 
     # Try adding an encoding header
     if b"encoding" not in dict(stored_obj.extra_headers):
@@ -1067,11 +1113,23 @@ def try_fix_release(swhid, stored_obj, stored_manifest):
     return None
 
 
-def directory_identifier_with_nongit_sort(directory):
+def directory_identifier_with_custom_sort(directory, key):
     """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
     components = []
 
-    for entry in sorted(directory.entries, key=lambda entry: entry.name):
+    for entry in sorted(directory.entries, key=key):
+        components.extend(
+            [_perms_to_bytes(entry.perms), b"\x20", entry.name, b"\x00", entry.target,]
+        )
+    git_object = format_git_object_from_parts("tree", components)
+    return hashlib.new("sha1", git_object).hexdigest()
+
+
+def directory_identifier_with_no_sort(directory):
+    """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
+    components = []
+
+    for entry in directory.entries:
         components.extend(
             [_perms_to_bytes(entry.perms), b"\x20", entry.name, b"\x00", entry.target,]
         )
@@ -1116,8 +1174,29 @@ def try_fix_directory(swhid, stored_obj, stored_manifest):
         write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-padded_perms_40000"
 
-    if directory_identifier_with_nongit_sort(stored_obj) == stored_obj.id:
-        return f"weird-dir_with_nongit_sort"
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: entry.name) == stored_obj.id.hex():
+        return f"weird-dir_with_nullbyte_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ["file", "dir", "rev"].index(entry.type)) == stored_obj.id.hex():
+        return f"weird-dir_with_filefirst_partial_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["file", "dir", "rev"].index(entry.type), directory_entry_sort_key(entry))) == stored_obj.id.hex():
+        return f"weird-dir_with_filefirst_full_git_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["file", "dir", "rev"].index(entry.type), entry.name)) == stored_obj.id.hex():
+        return f"weird-dir_with_filefirst_full_nullbyte_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ["dir", "file", "rev"].index(entry.type)) == stored_obj.id.hex():
+        return f"weird-dir_with_dirfirst_partial_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["dir", "file", "rev"].index(entry.type), directory_entry_sort_key(entry))) == stored_obj.id.hex():
+        return f"weird-dir_with_dirfirst_full_git_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["dir", "file", "rev"].index(entry.type), entry.name)) == stored_obj.id.hex():
+        return f"weird-dir_with_dirfirst_full_nullbyte_sort"
+
+    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ()) == stored_obj.id.hex():
+        return f"weird-dir_with_pg_order"
 
     # Replace '40000' with '040000' for all entries *but one*.
     # There is a surprisingly large number of dirs where this is the issue!
@@ -1211,14 +1290,15 @@ def get_origins(swhid, stored_obj):
     ]
     origins.sort(key=lambda url: "" if url in PRIOTIZED_ORIGINS else url)
 
+    return origins
+
+def get_object_from_origins(swhid, stored_obj):
+    origins = get_origins(swhid, stored_obj)
     for origin_url in origins:
         if not origin_url.endswith(".git"):
             origin_url += ".git"
         if origin_url == "https://github.com/reingart/python.git":
             # Fails very often...
-            continue
-        if ".googlecode.com/" in origin_url:
-            # Does not exist anymore
             continue
 
         data = b"0032want " + hash_to_bytehex(obj_id) + b"\n"
