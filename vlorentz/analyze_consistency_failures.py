@@ -305,15 +305,23 @@ def main(input_fd):
         handle_line(digest, line)
     """
 
-    digest.update(
-        pickle.load(open("analyze_consistency_failures/results.pickle", "rb"))
-    )
-
+    print("Preloading corrupt objects...")
+    try:
+        with open("analyze_consistency_failures/corrupt_revisions.pickle", "rb") as fd:
+            REVISIONS.update(pickle.load(fd))
+    except:
+        pass
+    try:
+        with open("analyze_consistency_failures/corrupt_releases.pickle", "rb") as fd:
+            RELEASES.update(pickle.load(fd))
+    except:
+        pass
+    print("\tDone")
     # preload revisions in batches
     # revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:100]
     # revision_id_groups = list(grouper(digest["mismatch_hg_to_git"], 1000))
     revision_id_groups = list(
-        grouper(get_buckets(digest, REVISION_BUCKETS_TO_RECOVER), 1000,)
+        grouper([id_ for id_ in get_buckets(digest, REVISION_BUCKETS_TO_RECOVER) if id_ not in REVISIONS], 1000,)
     )
     with multiprocessing.dummy.Pool(10) as p:
         for revisions in tqdm.tqdm(
@@ -325,7 +333,7 @@ def main(input_fd):
             REVISIONS.update(revisions)
 
     release_id_groups = list(
-        grouper(get_buckets(digest, RELEASE_BUCKETS_TO_RECOVER), 1000,)
+        grouper([id_ for id_ in get_buckets(digest, RELEASE_BUCKETS_TO_RECOVER) if id_ not in RELEASES], 1000,)
     )
     with multiprocessing.dummy.Pool(10) as p:
         for releases in tqdm.tqdm(
@@ -335,6 +343,19 @@ def main(input_fd):
             total=len(release_id_groups),
         ):
             RELEASES.update(releases)
+
+    for (type_, obj_ids) in sorted(digest.items()):
+        print(f"{len(obj_ids)}\t{type_}")
+
+    print("Dumping corrupt objects...")
+    with open("analyze_consistency_failures/corrupt_releases.pickle", "wb") as fd:
+        pickle.dump(RELEASES, fd)
+    with open("analyze_consistency_failures/corrupt_revisions.pickle", "wb") as fd:
+        pickle.dump(REVISIONS, fd)
+    print("\tDone")
+
+    # oops, accidentally put them in the wrong bucket
+    digest["unrecoverable_dir_no-origin"] -= digest["weird-dir_with_unknown_sort_ok_in_kafka"]
 
     # Prevent the GC from collecting or moving existing objects; so the kernel does
     # not need to CoW them in the worker processes.
