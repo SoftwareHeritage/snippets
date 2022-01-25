@@ -85,9 +85,9 @@ def recover_model_object(
                 raw_manifest = storage.directory_get_raw_manifest(
                     [swhid.object_id], db=db, cur=cur
                 )[swhid.object_id]
-                assert set(obj.entries) == set(entries)
-                assert obj.raw_manifest == raw_manifest
-                assert obj.id == swhid.object_id
+                assert set(obj.entries) == set(entries), swhid
+                assert obj.raw_manifest == raw_manifest, swhid
+                assert obj.id == swhid.object_id, swhid
                 obj.check()
             elif swhid.object_type == ObjectType.REVISION:
                 cur.execute(
@@ -95,15 +95,30 @@ def recover_model_object(
                 )
                 cur.execute("DELETE FROM revision WHERE id=%s", (swhid.object_id,))
                 storage.revision_add([obj], db=db, cur=cur)
-                assert (
-                    storage.revision_get([swhid.object_id], db=db, cur=cur)[0]
-                    is not None
-                )
-                assert [obj] == storage.revision_get([swhid.object_id], db=db, cur=cur)
+                (ret,) = storage.revision_get([swhid.object_id], db=db, cur=cur)
+                assert ret is not None, swhid
+                if obj.author is not None:
+                    assert ret.author.fullname == obj.author.fullname, swhid
+                    ret = attr.evolve(ret, author=obj.author)
+                else:
+                    assert ret.author is None, swhid
+                if obj.committer is not None:
+                    assert ret.committer.fullname == obj.committer.fullname, swhid
+                    ret = attr.evolve(ret, committer=obj.committer)
+                else:
+                    assert ret.committer is None, swhid
+                assert ret == obj, f"{swhid}: Returned {ret!r} != {obj!r}"
             elif swhid.object_type == ObjectType.RELEASE:
                 cur.execute("DELETE FROM release WHERE id=%s", (swhid.object_id,))
                 storage.release_add([obj], db=db, cur=cur)
-                assert [obj] == storage.release_get([swhid.object_id], db=db, cur=cur)
+                (ret,) = storage.release_get([swhid.object_id], db=db, cur=cur)
+                assert ret is not None, swhid
+                if obj.author is not None:
+                    assert ret.author.fullname == obj.author.fullname, swhid
+                    ret = attr.evolve(ret, author=obj.author)
+                else:
+                    assert ret.author is None, swhid
+                assert ret == obj, f"{swhid}: Returned {ret!r} != {obj!r}"
             else:
                 assert False, swhid
 
