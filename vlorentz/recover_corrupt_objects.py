@@ -28,6 +28,7 @@ import dulwich.objects
 import tqdm
 
 from swh.loader.git import converters
+from swh.model import git_objects
 from swh.model.model import BaseModel, Directory, Revision, Release
 from swh.model.swhids import CoreSWHID, ObjectType
 from swh.core.api.classes import stream_results
@@ -133,8 +134,6 @@ def recover_git_manifest(
             assert False, swhid
 
         # The original object must be corrupt *somehow*, or we wouldn't be here
-        print(swhid, model_obj)
-        from swh.model import git_objects
         assert model_obj.id != model_obj.compute_hash(), f"{swhid}\n{b.decode()}\n{git_objects.revision_git_object(model_obj).decode()}"
 
         model_obj = attr.evolve(model_obj, raw_manifest=b)
