@@ -73,28 +73,39 @@ def recover_model_object(
     # In order to avoid duplicating the insertion code, we first DELETE the row(s), then
     # insert it as usual in the same transaction.
     with storage.db() as db:
-        cur = db.cursor()
-        if swhid.object_type == ObjectType.DIRECTORY:
-            cur.execute("DELETE FROM directory WHERE id=%s", (swhid.object_id,))
-            storage.directory_add([obj], db=db, cur=cur)
-            entries = tuple(stream_results(storage.directory_get_entries, swhid.object_id, db=db, cur=cur))
-            raw_manifest = storage.directory_get_raw_manifest([swhid.object_id], db=db, cur=cur)[swhid.object_id]
-            assert set(obj.entries) == set(entries)
-            assert obj.raw_manifest == raw_manifest
-            assert obj.id == swhid.object_id
-            obj.check()
-        elif swhid.object_type == ObjectType.REVISION:
-            cur.execute("DELETE FROM revision_history WHERE id=%s", (swhid.object_id,))
-            cur.execute("DELETE FROM revision WHERE id=%s", (swhid.object_id,))
-            storage.revision_add([obj], db=db, cur=cur)
-            assert storage.revision_get([swhid.object_id], db=db, cur=cur)[0] is not None
-            assert [obj] == storage.revision_get([swhid.object_id], db=db, cur=cur)
-        elif swhid.object_type == ObjectType.RELEASE:
-            cur.execute("DELETE FROM release WHERE id=%s", (swhid.object_id,))
-            storage.release_add([obj], db=db, cur=cur)
-            assert [obj] == storage.release_get([swhid.object_id], db=db, cur=cur)
-        else:
-            assert False, swhid
+        with db.transaction() as cur:
+            if swhid.object_type == ObjectType.DIRECTORY:
+                cur.execute("DELETE FROM directory WHERE id=%s", (swhid.object_id,))
+                storage.directory_add([obj], db=db, cur=cur)
+                entries = tuple(
+                    stream_results(
+                        storage.directory_get_entries, swhid.object_id, db=db, cur=cur
+                    )
+                )
+                raw_manifest = storage.directory_get_raw_manifest(
+                    [swhid.object_id], db=db, cur=cur
+                )[swhid.object_id]
+                assert set(obj.entries) == set(entries)
+                assert obj.raw_manifest == raw_manifest
+                assert obj.id == swhid.object_id
+                obj.check()
+            elif swhid.object_type == ObjectType.REVISION:
+                cur.execute(
+                    "DELETE FROM revision_history WHERE id=%s", (swhid.object_id,)
+                )
+                cur.execute("DELETE FROM revision WHERE id=%s", (swhid.object_id,))
+                storage.revision_add([obj], db=db, cur=cur)
+                assert (
+                    storage.revision_get([swhid.object_id], db=db, cur=cur)[0]
+                    is not None
+                )
+                assert [obj] == storage.revision_get([swhid.object_id], db=db, cur=cur)
+            elif swhid.object_type == ObjectType.RELEASE:
+                cur.execute("DELETE FROM release WHERE id=%s", (swhid.object_id,))
+                storage.release_add([obj], db=db, cur=cur)
+                assert [obj] == storage.release_get([swhid.object_id], db=db, cur=cur)
+            else:
+                assert False, swhid
 
 
 def recover_dict(
