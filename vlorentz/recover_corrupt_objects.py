@@ -76,7 +76,6 @@ def recover_model_object(
         cur = db.cursor()
         if swhid.object_type == ObjectType.DIRECTORY:
             cur.execute("DELETE FROM directory WHERE id=%s", (swhid.object_id,))
-            cur.execute("SELECT * from directory")
             storage.directory_add([obj], db=db, cur=cur)
             entries = tuple(stream_results(storage.directory_get_entries, swhid.object_id, db=db, cur=cur))
             raw_manifest = storage.directory_get_raw_manifest([swhid.object_id], db=db, cur=cur)[swhid.object_id]
