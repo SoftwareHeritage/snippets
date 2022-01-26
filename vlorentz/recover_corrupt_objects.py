@@ -15,25 +15,22 @@ It expects arbitrarily many paths to directories containing ``*.pickle`` and
 ``snippets/vlorentz/analyze_consistency_failures.py`` as arguments.
 """
 
-import glob
 import logging
 import os
 import pathlib
 import pickle
 import sys
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List
 
 import attr
 import dulwich.errors
 import dulwich.objects
-import tqdm
 import yaml
-
+from swh.core.api.classes import stream_results
 from swh.loader.git import converters
 from swh.model import git_objects
-from swh.model.model import BaseModel, Directory, Revision, Release
+from swh.model.model import BaseModel, Directory, Release, Revision
 from swh.model.swhids import CoreSWHID, ObjectType
-from swh.core.api.classes import stream_results
 from swh.storage.postgresql.storage import Storage
 from swh.storage.writer import JournalWriter
 
