@@ -16,6 +16,7 @@ It expects arbitrarily many paths to directories containing ``*.pickle`` and
 """
 
 import glob
+import logging
 import os
 import pathlib
 import pickle
@@ -35,6 +36,8 @@ from swh.model.swhids import CoreSWHID, ObjectType
 from swh.core.api.classes import stream_results
 from swh.storage.postgresql.storage import Storage
 from swh.storage.writer import JournalWriter
+
+logger = logging.getLogger(__name__)
 
 SWHID_TYPE_TO_MODEL_CLASS: Dict[ObjectType, Any] = {
     ObjectType.DIRECTORY: Directory,
@@ -179,20 +182,37 @@ def main(storage_dbconn: str, journal_writer_conf: Dict[str, Any], dirs: List[pa
     manifests = [
         file_path for dir_ in dirs for file_path in dir_.glob("*.git_manifest")
     ]
-    for file_path in tqdm.tqdm(manifests, desc="(1/2) Recovering from manifests"):
-        swhid = CoreSWHID.from_string(file_path.stem)
-        with open(file_path, "rb") as fd:
-            recover_git_manifest(storage, journal_writer, swhid, fd.read())
+    logger.info("(1/2) recovering from manifests (count=%s)", len(manifests))
+    for counter, file_path in enumerate(sorted(manifests)):
+        if counter and counter % 100 == 0:
+            logger.info("Recovered %s/%s manifests", counter, len(manifests))
+        try:
+            swhid = CoreSWHID.from_string(file_path.stem)
+            with open(file_path, "rb") as fd:
+                recover_git_manifest(storage, journal_writer, swhid, fd.read())
+        except Exception:
+            logger.exception("Failed to recover %s out of %s:", swhid, file_path)
 
     pickles = [file_path for dir_ in dirs for file_path in dir_.glob("*.pickle")]
-    for file_path in tqdm.tqdm(pickles, desc="(2/2) Recovering from pickles"):
-        swhid = CoreSWHID.from_string(file_path.stem)
-        with open(file_path, "rb") as fd:
-            recover_dict(storage, journal_writer, swhid, pickle.load(fd))
+    logger.info("(2/2) recovering from pickles (count=%s)", len(pickles))
+    for counter, file_path in enumerate(sorted(pickles)):
+        if counter and counter % 100 == 0:
+            logger.info("Recovered %s/%s pickles", counter, len(pickles))
+        try:
+            swhid = CoreSWHID.from_string(file_path.stem)
+            with open(file_path, "rb") as fd:
+                recover_dict(storage, journal_writer, swhid, pickle.load(fd))
+        except Exception:
+            logger.exception("Failed to recover %s out of %s:", swhid, file_path)
 
 
 if __name__ == "__main__":
     if len(sys.argv) >= 1:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s:%(name)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
         dirs = sys.argv[1:]
 
         config = yaml.safe_load(open(os.getenv("SWH_CONFIG_FILENAME"), "r"))
