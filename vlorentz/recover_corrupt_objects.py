@@ -153,7 +153,9 @@ def recover_git_manifest(
         # not parseable anymore (was probably loaded with libgit2).
         # Recover the parsed object from the DB, add the raw_manifest, and reinject
         if swhid.object_type == ObjectType.DIRECTORY:
-            entries = tuple(stream_results_optional(storage.directory_get_entries, swhid.object_id))
+            entries = tuple(
+                stream_results(storage.directory_get_entries, swhid.object_id)
+            )
             model_obj = Directory(id=swhid.object_id, entries=entries)
         elif swhid.object_type == ObjectType.RELEASE:
             (model_obj,) = storage.release_get([swhid.object_id])
