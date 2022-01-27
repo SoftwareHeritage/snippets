@@ -31,6 +31,7 @@ For example, to handle the first 1/16th directories:
 import difflib
 import hashlib
 import json
+import logging
 import os
 import multiprocessing
 import pathlib
@@ -63,6 +64,7 @@ from swh.model.git_objects import (
     revision_git_object,
 )
 from swh.storage import get_storage
+from swh.storage import backfill
 from swh.core.api.classes import stream_results
 from swh.core.utils import grouper
 
@@ -85,6 +87,7 @@ else:
 
 graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph/")
 graph2 = RemoteGraphClient("http://localhost:5009/graph/")
+logger = logging.getLogger(__name__)
 
 ################################
 # Local clones manipulation
@@ -410,7 +413,7 @@ def journal_main():
         exit(0)
 
 
-def postgres_main(object_type, from_id, to_id):
+def postgres_main(object_type, start_object, end_object):
     storage = get_storage(
         cls="postgresql", db="service=swh-replica", objstorage={"cls": "memory"}
     )
@@ -418,74 +421,19 @@ def postgres_main(object_type, from_id, to_id):
     db = storage.get_db()
     cur = db.cursor()
 
-    cur.execute(
-        f"""
-        SELECT n_live_tup
-        FROM pg_stat_user_tables
-        where relname = %s
-        ORDER BY relname DESC ;
-        """,
-        (object_type,),
-    )
-    ((total_objects,),) = cur.fetchall()
+    for range_start, range_end in backfill.RANGE_GENERATORS[object_type](
+        start_object, end_object
+    ):
+        logger.info(
+            "Processing %s range %s to %s",
+            object_type,
+            backfill._format_range_bound(range_start),
+            backfill._format_range_bound(range_end),
+        )
 
-    range_size = int.from_bytes(to_id, byteorder="big") - int.from_bytes(
-        from_id, byteorder="big"
-    )
-    max_range_size = int.from_bytes(b"\xff" * 20, byteorder="big") - int.from_bytes(
-        b"\x00" * 20, byteorder="big"
-    )
-    range_coverage_ratio = range_size / max_range_size
-    estimated_objects = total_objects * range_coverage_ratio
+        objects = backfill.fetch(db, object_type, start=range_start, end=range_end)
 
-    assert estimated_objects >= 1, estimated_objects  # that's a very small interval
-
-    # to make the range inclusive on the left
-    cur.execute(f"SELECT id FROM {object_type} WHERE id = %s" "", (from_id,))
-
-    with tqdm.tqdm(total=estimated_objects, unit_scale=True) as pbar:
-        while True:
-            # index-only scan
-            cur.execute(
-                f"""
-                SELECT id
-                FROM {object_type}
-                WHERE id > %s and id <= %s
-                ORDER BY id
-                LIMIT 10000
-                """,
-                (from_id, to_id),
-            )
-            ids = [id_ for (id_,) in cur.fetchall()]
-            if not ids:
-                break
-
-            assert all(id_ > from_id for id_ in ids)
-            from_id = max(ids)
-
-            for id_group in grouper(ids, 100):
-                id_group = list(id_group)
-                if object_type == "directory":
-                    manifests = storage.directory_get_raw_manifest(id_group, db=db, cur=cur)
-                    objects = (
-                        model.Directory(
-                            id=id_,
-                            entries=tuple(
-                                stream_results(storage.directory_get_entries, id_, db=db, cur=cur)
-                            ),
-                            raw_manifest=manifests[id_],
-                        )
-                        for id_ in id_group
-                    )
-                elif object_type == "release":
-                    objects = storage.release_get(id_group)
-                elif object_type == "revision":
-                    objects = storage.revision_get(id_group)
-                else:
-                    assert False, object_type
-
-                process_objects(object_type, objects)
-                pbar.update(len(id_group))
+        process_objects(object_type, objects)
 
 
 if __name__ == "__main__":
@@ -504,7 +452,7 @@ if __name__ == "__main__":
         if mode == "kafka":
             () = args
         elif mode == "postgres":
-            (type_, from_id, to_id) = args
+            (type_, start_object, end_object) = args
         else:
             raise ValueError()
     except ValueError:
@@ -514,10 +462,6 @@ if __name__ == "__main__":
     if mode == "kafka":
         journal_main()
     elif mode == "postgres":
-        postgres_main(
-            type_,
-            hash_to_bytes(from_id.ljust(40, "0")),
-            hash_to_bytes(to_id.ljust(40, "0")),
-        )
+        postgres_main(type_, start_object, end_object)
     else:
         assert False
