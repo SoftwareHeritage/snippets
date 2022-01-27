@@ -1,4 +1,7 @@
 """
+Reads objects from Kafka or Postgresql, and dumps recovered objects in
+:file:`analyze_consistency_failures/`
+
 Kafka
 -----
 
