@@ -80,6 +80,7 @@ UNORDERED_DIRECTORY = re.compile(
 NOISE = re.compile(r"Called Ctrl-C\, exiting\.")
 
 REVISION_BUCKETS_TO_RECOVER = (
+    "fixable_trivial_revision",
     "mismatch_misc_revision",
     "mismatch_hg_to_git",
     "unrecoverable_rev_not-in-swh-graph",
@@ -95,6 +96,7 @@ RELEASE_BUCKETS_TO_RECOVER = (
 )
 
 DIRECTORY_BUCKETS_TO_RECOVER = (
+    "fixable_trivial_directory",
     "mismatch_misc_directory",
     "unrecoverable_dir_no-origin",
     "recoverable_misc_dir",
@@ -108,6 +110,9 @@ DIRECTORY_BUCKETS_TO_RECOVER = (
     "weird-dir_with_unknown_sort_ok_in_kafka",
     "weird-dir_with_unknown_sort_ok_in_pg",
     "weird-dir_with_backfiller_partial_sort",
+    "weird_misc_dir",
+    "weird-padded_perms_40000",
+    "weird-padded_perms_40000_except_1",
 )
 
 ENCODINGS = (
@@ -422,6 +427,8 @@ def main(input_fd):
         pickle.dump(RELEASES, fd)
     with open("analyze_consistency_failures/corrupt_revisions.pickle", "wb") as fd:
         pickle.dump(REVISIONS, fd)
+    with open("analyze_consistency_failures/corrupt_directories.pickle", "wb") as fd:
+        pickle.dump(DIRECTORIES, fd)
     print("\tDone")
 
     # oops, accidentally put them in the wrong bucket
@@ -1255,7 +1262,7 @@ def try_fix_release(swhid, stored_obj, stored_manifest):
     return None
 
 
-def directory_identifier_with_custom_sort(directory, key):
+def directory_with_custom_sort(directory, key):
     """Like swh.model.git_objects.directory_git_object, but does not sort entries."""
     components = []
 
@@ -1263,8 +1270,8 @@ def directory_identifier_with_custom_sort(directory, key):
         components.extend(
             [_perms_to_bytes(entry.perms), b"\x20", entry.name, b"\x00", entry.target,]
         )
-    git_object = format_git_object_from_parts("tree", components)
-    return hashlib.new("sha1", git_object).hexdigest()
+    fixed_manifest = format_git_object_from_parts("tree", components)
+    return (fixed_manifest, hashlib.new("sha1", fixed_manifest).hexdigest())
 
 
 def directory_identifier_with_no_sort(directory):
@@ -1317,74 +1324,66 @@ def try_fix_directory(swhid, stored_obj, stored_manifest):
         write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-padded_perms_40000"
 
-    if (
-        directory_identifier_with_custom_sort(stored_obj, key=lambda entry: entry.name)
-        == stored_obj.id.hex()
-    ):
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(stored_obj, key=lambda entry: entry.name)
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_nullbyte_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj, key=lambda entry: ["file", "dir", "rev"].index(entry.type)
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_filefirst_partial_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj,
             key=lambda entry: (
                 ["file", "dir", "rev"].index(entry.type),
                 directory_entry_sort_key(entry),
             ),
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_filefirst_full_git_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj,
             key=lambda entry: (["file", "dir", "rev"].index(entry.type), entry.name),
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_filefirst_full_nullbyte_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj, key=lambda entry: ["dir", "file", "rev"].index(entry.type)
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_dirfirst_partial_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj,
             key=lambda entry: (
                 ["dir", "file", "rev"].index(entry.type),
                 directory_entry_sort_key(entry),
             ),
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_dirfirst_full_git_sort"
 
-    if (
-        directory_identifier_with_custom_sort(
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(
             stored_obj,
             key=lambda entry: (["dir", "file", "rev"].index(entry.type), entry.name),
         )
-        == stored_obj.id.hex()
-    ):
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_dirfirst_full_nullbyte_sort"
 
-    if (
-        directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ())
-        == stored_obj.id.hex()
-    ):
+    (fixed_stored_manifest, fixed_id) = directory_with_custom_sort(stored_obj, key=lambda entry: ())
+    if fixed_id == stored_obj.id.hex():
+        write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-dir_with_pg_order"
 
     # Replace '40000' with '040000' for all entries *but one*.
