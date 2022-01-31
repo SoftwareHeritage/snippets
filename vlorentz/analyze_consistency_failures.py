@@ -709,16 +709,77 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
             fixed_stored_obj = attr.evolve(
                 stored_obj,
                 date=attr.evolve(
-                    stored_obj.date, timestamp=attr.evolve(stored_obj.date.timestamp, microseconds=stored_obj.date.timestamp.microseconds+i)
+                    stored_obj.date,
+                    timestamp=attr.evolve(
+                        stored_obj.date.timestamp,
+                        microseconds=stored_obj.date.timestamp.microseconds + i,
+                    ),
                 ),
                 committer_date=attr.evolve(
                     stored_obj.committer_date,
-                    timestamp=attr.evolve(stored_obj.committer_date.timestamp, microseconds=stored_obj.committer_date.timestamp.microseconds+i)
+                    timestamp=attr.evolve(
+                        stored_obj.committer_date.timestamp,
+                        microseconds=stored_obj.committer_date.timestamp.microseconds
+                        + i,
+                    ),
                 ),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
                 write_fixed_object(swhid, fixed_stored_obj)
                 return f"fixable_truncated_microseconds_{i}"
+
+    # Try add '\n' to the gpgsig
+    if b"gpgsig" in dict(stored_obj.extra_headers):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=(
+                (k, v + b"\n" if k == b"gpgsig" else v)
+                for (k, v) in stored_obj.extra_headers
+            ),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_add_newline_gpgsig"
+
+    # Try removing '\n' from the gpgsig
+    if b"gpgsig" in dict(stored_obj.extra_headers):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=(
+                (k, v[0:-1] if k == b"gpgsig" and v.endswith(b"\n") else v)
+                for (k, v) in stored_obj.extra_headers
+            ),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_rm_newline_gpgsig"
+
+    # Try fixing item 1 on https://forge.softwareheritage.org/T75#70553
+    # (gpgsig header badly formatted)
+    if b"gpgsig" in dict(stored_obj.extra_headers):
+        gpgsig = dict(stored_obj.extra_headers)[b"gpgsig"]
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=((b"gpgsig", gpgsig),) + tuple(
+                (k, v) for (k, v) in stored_obj.extra_headers if k != b"gpgsig"
+            ),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_gpgsig_first"
+
+    # Try removing '\n' from the mergetag
+    if b"mergetag" in dict(stored_obj.extra_headers):
+        fixed_stored_obj = attr.evolve(
+            stored_obj,
+            extra_headers=(
+                (k, v[0:-1] if k == b"mergetag" and v.endswith(b"\n") else v)
+                for (k, v) in stored_obj.extra_headers
+            ),
+        )
+        if fixed_stored_obj.compute_hash() == obj_id:
+            write_fixed_object(swhid, fixed_stored_obj)
+            return f"fixable_rm_newline_mergetag"
 
     # Try adding an encoding header
     if b"encoding" not in dict(stored_obj.extra_headers):
@@ -765,6 +826,17 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
     if fixed_stored_obj.compute_hash() == obj_id:
         write_fixed_object(swhid, fixed_stored_obj)
         return "fixable_author_email_leading_space"
+
+    # Try removing space between name and email
+    # (very crude, this assumes author = committer)
+    fixed_stored_obj = attr.evolve(
+        stored_obj,
+        author=Person(fullname=stored_obj.author.fullname.replace(b" <", b"<"), name=b"", email=b""),
+        committer=Person(fullname=stored_obj.committer.fullname.replace(b" <", b"<"), name=b"", email=b""),
+    )
+    if fixed_stored_obj.compute_hash() == obj_id:
+        write_fixed_object(swhid, fixed_stored_obj)
+        return "fixable_author_email_no_space"
 
     # Try adding trailing spaces to email
     for trailing in [b" " * i for i in range(8)] + [b"\r", b" \r", b"\t"]:
