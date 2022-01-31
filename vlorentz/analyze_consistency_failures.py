@@ -936,6 +936,7 @@ def try_fix_revision(swhid, stored_obj, stored_manifest):
                 ),
             )
             if fixed_stored_obj.compute_hash() == obj_id:
+                write_fixed_object(swhid, fixed_stored_obj)
                 return "fixable_author_middle_spaces"
 
     # Try adding spaces around the name
@@ -1306,6 +1307,7 @@ def try_fix_directory(swhid, stored_obj, stored_manifest):
                 # pointless to recompute the hash
                 continue
             if fixed_obj.compute_hash() == stored_obj.id:
+                write_fixed_object(swhid, fixed_obj)
                 return "fixable_directory_perms"
 
     fixed_stored_manifest = stored_manifest.replace(b"40000 ", b"040000 ")
