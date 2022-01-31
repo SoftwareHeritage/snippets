@@ -104,7 +104,10 @@ DIRECTORY_BUCKETS_TO_RECOVER = (
     "recoverable_unordered_dir",
     "weird_unordered_dir",
     "weird_dir_perms_misc",
-    "weird-dir_with_unknown_sort", "weird-dir_with_unknown_sort_ok_in_kafka", "weird-dir_with_unknown_sort_ok_in_pg", "weird-dir_with_backfiller_partial_sort",
+    "weird-dir_with_unknown_sort",
+    "weird-dir_with_unknown_sort_ok_in_kafka",
+    "weird-dir_with_unknown_sort_ok_in_pg",
+    "weird-dir_with_backfiller_partial_sort",
 )
 
 ENCODINGS = (
@@ -203,6 +206,7 @@ graph2 = RemoteGraphClient("http://localhost:5009/graph/")
 
 REVISIONS = {}
 RELEASES = {}
+DIRECTORIES = {}
 
 MANAGER = multiprocessing.Manager()
 
@@ -301,6 +305,26 @@ def _load_releases(ids):
     return dict(zip(ids, storage.release_get(ids)))
 
 
+def _load_directory(id):
+    storage = get_storage(
+        "remote", url="http://webapp1.internal.softwareheritage.org:5002/"
+    )
+    try:
+        entries = tuple(
+                stream_results_optional(storage.directory_get_entries, id)
+            )
+    except Exception as e:
+        assert "is not a valid directory entry name." in e.args[0]["args"][0], e.args[0]
+        return None
+    try:
+        return Directory(
+            id=id,
+            entries=entries,
+        )
+    except ValueError as e:
+        assert "duplicated entry name" in e.args[0]
+        return None
+
 def get_buckets(digest, names):
     """returns `digest[names[0]] | digest[names[1]] | ...`"""
     return functools.reduce(operator.or_, (digest[name] for name in names), set())
@@ -328,12 +352,24 @@ def main(input_fd):
             RELEASES.update(pickle.load(fd))
     except:
         pass
+    try:
+        with open("analyze_consistency_failures/corrupt_directories.pickle", "rb") as fd:
+            DIRECTORIES.update(pickle.load(fd))
+    except:
+        pass
     print("\tDone")
     # preload revisions in batches
     # revision_id_groups = list(grouper(digest["mismatch_misc_revision"], 1000))[0:100]
     # revision_id_groups = list(grouper(digest["mismatch_hg_to_git"], 1000))
     revision_id_groups = list(
-        grouper([id_ for id_ in get_buckets(digest, REVISION_BUCKETS_TO_RECOVER) if id_ not in REVISIONS], 1000,)
+        grouper(
+            [
+                id_
+                for id_ in get_buckets(digest, REVISION_BUCKETS_TO_RECOVER)
+                if id_ not in REVISIONS
+            ],
+            1000,
+        )
     )
     with multiprocessing.dummy.Pool(10) as p:
         for revisions in tqdm.tqdm(
@@ -345,7 +381,14 @@ def main(input_fd):
             REVISIONS.update(revisions)
 
     release_id_groups = list(
-        grouper([id_ for id_ in get_buckets(digest, RELEASE_BUCKETS_TO_RECOVER) if id_ not in RELEASES], 1000,)
+        grouper(
+            [
+                id_
+                for id_ in get_buckets(digest, RELEASE_BUCKETS_TO_RECOVER)
+                if id_ not in RELEASES
+            ],
+            1000,
+        )
     )
     with multiprocessing.dummy.Pool(10) as p:
         for releases in tqdm.tqdm(
@@ -355,6 +398,21 @@ def main(input_fd):
             total=len(release_id_groups),
         ):
             RELEASES.update(releases)
+
+    directory_ids = [
+                id_
+                for id_ in get_buckets(digest, DIRECTORY_BUCKETS_TO_RECOVER)
+                if id_ not in DIRECTORIES
+            ]
+    with multiprocessing.dummy.Pool(10) as p:
+        for (id, directory) in tqdm.tqdm(
+            zip(directory_ids, p.imap(_load_directory, directory_ids, chunksize=100)),
+            desc="loading directories",
+            unit="dirs",
+            total=len(directory_ids),
+        ):
+            if directory:
+                DIRECTORIES[id] = directory
 
     for (type_, obj_ids) in sorted(digest.items()):
         print(f"{len(obj_ids)}\t{type_}")
@@ -367,7 +425,9 @@ def main(input_fd):
     print("\tDone")
 
     # oops, accidentally put them in the wrong bucket
-    digest["unrecoverable_dir_no-origin"] -= digest["weird-dir_with_unknown_sort_ok_in_kafka"]
+    digest["unrecoverable_dir_no-origin"] -= digest[
+        "weird-dir_with_unknown_sort_ok_in_kafka"
+    ]
 
     # Prevent the GC from collecting or moving existing objects; so the kernel does
     # not need to CoW them in the worker processes.
@@ -375,11 +435,15 @@ def main(input_fd):
 
     # Try to fix objects one by one
     jobs = (
-        [(try_revision_recovery, bucket) for bucket in REVISION_BUCKETS_TO_RECOVER]
+        [
+            (try_directory_recovery, bucket)
+            for bucket in list(DIRECTORY_BUCKETS_TO_RECOVER)
+            + [bucket for bucket in digest if bucket.startswith("weird-dir")]
+        ]
+        + [(try_revision_recovery, bucket) for bucket in REVISION_BUCKETS_TO_RECOVER]
         + [(try_release_recovery, bucket) for bucket in RELEASE_BUCKETS_TO_RECOVER]
-        + [(try_directory_recovery, bucket) for bucket in list(DIRECTORY_BUCKETS_TO_RECOVER) + [bucket for bucket in digest if bucket.startswith("weird-dir")]]
     )
-    with multiprocessing.Pool(32, maxtasksperchild=1000) as p:
+    with multiprocessing.Pool(32, maxtasksperchild=100) as p:
         for (f, initial_bucket) in jobs:
             f = functools.partial(f, initial_bucket=initial_bucket)
             obj_ids = list(digest.pop(initial_bucket, []))
@@ -529,38 +593,44 @@ def _try_recovery(obj_type, obj_id, initial_bucket):
             return "release_missing_from_storage"
         stored_manifest = release_git_object(stored_obj)
     elif obj_type == ObjectType.DIRECTORY:
-        stored_obj = Directory(
-            id=obj_id,
-            entries=tuple(
-                stream_results_optional(storage.directory_get_entries, obj_id)
-            ),
-        )
-        stored_manifest = directory_git_object(stored_obj)
+        stored_obj = DIRECTORIES.get(obj_id)
+        if stored_obj is None:
+            stored_manifest = None
+        else:
+            stored_manifest = directory_git_object(stored_obj)
     else:
         assert False, obj_type
 
-    assert obj_id == stored_obj.id
-    if obj_id == stored_obj.compute_hash():
-        # Wtf? the hash did not match when pulled from kafka, but it does when pulled
-        # from swh-storage?
-        write_fixed_object(swhid, stored_obj)
-        return "fine_in_storage"
+    if stored_obj is not None:
+        assert obj_id == stored_obj.id
+        if obj_id == stored_obj.compute_hash():
+            # Wtf? the hash did not match when pulled from kafka, but it does when pulled
+            # from swh-storage?
+            write_fixed_object(swhid, stored_obj)
+            return "fine_in_storage"
 
     if obj_type == ObjectType.REVISION:
         bucket = try_fix_revision(swhid, stored_obj, stored_manifest)
     elif obj_type == ObjectType.RELEASE:
         bucket = try_fix_release(swhid, stored_obj, stored_manifest)
     elif obj_type == ObjectType.DIRECTORY:
-        bucket = try_fix_directory(swhid, stored_obj, stored_manifest)
+        if stored_obj is None:
+            bucket = None
+        else:
+            bucket = try_fix_directory(swhid, stored_obj, stored_manifest)
     else:
         assert False, obj_id
 
     if bucket is not None:
-        print("fixed", bucket)
         assert isinstance(bucket, str), repr(bucket)
         return bucket
 
-    if initial_bucket in ("weird_unordered_dir", "weird-dir_with_unknown_sort_ok_in_kafka"):
+    assert False or "swh:1:dir:" in str(swhid), swhid
+
+    if initial_bucket in (
+        "weird_unordered_dir",
+        "weird-dir_with_unknown_sort_ok_in_kafka",
+    ):
         return f"weird-dir_with_unknown_sort_ok_in_kafka"
 
     if obj_type == ObjectType.REVISION and stored_obj.type != RevisionType.GIT:
@@ -588,15 +658,15 @@ def _try_recovery(obj_type, obj_id, initial_bucket):
 
     if obj_type == ObjectType.REVISION:
         bucket = try_recover_revision(
-            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
         )
     elif obj_type == ObjectType.RELEASE:
         bucket = try_recover_release(
-            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
         )
     elif obj_type == ObjectType.DIRECTORY:
         bucket = try_recover_directory(
-            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+            swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
         )
     else:
         assert False, obj_id
@@ -604,7 +674,6 @@ def _try_recovery(obj_type, obj_id, initial_bucket):
     if bucket is not None:
         assert isinstance(bucket, str), repr(bucket)
         return bucket
-
 
     try:
         if obj_type == ObjectType.REVISION:
@@ -1174,28 +1243,74 @@ def try_fix_directory(swhid, stored_obj, stored_manifest):
         write_fixed_manifest(swhid, fixed_stored_manifest)
         return f"weird-padded_perms_40000"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: entry.name) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(stored_obj, key=lambda entry: entry.name)
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_nullbyte_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ["file", "dir", "rev"].index(entry.type)) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj, key=lambda entry: ["file", "dir", "rev"].index(entry.type)
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_filefirst_partial_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["file", "dir", "rev"].index(entry.type), directory_entry_sort_key(entry))) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj,
+            key=lambda entry: (
+                ["file", "dir", "rev"].index(entry.type),
+                directory_entry_sort_key(entry),
+            ),
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_filefirst_full_git_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["file", "dir", "rev"].index(entry.type), entry.name)) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj,
+            key=lambda entry: (["file", "dir", "rev"].index(entry.type), entry.name),
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_filefirst_full_nullbyte_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ["dir", "file", "rev"].index(entry.type)) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj, key=lambda entry: ["dir", "file", "rev"].index(entry.type)
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_dirfirst_partial_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["dir", "file", "rev"].index(entry.type), directory_entry_sort_key(entry))) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj,
+            key=lambda entry: (
+                ["dir", "file", "rev"].index(entry.type),
+                directory_entry_sort_key(entry),
+            ),
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_dirfirst_full_git_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: (["dir", "file", "rev"].index(entry.type), entry.name)) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(
+            stored_obj,
+            key=lambda entry: (["dir", "file", "rev"].index(entry.type), entry.name),
+        )
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_dirfirst_full_nullbyte_sort"
 
-    if directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ()) == stored_obj.id.hex():
+    if (
+        directory_identifier_with_custom_sort(stored_obj, key=lambda entry: ())
+        == stored_obj.id.hex()
+    ):
         return f"weird-dir_with_pg_order"
 
     # Replace '40000' with '040000' for all entries *but one*.
@@ -1290,10 +1405,15 @@ def get_origins(swhid, stored_obj):
     ]
     origins.sort(key=lambda url: "" if url in PRIOTIZED_ORIGINS else url)
 
-    return origins
+    return (True, origins)
+
 
 def get_object_from_origins(swhid, stored_obj):
-    origins = get_origins(swhid, stored_obj)
+    obj_id = swhid.object_id
+    (success, res) = get_origins(swhid, stored_obj)
+    if not success:
+        return (False, res)
+    origins = res
     for origin_url in origins:
         if not origin_url.endswith(".git"):
             origin_url += ".git"
@@ -1337,7 +1457,7 @@ def get_object_from_origins(swhid, stored_obj):
 
 
 def try_recover_revision(
-    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
 ):
     obj_id = swhid.object_id
     fixed_stored_obj = stored_obj
@@ -1426,7 +1546,7 @@ def try_recover_revision(
 
 
 def try_recover_release(
-    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
 ):
     obj_id = swhid.object_id
 
@@ -1465,32 +1585,34 @@ def try_recover_release(
 
 
 def try_recover_directory(
-    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest
+    swhid, stored_obj, stored_manifest, cloned_obj, cloned_manifest, origin_url
 ):
     obj_id = swhid.object_id
 
     print("original", repr(cloned_manifest.split(b"\x00", 1)[1]))
-    print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
-    print(
-        "\n".join(
-            difflib.ndiff(
-                [
-                    repr(entry)
-                    for entry in re.findall(
-                        b"[0-9]+ [^\x00]+\x00.{20}",
-                        cloned_manifest.split(b"\x00", 1)[1],
-                    )
-                ],
-                [
-                    repr(entry)
-                    for entry in re.findall(
-                        b"[0-9]+ [^\x00]+\x00.{20}",
-                        stored_manifest.split(b"\x00", 1)[1],
-                    )
-                ],
+
+    if stored_manifest is not None:
+        print("stored  ", repr(stored_manifest.split(b"\x00", 1)[1]))
+        print(
+            "\n".join(
+                difflib.ndiff(
+                    [
+                        repr(entry)
+                        for entry in re.findall(
+                            b"[0-9]+ [^\x00]+\x00.{20}",
+                            cloned_manifest.split(b"\x00", 1)[1],
+                        )
+                    ],
+                    [
+                        repr(entry)
+                        for entry in re.findall(
+                            b"[0-9]+ [^\x00]+\x00.{20}",
+                            stored_manifest.split(b"\x00", 1)[1],
+                        )
+                    ],
+                )
             )
         )
-    )
 
 
 def handle_pdb(sig, frame):
