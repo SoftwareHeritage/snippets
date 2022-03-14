@@ -89,6 +89,8 @@ graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph
 graph2 = RemoteGraphClient("http://localhost:5009/graph/")
 logger = logging.getLogger(__name__)
 
+
+
 ################################
 # Local clones manipulation
 
@@ -351,6 +353,14 @@ def handle_mismatch(object_type, swhid, stored_obj):
 
     write_fixed_object(swhid, cloned_obj)
     print(f"Recovered {swhid}")
+    print(
+        ",\n".join(
+            difflib.ndiff(
+                str(stored_obj).split(", "),
+                str(cloned_obj).split(", "),
+            )
+        )
+    )
 
 
 def process_objects(object_type, objects):
@@ -381,9 +391,6 @@ def process_dicts(all_dicts):
 
 def journal_main():
     from swh.journal.client import get_journal_client
-
-    # import logging
-    # logging.basicConfig(level=logging.DEBUG)
 
     config = {
         "sasl.mechanism": "SCRAM-SHA-512",
@@ -437,6 +444,7 @@ def postgres_main(object_type, start_object, end_object):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     storage = get_storage(
         "pipeline",
         steps=[
