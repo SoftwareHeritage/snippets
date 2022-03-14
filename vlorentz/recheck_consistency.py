@@ -36,6 +36,7 @@ import os
 import multiprocessing
 import pathlib
 import pickle
+import random
 import secrets
 import subprocess
 import sys
@@ -369,14 +370,16 @@ def process_objects(object_type, objects):
         if object_.id != real_id:
             handle_mismatch(object_type, object_.swhid(), object_)
 
-    with open(CLONED_ORIGINS_PATH) as fd:
-        CLONED_ORIGINS.update(json.load(fd))
-    data = json.dumps(dict(CLONED_ORIGINS))
+    if random.randint(0, 100) == 0:
+        # dump origins from time to time
+        with open(CLONED_ORIGINS_PATH) as fd:
+            CLONED_ORIGINS.update(json.load(fd))
+        data = json.dumps(dict(CLONED_ORIGINS))
 
-    tmp_path = CLONED_ORIGINS_PATH + ".tmp" + secrets.token_hex(8)
-    with open(tmp_path, "wt") as fd:
-        fd.write(data)
-    os.rename(tmp_path, CLONED_ORIGINS_PATH)  # atomic
+        tmp_path = CLONED_ORIGINS_PATH + ".tmp" + secrets.token_hex(8)
+        with open(tmp_path, "wt") as fd:
+            fd.write(data)
+        os.rename(tmp_path, CLONED_ORIGINS_PATH)  # atomic
 
 
 def process_dicts(all_dicts):
