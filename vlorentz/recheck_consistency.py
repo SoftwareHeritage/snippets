@@ -23,7 +23,7 @@ Postgresql
 Checks all objects between two given hashes (inclusive).
 Needs manual splitting and error management.
 
-Syntax 
+Syntax
 
     ./recheck_consistency.py postgres {directory,release,revision} <sha1_git> <sha1_git>
 
@@ -37,8 +37,8 @@ import difflib
 import hashlib
 import json
 import logging
-import os
 import multiprocessing
+import os
 import pathlib
 import pickle
 import random
@@ -53,26 +53,22 @@ import dulwich.errors
 import dulwich.object_store
 import dulwich.pack
 import dulwich.repo
-import tqdm
 
-from swh.graph.client import RemoteGraphClient, GraphArgumentException
+from swh.graph.client import GraphArgumentException, RemoteGraphClient
 from swh.loader.git.converters import (
-    dulwich_tree_to_directory,
     dulwich_commit_to_revision,
     dulwich_tag_to_release,
+    dulwich_tree_to_directory,
 )
 from swh.model import model
-from swh.model.swhids import ExtendedSWHID
-from swh.model.hashutil import hash_to_bytes, hash_to_hex, hash_to_bytehex
 from swh.model.git_objects import (
     directory_git_object,
     release_git_object,
     revision_git_object,
 )
-from swh.storage import get_storage
-from swh.storage import backfill
-from swh.core.api.classes import stream_results
-from swh.core.utils import grouper
+from swh.model.hashutil import hash_to_bytehex, hash_to_hex
+from swh.model.swhids import ExtendedSWHID
+from swh.storage import backfill, get_storage
 
 CLONES_BASE_DIR = pathlib.Path(
     "/srv/softwareheritage/cassandra-test-0/scratch/integrity_clones/"
@@ -94,7 +90,6 @@ else:
 graph = RemoteGraphClient("http://graph.internal.softwareheritage.org:5009/graph/")
 graph2 = RemoteGraphClient("http://localhost:5009/graph/")
 logger = logging.getLogger(__name__)
-
 
 
 ################################
@@ -249,12 +244,11 @@ def get_origins(swhid, stored_obj):
                         False,
                         f"unrecoverable_{swhid.object_type.value}_not-in-swh-graph",
                     )
-                except:
+                except Exception:
                     pass
                 else:
                     break
-            except:
-                raise
+            except Exception:
                 pass
             else:
                 break
@@ -316,9 +310,10 @@ def handle_mismatch(object_type, swhid, stored_obj):
     )
     cloned_manifest = object_header + cloned_dulwich_obj.as_raw_string()
     rehash = hashlib.sha1(cloned_manifest).digest()
-    assert (
-        obj_id == rehash
-    ), f"Mismatch between origin hash and original object: {obj_id.hex()} != {rehash.hex()}"
+    assert obj_id == rehash, (
+        f"Mismatch between origin hash and original object: "
+        f"{obj_id.hex()} != {rehash.hex()}"
+    )
 
     if object_type == "revision":
         cloned_obj = dulwich_commit_to_revision(cloned_dulwich_obj)
@@ -352,10 +347,7 @@ def handle_mismatch(object_type, swhid, stored_obj):
     print(f"Recovered {swhid}")
     print(
         ",\n".join(
-            difflib.ndiff(
-                str(stored_obj).split(", "),
-                str(cloned_obj).split(", "),
-            )
+            difflib.ndiff(str(stored_obj).split(", "), str(cloned_obj).split(", "),)
         )
     )
 
@@ -425,7 +417,6 @@ def postgres_main(object_type, start_object, end_object):
     )
 
     db = storage.get_db()
-    cur = db.cursor()
 
     for range_start, range_end in backfill.RANGE_GENERATORS[object_type](
         start_object, end_object
