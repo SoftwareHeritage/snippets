@@ -184,15 +184,6 @@ def get_object_from_origins(swhid, stored_obj):
             raise
             # continue
 
-        data = b"0032want " + hash_to_bytehex(obj_id) + b"\n"
-        if swhid.object_type == model.ObjectType.REVISION:
-            for parent in stored_obj.parents:
-                data += b"0032have " + hash_to_bytehex(parent) + b"\n"
-        elif swhid.object_type == model.ObjectType.RELEASE:
-            data += b"0032have " + hash_to_bytehex(stored_obj.target) + b"\n"
-        data += b"0000"
-        data += b"0009done\n"
-
         clone_path = get_clone_path(origin_url)
         if not clone_path.is_dir():
             try:
