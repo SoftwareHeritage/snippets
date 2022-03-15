@@ -107,35 +107,36 @@ def get_clone_path(origin_url):
         return CLONES_BASE_DIR / dirname
 
 
+def clone_linux(origin_url):
+    print(f"Cloning {origin_url}")
+    # linux.git is very big and there are lots of forks... let's fetch them all
+    # in the same clone or it going to take forever to clone them all.
+    if origin_url in CLONED_ORIGINS:
+        return
+    clone_path = get_clone_path(origin_url)
+    subprocess.run(
+        ["git", "-C", clone_path, "fetch", origin_url],
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+    )
+    CLONED_ORIGINS[origin_url] = None
+
 def clone(origin_url):
     print(f"Cloning {origin_url}")
-    if "linux" in origin_url:
-        # linux.git is very big and there are lots of forks... let's fetch them all
-        # in the same clone or it going to take forever to clone them all.
-        if origin_url in CLONED_ORIGINS:
-            return
-        clone_path = get_clone_path(origin_url)
+    clone_path = get_clone_path(origin_url)
+    if not clone_path.is_dir():
+        # print("Cloning", origin_url)
         subprocess.run(
-            ["git", "-C", clone_path, "fetch", origin_url],
+            ["git", "clone", "--bare", origin_url, clone_path],
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
         )
-        CLONED_ORIGINS[origin_url] = None
-    else:
-        clone_path = get_clone_path(origin_url)
-        if not clone_path.is_dir():
-            # print("Cloning", origin_url)
-            subprocess.run(
-                ["git", "clone", "--bare", origin_url, clone_path],
-                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-            )
 
 
 def get_object_from_clone(origin_url, obj_id):
@@ -185,16 +186,13 @@ def get_object_from_origins(swhid, stored_obj):
             # continue
 
         clone_path = get_clone_path(origin_url)
-        if not clone_path.is_dir():
-            try:
+        try:
+            if "linux" in origin_url:
+                clone_linux(origin_url)
+            elif not clone_path.is_dir():
                 clone(origin_url)
-            except subprocess.CalledProcessError:
-                continue
-        elif "linux" in origin_url:
-            try:
-                clone(origin_url)
-            except subprocess.CalledProcessError:
-                continue
+        except subprocess.CalledProcessError:
+            continue
 
         try:
             cloned_obj = get_object_from_clone(origin_url, obj_id)
