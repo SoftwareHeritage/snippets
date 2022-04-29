@@ -2,14 +2,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: loaders
+  name: {{ .Values.loader.name }}-{{ .Values.loader.type }}
   labels:
-    app: loaders
+    app: {{ .Values.loader.name }}-{{ .Values.loader.type }}
 spec:
   replicas: {{ .Values.swh.loader.replicas.min }}
   selector:
     matchLabels:
-      app: loaders
+      app: {{ .Values.loader.name }}-{{ .Values.loader.type }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        app: loaders
+        app: {{ .Values.loader.name }}-{{ .Values.loader.type }}
     spec:
       containers:
       - name: loaders
@@ -63,7 +63,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: loaders
+            name: {{ .Values.loader.name }}-{{ .Values.loader.type }}
             defaultMode: 0777
         - name: tmp-volume
           emptyDir: {}

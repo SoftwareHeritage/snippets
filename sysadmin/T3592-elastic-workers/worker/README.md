@@ -26,7 +26,10 @@ source: https://keda.sh/docs/2.4/deploy/
 Install the worker declaration from this directory in the cluster
 ```
 $ export KUBECONFIG=export KUBECONFIG=staging-workers.yaml
-$ helm install -f ../loader-git.staging.values.yaml workers-git ../worker
+$ TYPE=git; REL=workers-$TYPE; \
+  helm install -f ./loader-$TYPE.staging.values.yaml $REL ../worker
+$ TYPE=pypi; REL=workers-$TYPE; \
+  helm install -f ./loader-$TYPE.staging.values.yaml $REL ../worker
 ```
 
 Where:
@@ -48,6 +51,18 @@ amqp:
 
 storage:
   host: storage1.internal.staging.swh.network
+
+loader:
+  name: loaders
+  type: git
+```
+
+# Upgrade
+
+When changing something, apply the upgrade to the deployed chart:
+```
+$ TYPE=git; REL=workers-$TYPE; \
+  helm upgrade -f ./loader-$TYPE.staging.values.yaml $REL ../worker
 ```
 
 # secrets
@@ -62,7 +77,7 @@ $ kubectl describe secrets/metadata-fetcher-credentials
 
 Installed through:
 ```
-$ kubectl -f loader-git-metadata-fetcher-credentials.yaml apply
+$ kubectl -f ./loader-git-metadata-fetcher-credentials.yaml apply
 # secret file
 $ cat loader-git-metadata-fetcher-credentials.yaml
 apiVersion: v1

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: storage
+  name: storage-{{ .Values.loader.name }}-{{ .Values.loader.type }}
 spec:
   type: ExternalName
   externalName: {{ .Values.storage.host }}
@@ -11,7 +11,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: amqp
+  name: amqp-{{ .Values.loader.name }}-{{ .Values.loader.type }}
 spec:
   type: ExternalName
   externalName: {{ .Values.amqp.host }}

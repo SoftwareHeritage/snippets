@@ -2,12 +2,13 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: loaders-operators
+  name: loaders-{{ .Values.loader.name }}-{{ .Values.loader.type }}-operators
 spec:
   scaleTargetRef:
     apiVersion:    apps/v1     # Optional. Default: apps/v1
     kind:          Deployment  # Optional. Default: Deployment
-    name:          loaders     # Mandatory. Must be in same namespace as ScaledObject
+    # Mandatory. Must be in same namespace as ScaledObject
+    name:          {{ .Values.loader.name }}-{{ .Values.loader.type }}
     # envSourceContainerName: {container-name} # Optional. Default:
                                                # .spec.template.spec.containers[0]
   pollingInterval:  30                         # Optional. Default: 30 seconds
