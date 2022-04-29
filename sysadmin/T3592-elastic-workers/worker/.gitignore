@@ -1,0 +1,7 @@
+loader-bzr.staging.values.yaml
+loader-cvs.staging.values.yaml
+loader-git.staging.values.yaml
+loader-maven.staging.values.yaml
+loader-pypi.staging.values.yaml
+loader-svn.staging.values.yaml
+loader-git-metadata-fetcher-credentials.yaml
