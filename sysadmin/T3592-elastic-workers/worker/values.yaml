@@ -20,5 +20,5 @@ swh:
     version: 2022-04-28
     replicas:
       min: 1
-      max: 10
+      max: 5
 
