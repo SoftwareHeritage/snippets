@@ -5,7 +5,7 @@
 
 # keda
 
-Install KEDA - K(ubernetes) E(vents)-D(riven) A(utoscaling):
+This uses KEDA - K(ubernetes) E(vents)-D(riven) A(utoscaling):
 ```
 $ helm repo add kedacore https://kedacore.github.io/charts
 $ helm repo update
@@ -20,3 +20,62 @@ REVISION: 1
 TEST SUITE: None
 ```
 source: https://keda.sh/docs/2.4/deploy/
+
+# helm
+
+Install the worker declaration from this directory in the cluster
+```
+$ export KUBECONFIG=export KUBECONFIG=staging-workers.yaml
+$ helm install -f ../loader-git.staging.values.yaml workers-git ../worker
+```
+
+Where:
+```
+$ cat ../loader-git.staging.values.yaml
+# Default values for worker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+amqp:
+  username: <redacted>
+  password: <redacted>
+  host: scheduler0.internal.staging.swh.network
+  queue_threshold: 10  # spawn worker per increment of `value` messages
+  queues:
+      - swh.loader.git.tasks.UpdateGitRepository
+      - swh.loader.git.tasks.LoadDiskGitRepository
+      - swh.loader.git.tasks.UncompressAndLoadDiskGitRepository
+
+storage:
+  host: storage1.internal.staging.swh.network
+```
+
+# secrets
+
+This now uses metadata fetcher credentials `metadata-fetcher-credentials` installed as
+secret within the cluster.
+
+More details:
+```
+$ kubectl describe secrets/metadata-fetcher-credentials
+```
+
+Installed through:
+```
+$ kubectl -f loader-git-metadata-fetcher-credentials.yaml apply
+# secret file
+$ cat loader-git-metadata-fetcher-credentials.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: metadata-fetcher-credentials
+type: Opaque
+stringData:
+  data: |
+    metadata_fetcher_credentials:
+      github:
+        github:
+        - username: <redacted>
+          password: <redacted>
+        - ...
+```
