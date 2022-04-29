@@ -44,7 +44,8 @@ spec:
         - name: LOGLEVEL
           value: "INFO"
         - name: SWH_CONFIG_FILENAME
-          value: /etc/softwareheritage/config.yml
+          # FIXME: built by entrypoint.sh, determine how to properly declare this
+          value: /tmp/config.yml
         volumeMounts:
           - name: config
             mountPath: /etc/softwareheritage/config.yml
@@ -53,6 +54,9 @@ spec:
           - name: config
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
+            readOnly: true
+          - name: metadata-fetcher-credentials
+            mountPath: /tmp/secret-data
             readOnly: true
           - mountPath: /tmp
             name: tmp-volume
@@ -63,3 +67,6 @@ spec:
             defaultMode: 0777
         - name: tmp-volume
           emptyDir: {}
+        - name: metadata-fetcher-credentials
+          secret:
+            secretName: metadata-fetcher-credentials

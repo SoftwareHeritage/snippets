@@ -36,6 +36,12 @@ data:
 
     set -e
 
+    # Create the full config filename
+    cat /etc/softwareheritage/config.yml > $SWH_CONFIG_FILENAME
+    # contains required credentials for git loader (with metadata loader inside)
+    # ignored by the other loaders
+    cat /tmp/secret-data/data >> $SWH_CONFIG_FILENAME
+
     echo Starting the swh Celery worker
     exec python -m celery \
                 --app=swh.scheduler.celery_backend.config.app \
