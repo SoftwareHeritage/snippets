@@ -1,4 +1,3 @@
-
 # Goal
 
 - autoscaling workers depending on repositories to load and allocated resources.
@@ -22,6 +21,10 @@ TEST SUITE: None
 source: https://keda.sh/docs/2.4/deploy/
 
 # helm
+
+We use helm to ease the cluster application management.
+
+# Install
 
 Install the worker declaration from this directory in the cluster
 ```
@@ -57,18 +60,33 @@ loader:
   type: git
 ```
 
+# List
+
+List currently deployed applications:
+
+```
+$ helm list
+helm list
+NAME            NAMESPACE       REVISION        UPDATED                                         STATUS          CHART           APP VERSION
+workers-bzr     default         1               2022-04-29 12:59:32.111950055 +0200 CEST        deployed        worker-0.1.0    1.16.0
+workers-git     default         4               2022-04-29 12:50:12.322826487 +0200 CEST        deployed        worker-0.1.0    1.16.0
+workers-pypi    default         1               2022-04-29 12:51:22.506259018 +0200 CEST        deployed        worker-0.1.0    1.16.0
+```
+
 # Upgrade
 
-When changing something, apply the upgrade to the deployed chart:
+When adapting the worker definition, you can apply the changes by upgrading the
+deployed application:
+
 ```
 $ TYPE=git; REL=workers-$TYPE; \
   helm upgrade -f ./loader-$TYPE.staging.values.yaml $REL ../worker
 ```
 
-# secrets
+# Secrets
 
-This now uses metadata fetcher credentials `metadata-fetcher-credentials` installed as
-secret within the cluster.
+The current work requires metadata fetcher credentials `metadata-fetcher-credentials`
+installed as secret within the cluster.
 
 More details:
 ```
