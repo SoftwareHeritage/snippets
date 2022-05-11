@@ -19,3 +19,6 @@ swh:
     replicas:
       min: 1
       max: 5
+
+sentry:
+  environment: staging

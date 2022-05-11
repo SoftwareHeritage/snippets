@@ -8,3 +8,4 @@ loader-npm.staging.values.yaml
 
 loader-git-metadata-fetcher-credentials.yaml
 amqp-access-credentials.yaml
+loaders-git-sentry-secrets.yaml

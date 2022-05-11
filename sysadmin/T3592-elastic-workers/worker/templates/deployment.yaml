@@ -46,6 +46,17 @@ spec:
         - name: SWH_CONFIG_FILENAME
           # FIXME: built by entrypoint.sh, determine how to properly declare this
           value: /tmp/config.yml
+        - name: SWH_SENTRY_ENVIRONMENT
+          value: {{ .Values.sentry.environment }}
+        - name: SWH_MAIN_PACKAGE
+          value: {{ .Values.sentry.swhpackage }}
+        - name: SWH_SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.loader.name }}-{{ .Values.loader.type }}-sentry-secrets
+              key: sentry-dsn
+              # 'name' secret must exist & include key "sentry-dsn"
+              optional: false
         volumeMounts:
           - name: config
             mountPath: /etc/softwareheritage/config.yml

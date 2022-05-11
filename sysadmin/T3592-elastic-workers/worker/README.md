@@ -93,10 +93,16 @@ $ kubectl describe secret metadata-fetcher-credentials
 ```
 
 Installed through:
+
 ```
+$ TYPE=git
 $ kubectl -f $SECRET_FILE apply
-# for secret file in {loader-git-metadata-fetcher-credentials,amqp-access-credentials}.yaml
-$ cat loader-git-metadata-fetcher-credentials.yaml
+# for secret file in {
+# loader-$TYPE-metadata-fetcher-credentials.yaml
+# loader-$TYPE-sentry-secrets.yaml
+# amqp-access-credentials.yaml
+# }
+$ cat loader-$TYPE-metadata-fetcher-credentials.yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -119,5 +125,12 @@ type: Opaque
 data:
   username: <base64-encoded-pass>  # output of: echo -n 'redacted-pass' | base64
   password: <base64-encoded-pass>
-
+$ cat loaders-$TYPE-sentry-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: loaders-$TYPE-sentry-secrets
+type: Opaque
+stringData:
+  sentry-dsn: https://<redacted>@sentry.softwareheritage.org/8
 ```
