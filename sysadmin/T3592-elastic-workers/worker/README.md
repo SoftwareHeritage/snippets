@@ -43,8 +43,6 @@ $ cat ../loader-git.staging.values.yaml
 # Declare variables to be passed into your templates.
 
 amqp:
-  username: <redacted>
-  password: <redacted>
   host: scheduler0.internal.staging.swh.network
   queue_threshold: 10  # spawn worker per increment of `value` messages
   queues:
@@ -85,18 +83,19 @@ $ TYPE=git; REL=workers-$TYPE; \
 
 # Secrets
 
-The current work requires metadata fetcher credentials `metadata-fetcher-credentials`
-installed as secret within the cluster.
+The current work requires credentials (installed as secret within the cluster):
+- metadata fetcher credentials `metadata-fetcher-credentials`
+- amqp credentials ``
 
-More details:
+More details describing the secrets:
 ```
-$ kubectl describe secrets/metadata-fetcher-credentials
+$ kubectl describe secret metadata-fetcher-credentials
 ```
 
 Installed through:
 ```
-$ kubectl -f ./loader-git-metadata-fetcher-credentials.yaml apply
-# secret file
+$ kubectl -f $SECRET_FILE apply
+# for secret file in {loader-git-metadata-fetcher-credentials,amqp-access-credentials}.yaml
 $ cat loader-git-metadata-fetcher-credentials.yaml
 apiVersion: v1
 kind: Secret
@@ -111,4 +110,14 @@ stringData:
         - username: <redacted>
           password: <redacted>
         - ...
+$ cat amqp-access-credentials.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: amqp-access-credentials
+type: Opaque
+data:
+  username: <base64-encoded-pass>  # output of: echo -n 'redacted-pass' | base64
+  password: <base64-encoded-pass>
+
 ```

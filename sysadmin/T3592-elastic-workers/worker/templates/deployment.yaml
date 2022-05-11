@@ -56,7 +56,10 @@ spec:
             subPath: entrypoint.sh
             readOnly: true
           - name: metadata-fetcher-credentials
-            mountPath: /tmp/secret-data
+            mountPath: /etc/credentials/metadata-fetcher
+            readOnly: true
+          - name: amqp-access-credentials
+            mountPath: /etc/credentials/amqp
             readOnly: true
           - mountPath: /tmp
             name: tmp-volume
@@ -70,3 +73,6 @@ spec:
         - name: metadata-fetcher-credentials
           secret:
             secretName: metadata-fetcher-credentials
+        - name: amqp-access-credentials
+          secret:
+            secretName: amqp-access-credentials
