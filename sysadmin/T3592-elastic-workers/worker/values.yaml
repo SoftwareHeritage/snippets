@@ -17,7 +17,7 @@ loader:
 swh:
   loader:
     image: softwareheritage/loaders
-    version: 2022-04-29
+    version: 2022-05-11
     replicas:
       min: 1
       max: 5
