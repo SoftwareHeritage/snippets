@@ -122,9 +122,8 @@ kind: Secret
 metadata:
   name: amqp-access-credentials
 type: Opaque
-data:
-  username: <base64-encoded-pass>  # output of: echo -n 'redacted-pass' | base64
-  password: <base64-encoded-pass>
+stringData:
+  host: amqp://<redacted>:<redacted>@scheduler0.internal.staging.swh.network:5672/%2f
 $ cat loaders-$TYPE-sentry-secrets.yaml
 apiVersion: v1
 kind: Secret

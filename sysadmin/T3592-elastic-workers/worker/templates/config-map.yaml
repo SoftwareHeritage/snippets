@@ -11,7 +11,7 @@ data:
       - cls: buffer
         min_batch_size:
           content: 1000
-          content_bytes: 52428800  # 50 MB
+          content_bytes: 52428800
           directory: 1000
           directory_entries: 12000
           revision: 1000
@@ -26,7 +26,7 @@ data:
         url: http://{{ .Values.storage.host }}:5002/
 
     celery:
-      task_broker: amqp://##username##:##password##@{{ .Values.amqp.host }}//
+      task_broker: ##amqp_host##
       task_queues:
     {{- range .Values.amqp.queues }}
       - {{ . }}
@@ -42,12 +42,8 @@ data:
     # ignored by the other loaders
     cat /etc/credentials/metadata-fetcher/data >> $SWH_CONFIG_FILENAME
 
-    # Work around configuration setup
-    amqp_username=$(cat /etc/credentials/amqp/username)
-    amqp_password=$(cat /etc/credentials/amqp/password)
-
-    sed -i 's/##username##/'$amqp_username'/g' $SWH_CONFIG_FILENAME
-    sed -i 's/##password##/'$amqp_password'/g' $SWH_CONFIG_FILENAME
+    # Install the rabbitmq host information
+    sed -i 's,##amqp_host##,'$RABBITMQ_HOST',g' $SWH_CONFIG_FILENAME
 
     echo Starting the swh Celery worker
     exec python -m celery \

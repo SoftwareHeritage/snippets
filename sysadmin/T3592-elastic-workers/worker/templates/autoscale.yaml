@@ -1,5 +1,17 @@
 ---
 apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: amqp-authentication
+  namespace: default # must be same namespace as the ScaledObject
+spec:
+  secretTargetRef: # Optional.
+  - parameter: host
+    name: amqp-access-credentials
+    key: host
+
+---
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: loaders-{{ .Values.loader.name }}-{{ .Values.loader.type }}-operators
@@ -39,8 +51,10 @@ spec:
   triggers:
     {{- range .Values.amqp.queues }}
   - type: rabbitmq
+    authenticationRef:
+      name: amqp-authentication
     metadata:
-      host: amqp://{{ $.Values.amqp.username }}:{{ $.Values.amqp.password }}@{{ $.Values.amqp.host }}//
+      host: host
                                      # Optional. If not specified, it must be done
                                      # by using TriggerAuthentication.
       protocol: auto                 # Optional. Specifies protocol to use,
