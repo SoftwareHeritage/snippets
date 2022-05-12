@@ -98,11 +98,12 @@ Installed through:
 $ TYPE=git  # Replace mentions below in the yaml files
 $ kubectl -f $SECRET_FILE apply
 # for secret file in {
-# loader-$TYPE-metadata-fetcher-credentials.yaml
-# loader-$TYPE-sentry-secrets.yaml
-# amqp-access-credentials.yaml
+# instances/loader-$TYPE-metadata-fetcher-credentials.secret.yaml
+# ./loader-$TYPE-sentry.secret.yaml
+# ./amqp-access-credentials.secret.yaml
+# ...
 # }
-$ cat loader-$TYPE-metadata-fetcher-credentials.yaml
+$ cat instances/loader-git-metadata-fetcher-credentials.secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -117,7 +118,7 @@ stringData:
         - username: <redacted>
           password: <redacted>
         - ...
-$ cat amqp-access-credentials.yaml
+$ cat ./amqp-access-credentials.secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -126,7 +127,7 @@ metadata:
 type: Opaque
 stringData:
   host: amqp://<redacted>:<redacted>@scheduler0.internal.staging.swh.network:5672/%2f
-$ cat loaders-$TYPE-sentry-secrets.yaml
+$ cat ./loaders-$TYPE-sentry.secrets.yaml
 apiVersion: v1
 kind: Secret
 metadata:
