@@ -96,19 +96,18 @@ Installed through:
 
 ```
 $ TYPE=git  # Replace mentions below in the yaml files
-$ kubectl -f $SECRET_FILE apply
+$ kubectl -f $SECRET_FILE apply --namespaces ns-loader-$TYPE
 # for secret file in {
-# instances/loader-$TYPE-metadata-fetcher-credentials.secret.yaml
+# instances/loaders-$TYPE-metadata-fetcher-credentials.secret.yaml
 # ./loader-$TYPE-sentry.secret.yaml
 # ./amqp-access-credentials.secret.yaml
 # ...
 # }
-$ cat instances/loader-git-metadata-fetcher-credentials.secret.yaml
+$ cat instances/loaders-metadata-fetcher.secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
   name: metadata-fetcher-credentials
-  namespace: ns-loaders-git
 type: Opaque
 stringData:
   data: |
