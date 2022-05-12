@@ -95,7 +95,7 @@ $ kubectl describe secret metadata-fetcher-credentials
 Installed through:
 
 ```
-$ TYPE=git
+$ TYPE=git  # Replace mentions below in the yaml files
 $ kubectl -f $SECRET_FILE apply
 # for secret file in {
 # loader-$TYPE-metadata-fetcher-credentials.yaml
@@ -107,6 +107,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: metadata-fetcher-credentials
+  namespace: ns-loaders-git
 type: Opaque
 stringData:
   data: |
@@ -121,6 +122,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: amqp-access-credentials
+  namespace: ns-loaders-$TYPE
 type: Opaque
 stringData:
   host: amqp://<redacted>:<redacted>@scheduler0.internal.staging.swh.network:5672/%2f
@@ -129,6 +131,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: loaders-$TYPE-sentry-secrets
+  namespace: ns-loaders-$TYPE
 type: Opaque
 stringData:
   sentry-dsn: https://<redacted>@sentry.softwareheritage.org/8

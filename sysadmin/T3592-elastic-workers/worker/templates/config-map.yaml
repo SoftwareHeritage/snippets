@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Values.loader.name }}-{{ .Values.loader.type }}
+  namespace: ns-{{ .Values.loader.name }}-{{ .Values.loader.type }}
 data:
   config.yml: |
     storage:

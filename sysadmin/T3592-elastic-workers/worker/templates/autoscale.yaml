@@ -3,7 +3,7 @@ apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: amqp-authentication
-  namespace: default # must be same namespace as the ScaledObject
+  namespace: ns-{{ .Values.loader.name }}-{{ .Values.loader.type }}
 spec:
   secretTargetRef: # Optional.
   - parameter: host
@@ -15,6 +15,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: loaders-{{ .Values.loader.name }}-{{ .Values.loader.type }}-operators
+  namespace: ns-{{ .Values.loader.name }}-{{ .Values.loader.type }}
 spec:
   scaleTargetRef:
     apiVersion:    apps/v1     # Optional. Default: apps/v1
