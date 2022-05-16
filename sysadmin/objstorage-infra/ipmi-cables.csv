@@ -1,0 +1,26 @@
+side_a_device,side_a_type,side_a_name,side_b_device,side_b_type,side_b_name,status,type,length,length_unit
+front-rack1 - R640 - 4 disks,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth1,planned,cat6,3,m
+monitor-rack1-1 - R640 - no disks,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth2,planned,cat6,3,m
+osd-rack1-1 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth3,planned,cat6,3,m
+osd-rack1-2 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth4,planned,cat6,3,m
+osd-rack1-3 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth5,planned,cat6,3,m
+osd-rack1-4 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth6,planned,cat6,3,m
+osd-rack1-5 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth7,planned,cat6,3,m
+osd-rack1-6 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth8,planned,cat6,3,m
+osd-rack1-7 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth9,planned,cat6,3,m
+osd-rack1-8 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth10,planned,cat6,3,m
+osd-rack1-9 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth11,planned,cat6,3,m
+osd-rack1-10 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth12,planned,cat6,3,m
+front-rack2 - R640 - 4 disks,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth13,planned,cat6,3,m
+monitor-rack2-1 - R640 - no disks,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth14,planned,cat6,3,m
+monitor-rack2-2 - R640 - no disks,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth15,planned,cat6,3,m
+osd-rack2-1 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth16,planned,cat6,3,m
+osd-rack2-2 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth17,planned,cat6,3,m
+osd-rack2-3 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth18,planned,cat6,3,m
+osd-rack2-4 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth19,planned,cat6,3,m
+osd-rack2-5 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth20,planned,cat6,3,m
+osd-rack2-6 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth21,planned,cat6,3,m
+osd-rack2-7 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth22,planned,cat6,3,m
+osd-rack2-8 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth23,planned,cat6,3,m
+osd-rack2-9 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth24,planned,cat6,3,m
+osd-rack2-10 - R740xd,dcim.rearport,IPMI,switch-mgmt-rack1 - S3148,dcim.rearport,eth25,planned,cat6,3,m

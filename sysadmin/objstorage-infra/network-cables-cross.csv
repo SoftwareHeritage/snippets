@@ -1,0 +1,26 @@
+side_a_device,side_a_type,side_a_name,side_b_device,side_b_type,side_b_name,status,type,length,length_unit
+front-rack1 - R640 - 4 disks,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,sfp2,planned,dac-passive,2,m
+monitor-rack1-1 - R640 - no disks,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,sfp4,planned,dac-passive,2,m
+osd-rack1-1 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,sfp6,planned,dac-passive,5,m
+osd-rack1-2 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,sfp8,planned,dac-passive,5,m
+osd-rack1-3 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,sfp10,planned,dac-passive,5,m
+osd-rack1-4 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp1-2,planned,dac-passive,5,m
+osd-rack1-5 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp1-3,planned,dac-passive,5,m
+osd-rack1-6 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp1-4,planned,dac-passive,5,m
+osd-rack1-7 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp2-1,planned,dac-passive,5,m
+osd-rack1-8 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp2-2,planned,dac-passive,5,m
+osd-rack1-9 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp2-3,planned,dac-passive,5,m
+osd-rack1-10 - R740xd,dcim.rearport,sfp2,switch-access-rack2-1 - EMC S5224,dcim.rearport,qsfp2-4,planned,dac-passive,5,m
+front-rack2 - R640 - 4 disks,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp2,planned,dac-passive,2,m
+monitor-rack2-1 - R640 - no disks,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp4,planned,dac-passive,2,m
+monitor-rack2-2 - R640 - no disks,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp12,planned,dac-passive,2,m
+osd-rack2-1 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp6,planned,dac-passive,5,m
+osd-rack2-2 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp8,planned,dac-passive,5,m
+osd-rack2-3 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,sfp10,planned,dac-passive,5,m
+osd-rack2-4 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp1-2,planned,dac-passive,5,m
+osd-rack2-5 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp1-3,planned,dac-passive,5,m
+osd-rack2-6 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp1-4,planned,dac-passive,5,m
+osd-rack2-7 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp2-1,planned,dac-passive,5,m
+osd-rack2-8 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp2-2,planned,dac-passive,5,m
+osd-rack2-9 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp2-3,planned,dac-passive,5,m
+osd-rack2-10 - R740xd,dcim.rearport,sfp2,switch-access-rack1-1 - EMC S5224,dcim.rearport,qsfp2-4,planned,dac-passive,5,m

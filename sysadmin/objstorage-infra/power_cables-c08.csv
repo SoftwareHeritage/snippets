@@ -1,0 +1,29 @@
+side_a_device,side_a_type,side_a_name,side_b_device,side_b_type,side_b_name,status,type,length,length_unit
+switch-access-rack2-1 - EMC S5224,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output1,planned,power,2,m
+switch-access-rack2-1 - EMC S5224,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output1,planned,power,2,m
+front-rack2 - R640 - 4 disks,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output2,planned,power,2,m
+front-rack2 - R640 - 4 disks,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output2,planned,power,2,m
+monitor-rack2-1 - R640 - no disks,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output3,planned,power,2,m
+monitor-rack2-1 - R640 - no disks,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output3,planned,power,2,m
+monitor-rack2-2 - R640 - no disks,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output4,planned,power,2,m
+monitor-rack2-2 - R640 - no disks,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output4,planned,power,2,m
+osd-rack2-1 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output5,planned,power,2,m
+osd-rack2-1 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output5,planned,power,2,m
+osd-rack2-2 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output6,planned,power,2,m
+osd-rack2-2 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output6,planned,power,2,m
+osd-rack2-3 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output7,planned,power,2,m
+osd-rack2-3 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output7,planned,power,2,m
+osd-rack2-4 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output8,planned,power,2,m
+osd-rack2-4 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output8,planned,power,2,m
+osd-rack2-5 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output9,planned,power,2,m
+osd-rack2-5 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output9,planned,power,2,m
+osd-rack2-6 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output10,planned,power,2,m
+osd-rack2-6 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output10,planned,power,2,m
+osd-rack2-7 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output11,planned,power,2,m
+osd-rack2-7 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output11,planned,power,2,m
+osd-rack2-8 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output12,planned,power,2,m
+osd-rack2-8 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output12,planned,power,2,m
+osd-rack2-9 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output13,planned,power,2,m
+osd-rack2-9 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output13,planned,power,2,m
+osd-rack2-10 - R740xd,dcim.powerport,p1,C08 - PDU - line1,dcim.poweroutlet,output14,planned,power,2,m
+osd-rack2-10 - R740xd,dcim.powerport,p2,C08 - PDU - line2,dcim.poweroutlet,output14,planned,power,2,m

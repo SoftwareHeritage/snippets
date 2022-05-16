@@ -1,0 +1,201 @@
+device,positions,type,name
+switch-mgmt-rack1 - S3148,1,8p8c,eth1
+switch-mgmt-rack1 - S3148,1,8p8c,eth2
+switch-mgmt-rack1 - S3148,1,8p8c,eth3
+switch-mgmt-rack1 - S3148,1,8p8c,eth4
+switch-mgmt-rack1 - S3148,1,8p8c,eth5
+switch-mgmt-rack1 - S3148,1,8p8c,eth6
+switch-mgmt-rack1 - S3148,1,8p8c,eth7
+switch-mgmt-rack1 - S3148,1,8p8c,eth8
+switch-mgmt-rack1 - S3148,1,8p8c,eth9
+switch-mgmt-rack1 - S3148,1,8p8c,eth10
+switch-mgmt-rack1 - S3148,1,8p8c,eth11
+switch-mgmt-rack1 - S3148,1,8p8c,eth12
+switch-mgmt-rack1 - S3148,1,8p8c,eth13
+switch-mgmt-rack1 - S3148,1,8p8c,eth14
+switch-mgmt-rack1 - S3148,1,8p8c,eth15
+switch-mgmt-rack1 - S3148,1,8p8c,eth16
+switch-mgmt-rack1 - S3148,1,8p8c,eth17
+switch-mgmt-rack1 - S3148,1,8p8c,eth18
+switch-mgmt-rack1 - S3148,1,8p8c,eth19
+switch-mgmt-rack1 - S3148,1,8p8c,eth20
+switch-mgmt-rack1 - S3148,1,8p8c,eth21
+switch-mgmt-rack1 - S3148,1,8p8c,eth22
+switch-mgmt-rack1 - S3148,1,8p8c,eth23
+switch-mgmt-rack1 - S3148,1,8p8c,eth24
+switch-mgmt-rack1 - S3148,1,8p8c,eth25
+switch-mgmt-rack1 - S3148,1,8p8c,eth26
+switch-mgmt-rack1 - S3148,1,8p8c,eth27
+switch-mgmt-rack1 - S3148,1,8p8c,eth28
+switch-mgmt-rack1 - S3148,1,8p8c,eth29
+switch-mgmt-rack1 - S3148,1,8p8c,eth30
+switch-mgmt-rack1 - S3148,1,8p8c,eth31
+switch-mgmt-rack1 - S3148,1,8p8c,eth32
+switch-mgmt-rack1 - S3148,1,8p8c,eth33
+switch-mgmt-rack1 - S3148,1,8p8c,eth34
+switch-mgmt-rack1 - S3148,1,8p8c,eth35
+switch-mgmt-rack1 - S3148,1,8p8c,eth36
+switch-mgmt-rack1 - S3148,1,8p8c,eth37
+switch-mgmt-rack1 - S3148,1,8p8c,eth38
+switch-mgmt-rack1 - S3148,1,8p8c,eth39
+switch-mgmt-rack1 - S3148,1,8p8c,eth40
+switch-mgmt-rack1 - S3148,1,8p8c,eth41
+switch-mgmt-rack1 - S3148,1,8p8c,eth42
+switch-mgmt-rack1 - S3148,1,8p8c,eth43
+switch-mgmt-rack1 - S3148,1,8p8c,eth44
+switch-mgmt-rack1 - S3148,1,8p8c,eth45
+switch-mgmt-rack1 - S3148,1,8p8c,eth46
+switch-mgmt-rack1 - S3148,1,8p8c,eth47
+switch-mgmt-rack1 - S3148,1,8p8c,eth48
+switch-mgmt-rack1 - S3148,1,8p8c,combo1
+switch-mgmt-rack1 - S3148,1,8p8c,combo2
+switch-mgmt-rack1 - S3148,1,fc,sfp1
+switch-mgmt-rack1 - S3148,1,fc,sfp2
+switch-access-rack1-1 - EMC S5224,1,fc,sfp1
+switch-access-rack1-1 - EMC S5224,1,fc,sfp2
+switch-access-rack1-1 - EMC S5224,1,fc,sfp3
+switch-access-rack1-1 - EMC S5224,1,fc,sfp4
+switch-access-rack1-1 - EMC S5224,1,fc,sfp5
+switch-access-rack1-1 - EMC S5224,1,fc,sfp6
+switch-access-rack1-1 - EMC S5224,1,fc,sfp7
+switch-access-rack1-1 - EMC S5224,1,fc,sfp8
+switch-access-rack1-1 - EMC S5224,1,fc,sfp9
+switch-access-rack1-1 - EMC S5224,1,fc,sfp10
+switch-access-rack1-1 - EMC S5224,1,fc,sfp11
+switch-access-rack1-1 - EMC S5224,1,fc,sfp12
+switch-access-rack1-1 - EMC S5224,1,fc,sfp13
+switch-access-rack1-1 - EMC S5224,1,fc,sfp14
+switch-access-rack1-1 - EMC S5224,1,fc,sfp15
+switch-access-rack1-1 - EMC S5224,1,fc,sfp16
+switch-access-rack1-1 - EMC S5224,1,fc,sfp17
+switch-access-rack1-1 - EMC S5224,1,fc,sfp18
+switch-access-rack1-1 - EMC S5224,1,fc,sfp19
+switch-access-rack1-1 - EMC S5224,1,fc,sfp20
+switch-access-rack1-1 - EMC S5224,1,fc,sfp21
+switch-access-rack1-1 - EMC S5224,1,fc,sfp22
+switch-access-rack1-1 - EMC S5224,1,fc,sfp23
+switch-access-rack1-1 - EMC S5224,1,fc,sfp24
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp1
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp1-1
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp1-2
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp1-3
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp1-4
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp2
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp2-1
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp2-2
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp2-3
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp2-4
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp3
+switch-access-rack1-1 - EMC S5224,1,fc,qsfp4
+switch-access-rack2-1 - EMC S5224,1,fc,sfp1
+switch-access-rack2-1 - EMC S5224,1,fc,sfp2
+switch-access-rack2-1 - EMC S5224,1,fc,sfp3
+switch-access-rack2-1 - EMC S5224,1,fc,sfp4
+switch-access-rack2-1 - EMC S5224,1,fc,sfp5
+switch-access-rack2-1 - EMC S5224,1,fc,sfp6
+switch-access-rack2-1 - EMC S5224,1,fc,sfp7
+switch-access-rack2-1 - EMC S5224,1,fc,sfp8
+switch-access-rack2-1 - EMC S5224,1,fc,sfp9
+switch-access-rack2-1 - EMC S5224,1,fc,sfp10
+switch-access-rack2-1 - EMC S5224,1,fc,sfp11
+switch-access-rack2-1 - EMC S5224,1,fc,sfp12
+switch-access-rack2-1 - EMC S5224,1,fc,sfp13
+switch-access-rack2-1 - EMC S5224,1,fc,sfp14
+switch-access-rack2-1 - EMC S5224,1,fc,sfp15
+switch-access-rack2-1 - EMC S5224,1,fc,sfp16
+switch-access-rack2-1 - EMC S5224,1,fc,sfp17
+switch-access-rack2-1 - EMC S5224,1,fc,sfp18
+switch-access-rack2-1 - EMC S5224,1,fc,sfp19
+switch-access-rack2-1 - EMC S5224,1,fc,sfp20
+switch-access-rack2-1 - EMC S5224,1,fc,sfp21
+switch-access-rack2-1 - EMC S5224,1,fc,sfp22
+switch-access-rack2-1 - EMC S5224,1,fc,sfp23
+switch-access-rack2-1 - EMC S5224,1,fc,sfp24
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp1
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp1-1
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp1-2
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp1-3
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp1-4
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp2
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp2-1
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp2-2
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp2-3
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp2-4
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp3
+switch-access-rack2-1 - EMC S5224,1,fc,qsfp4
+front-rack1 - R640 - 4 disks,1,8p8c,IPMI
+front-rack2 - R640 - 4 disks,1,8p8c,IPMI
+monitor-rack1-1 - R640 - no disks,1,8p8c,IPMI
+monitor-rack2-1 - R640 - no disks,1,8p8c,IPMI
+monitor-rack2-2 - R640 - no disks,1,8p8c,IPMI
+osd-rack1-1 - R740xd,1,8p8c,IPMI
+osd-rack2-1 - R740xd,1,8p8c,IPMI
+osd-rack1-2 - R740xd,1,8p8c,IPMI
+osd-rack2-2 - R740xd,1,8p8c,IPMI
+osd-rack1-3 - R740xd,1,8p8c,IPMI
+osd-rack2-3 - R740xd,1,8p8c,IPMI
+osd-rack1-4 - R740xd,1,8p8c,IPMI
+osd-rack2-4 - R740xd,1,8p8c,IPMI
+osd-rack1-5 - R740xd,1,8p8c,IPMI
+osd-rack2-5 - R740xd,1,8p8c,IPMI
+osd-rack1-6 - R740xd,1,8p8c,IPMI
+osd-rack2-6 - R740xd,1,8p8c,IPMI
+osd-rack1-7 - R740xd,1,8p8c,IPMI
+osd-rack2-7 - R740xd,1,8p8c,IPMI
+osd-rack1-8 - R740xd,1,8p8c,IPMI
+osd-rack2-8 - R740xd,1,8p8c,IPMI
+osd-rack1-9 - R740xd,1,8p8c,IPMI
+osd-rack2-9 - R740xd,1,8p8c,IPMI
+osd-rack1-10 - R740xd,1,8p8c,IPMI
+osd-rack2-10 - R740xd,1,8p8c,IPMI
+front-rack1 - R640 - 4 disks,1,fc,sfp1
+front-rack2 - R640 - 4 disks,1,fc,sfp1
+monitor-rack1-1 - R640 - no disks,1,fc,sfp1
+monitor-rack2-1 - R640 - no disks,1,fc,sfp1
+monitor-rack2-2 - R640 - no disks,1,fc,sfp1
+osd-rack1-1 - R740xd,1,fc,sfp1
+osd-rack2-1 - R740xd,1,fc,sfp1
+osd-rack1-2 - R740xd,1,fc,sfp1
+osd-rack2-2 - R740xd,1,fc,sfp1
+osd-rack1-3 - R740xd,1,fc,sfp1
+osd-rack2-3 - R740xd,1,fc,sfp1
+osd-rack1-4 - R740xd,1,fc,sfp1
+osd-rack2-4 - R740xd,1,fc,sfp1
+osd-rack1-5 - R740xd,1,fc,sfp1
+osd-rack2-5 - R740xd,1,fc,sfp1
+osd-rack1-6 - R740xd,1,fc,sfp1
+osd-rack2-6 - R740xd,1,fc,sfp1
+osd-rack1-7 - R740xd,1,fc,sfp1
+osd-rack2-7 - R740xd,1,fc,sfp1
+osd-rack1-8 - R740xd,1,fc,sfp1
+osd-rack2-8 - R740xd,1,fc,sfp1
+osd-rack1-9 - R740xd,1,fc,sfp1
+osd-rack2-9 - R740xd,1,fc,sfp1
+osd-rack1-10 - R740xd,1,fc,sfp1
+osd-rack2-10 - R740xd,1,fc,sfp1
+front-rack1 - R640 - 4 disks,1,fc,sfp2
+front-rack2 - R640 - 4 disks,1,fc,sfp2
+monitor-rack1-1 - R640 - no disks,1,fc,sfp2
+monitor-rack2-1 - R640 - no disks,1,fc,sfp2
+monitor-rack2-2 - R640 - no disks,1,fc,sfp2
+osd-rack1-1 - R740xd,1,fc,sfp2
+osd-rack2-1 - R740xd,1,fc,sfp2
+osd-rack1-2 - R740xd,1,fc,sfp2
+osd-rack2-2 - R740xd,1,fc,sfp2
+osd-rack1-3 - R740xd,1,fc,sfp2
+osd-rack2-3 - R740xd,1,fc,sfp2
+osd-rack1-4 - R740xd,1,fc,sfp2
+osd-rack2-4 - R740xd,1,fc,sfp2
+osd-rack1-5 - R740xd,1,fc,sfp2
+osd-rack2-5 - R740xd,1,fc,sfp2
+osd-rack1-6 - R740xd,1,fc,sfp2
+osd-rack2-6 - R740xd,1,fc,sfp2
+osd-rack1-7 - R740xd,1,fc,sfp2
+osd-rack2-7 - R740xd,1,fc,sfp2
+osd-rack1-8 - R740xd,1,fc,sfp2
+osd-rack2-8 - R740xd,1,fc,sfp2
+osd-rack1-9 - R740xd,1,fc,sfp2
+osd-rack2-9 - R740xd,1,fc,sfp2
+osd-rack1-10 - R740xd,1,fc,sfp2
+osd-rack2-10 - R740xd,1,fc,sfp2
+

@@ -1,0 +1,22 @@
+name,device_role,manufacturer,device_type,status,site,rack,position,face,airflow
+"switch-mgmt-rack1 - S3148","Administration switch",Dell,"S3148",planned,"CEA - Bat 474",C07,3,front,front-to-rear
+"osd-rack2-1 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,9,front,front-to-rear
+"osd-rack2-2 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,11,front,front-to-rear
+"osd-rack2-3 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,13,front,front-to-rear
+"osd-rack2-4 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,15,front,front-to-rear
+"osd-rack2-5 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,17,front,front-to-rear
+"osd-rack2-6 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,19,front,front-to-rear
+"osd-rack2-7 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,21,front,front-to-rear
+"osd-rack2-8 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,23,front,front-to-rear
+"osd-rack2-9 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,25,front,front-to-rear
+"osd-rack2-10 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C08,27,front,front-to-rear
+"osd-rack2-1 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,9,front,front-to-rear
+"osd-rack2-2 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,11,front,front-to-rear
+"osd-rack2-3 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,13,front,front-to-rear
+"osd-rack2-4 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,15,front,front-to-rear
+"osd-rack2-5 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,17,front,front-to-rear
+"osd-rack2-6 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,19,front,front-to-rear
+"osd-rack2-7 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,21,front,front-to-rear
+"osd-rack2-8 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,23,front,front-to-rear
+"osd-rack2-9 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,25,front,front-to-rear
+"osd-rack2-10 - R740xd","Ceph objstorage - OSD",Dell,"PowerEdge R740xd",planned,"CEA - Bat 474",C07,27,front,front-to-rear
