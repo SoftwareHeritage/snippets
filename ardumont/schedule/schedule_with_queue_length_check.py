@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2017-2021  The Software Heritage developers
+# Copyright (C) 2017-2022  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -10,16 +10,7 @@ import click
 import sys
 import time
 
-from kombu.utils.uuid import uuid
-
-from typing import Optional
-from swh.core.config import load_from_envvar
-from swh.model.hashutil import hash_to_hex
-from celery.exceptions import NotRegistered
-try:
-    from swh.indexer.producer import gen_sha1
-except ImportError:
-    pass
+from typing import Dict, Optional
 
 from swh.scheduler.celery_backend.config import app as main_app
 
@@ -115,6 +106,57 @@ def stdin_to_svn_tasks(batch_size, type='svn'):
         }
 
 
+def stdin_to_git_large_tasks(batch_size, type='git'):
+    """Generates from stdin the proper task argument for the loader-git worker.
+
+    Args:
+        batch_size (int): Not used
+
+    Yields:
+        expected dictionary of 'arguments' key
+
+    """
+    for line in sys.stdin:
+        origin_url = line.rstrip()
+        kwargs = {
+            'url': origin_url,
+            'lister_name': 'github',
+            'lister_instance_name': 'github',
+            'pack_size_bytes': 34359738368,
+        }
+        yield {
+            'arguments': {
+                'args': [],
+                'kwargs': kwargs,
+            },
+        }
+
+
+def stdin_to_git_normal_tasks(batch_size, type='git'):
+    """Generates from stdin the proper task argument for the loader-git worker.
+
+    Args:
+        batch_size (int): Not used
+
+    Yields:
+        expected dictionary of 'arguments' key
+
+    """
+    for line in sys.stdin:
+        origin_url = line.rstrip()
+        kwargs = {
+            'url': origin_url,
+            'lister_name': 'github',
+            'lister_instance_name': 'github',
+        }
+        yield {
+            'arguments': {
+                'args': [],
+                'kwargs': kwargs,
+            },
+        }
+
+
 def stdin_to_index_tasks(batch_size=1000):
     """Generates from stdin the proper task argument for the orchestrator.
 
@@ -125,21 +167,27 @@ def stdin_to_index_tasks(batch_size=1000):
         expected dictionary of 'arguments' key
 
     """
-    for sha1s in gen_sha1(batch=batch_size):
-        yield {
-            'arguments': {
-                'args': [sha1s],
-                'kwargs': {}
-            },
-        }
+    try:
+        from swh.indexer.producer import gen_sha1
+        for sha1s in gen_sha1(batch=batch_size):
+            yield {
+                'arguments': {
+                    'args': [sha1s],
+                    'kwargs': {}
+                },
+            }
+    except ImportError:
+        pass
 
 
-def print_last_hash(d):
+def print_last_hash(arguments: Dict) -> None:
     """Given a dict of arguments, take the sha1s list, print the last
        element as hex hash.
 
     """
-    l = d['args']
+    from swh.model.hashutil import hash_to_hex
+
+    l = arguments['args']
     if l:
         print(hash_to_hex(l[0][-1]))
 
@@ -154,7 +202,7 @@ QUEUES = {
         'print_fn': print,
     },
     'svn': {  # for svn, we use the same queue for length checking
-                  # and scheduling
+              # and scheduling
         'task_name': 'swh.loader.svn.tasks.LoadSvnRepository',
         'threshold': 1000,
         # to_task the function to use to transform the input in task
@@ -182,7 +230,21 @@ QUEUES = {
         'threshold': 1000,
         'task_generator_fn': stdin_to_index_tasks,
         'print_fn': print_last_hash,
-    }
+    },
+    'oneshot-large-git': {
+        'task_name': 'oneshot:swh.loader.git.tasks.UpdateGitRepository',
+        'threshold': 1000,
+        # to_task the function to use to transform the input in task
+        'task_generator_fn': stdin_to_git_large_tasks,
+        'print_fn': print,
+    },
+    'oneshot-normal-git': {
+        'task_name': 'oneshot2:swh.loader.git.tasks.UpdateGitRepository',
+        'threshold': 1000,
+        # to_task the function to use to transform the input in task
+        'task_generator_fn': stdin_to_git_normal_tasks,
+        'print_fn': print,
+    },
 }
 
 
@@ -199,14 +261,14 @@ def queue_length_get(app, queue_name: str) -> Optional[int]:
     """
     try:
         queue_length = app.get_queue_length(app.tasks[queue_name].task_queue)
-    except:
+    except Exception:
         queue_length = None
     return queue_length
 
 
 def send_new_tasks(app, queues_to_check):
-    """Can we send new tasks for scheduling?  To answer this, we check the
-    queues_to_check's current number of scheduled tasks.
+    """Send new tasks for scheduling when possible. Check the queues_to_check's current
+    number of scheduled tasks.
 
     If any of queues_to_check sees its threshold reached, we cannot
     send new tasks so this return False.  Otherwise, we can send new
@@ -259,8 +321,6 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     else:
         task_name_without_prefix = task_name
 
-    scheduling_task = app.tasks[task_name_without_prefix]
-
     if not threshold:
         threshold = queue_information['threshold']
 
@@ -306,6 +366,7 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
                     break
 
             print_fn = queue_information.get('print_fn', print)
+            from kombu.utils.uuid import uuid
             for _task in pending_tasks:
                 app.send_task(
                     task_name_without_prefix,
