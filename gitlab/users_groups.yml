@@ -1,0 +1,80 @@
+# Owner
+# Maintainer
+# Developer
+# Reporter
+# Guest
+
+groups:
+  teams/staff:
+    users:
+      phabricator-migration: Owner
+      anlambert: Maintainer
+      ardumont: Maintainer
+      bchauvet: Owner
+      douardda: Maintainer
+      jayeshv: Maintainer
+      lunar: Maintainer
+      marla.dasilva: Maintainer
+      moranegg: Maintainer
+      olasd: Maintainer
+      rdicosmo: Owner
+      sgranger: Maintainer
+      vlorentz: Maintainer
+      vsellier: Maintainer
+      zack: Owner
+    remove_extra_memberships: true
+  teams/developers:
+    users:
+      phabricator-migration: Owner
+      anlambert: Maintainer
+      ardumont: Maintainer
+      bchauvet: Maintainer
+      douardda: Maintainer
+      jayeshv: Maintainer
+      lunar: Maintainer
+      moranegg: Maintainer
+      olasd: Maintainer
+      rdicosmo: Maintainer
+      vlorentz: Maintainer
+      vsellier: Maintainer
+      zack: Maintainer
+    remove_extra_memberships: true
+  teams/sysadmin:
+    users:
+      phabricator-migration: Owner
+      ardumont: Owner
+      olasd: Owner
+      vsellier: Owner
+    remove_extra_memberships: true
+  teams/interns:
+    users:
+      phabricator-migration: Owner
+    remove_extra_memberships: true
+  teams/management:
+    users:
+      phabricator-migration: Owner
+      bchauvet: Owner
+      douardda: Maintainer
+      rdicosmo: Owner
+      vsellier: Maintainer
+      zack: Owner
+    remove_extra_memberships: true
+  infra:
+    users:
+      phabricator-migration: Owner
+    remove_extra_memberships: true
+    share_with_groups:
+      teams/sysadmin: Owner
+  modules:
+    users:
+      phabricator-migration: Owner
+    share_with_groups:
+      teams/developers: Maintainer
+    remove_extra_memberships: true
+  migrated:
+    users:
+      phabricator-migration: Owner
+    share_with_groups:
+      teams/sysadmin: Owner
+      teams/developers: Maintainer
+    remove_extra_memberships: true
