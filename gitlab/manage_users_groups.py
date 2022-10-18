@@ -91,7 +91,9 @@ def cli(gitlab_instance, do_it, config_file):
 
             user_id = users[0].id
 
-            logger.info("Adding member %s in %s at level %s", username, access_level)
+            logger.info(
+                "Adding member %s in %s at level %s", username, group_path, access_level
+            )
             if do_it:
                 group.members.create({"user_id": user_id, "access_level": access_level})
 
