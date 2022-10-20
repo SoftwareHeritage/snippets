@@ -8,7 +8,7 @@ import sys
 
 from list_objects import Graph
 
-SQL_TEMPLATE = '''
+SQL_TEMPLATE = """
 BEGIN;
 create temp table objects_to_remove (type text not null, id bytea not null) on commit drop;
 
@@ -191,14 +191,13 @@ copy (select '') to stdout;
 --delete from content where sha1_git in (select id from objects_to_remove where type = 'cnt');
 
 
-ROLLBACK;'''
+ROLLBACK;"""
 
 
+if __name__ == "__main__":
+    graph = pickle.load(open(sys.argv[1], "rb"))
 
-if __name__ == '__main__':
-    graph = pickle.load(open(sys.argv[1], 'rb'))
-
-    nodes = graph.vs.select(predecessors_outside_subgraph_eq=False)["swhid"]
+    nodes = graph.vs.select(has_inbound_edges_outside_subgraph_eq=False)["swhid"]
 
     values = ", ".join(
         f"('{swhid.object_type.value}', '\\x{swhid.object_id.hex()}')"
