@@ -13,6 +13,67 @@ import click
 
 
 class Nar:
+    """NAR serializer.
+
+    This builds the NAR structure and serializes it as per the phd thesis from Eelco
+    Dolstra thesis.
+
+    For example, this tree on a filesystem:
+
+       $ tree foo
+       foo
+       ├── bar
+       │   └── exe
+       └── baz
+
+       1 directory, 2 files
+
+    serializes as:
+
+       nix-archive-1
+         (
+         type
+         directory
+           entry
+           (
+           name
+           bar
+           node
+             (
+             type
+             directory
+               entry
+               (
+               name
+               exe
+               node
+                 (
+                 type
+                 regular
+                 executable
+
+                 contents
+                 <_io.BufferedReader name='foo/bar/exe'>
+                 )
+               )
+             )
+           )
+           entry
+           (
+           name
+           baz
+           node
+             (
+             type
+             regular
+             contents
+             <_io.BufferedReader name='foo/baz'>
+            )
+          )
+        )
+
+    """
+
     def __init__(self, updater, isdebug=False):
         self._update = updater
 
@@ -113,7 +174,9 @@ class Nar:
 
     def serialize(self, fso):
         self.str_("nix-archive-1")
-        self.__paths_to_ignore = [f"{fso}/{folder}" for folder in [".git", ".hg", ".svn"]]
+        self.__paths_to_ignore = [
+            f"{fso}/{folder}" for folder in [".git", ".hg", ".svn"]
+        ]
         self._serialize(fso)
         return
 
