@@ -86,7 +86,12 @@ class Nar:
         elif stat.S_ISDIR(mode):
             self.str_(["type", "directory"])
             for path in sorted(Path(fso).iterdir()):
-                if path.match(self.__path_to_ignore):  # Ignore .git folder
+                ignore = False
+                for path_to_ignore in self.__paths_to_ignore:
+                    if path.match(path_to_ignore):  # Ignore specific folder from hash
+                        ignore = True
+                        break
+                if ignore:
                     continue
                 self._serializeEntry(path)
 
@@ -108,7 +113,7 @@ class Nar:
 
     def serialize(self, fso):
         self.str_("nix-archive-1")
-        self.__path_to_ignore = f"{fso}/.git"
+        self.__paths_to_ignore = [f"{fso}/{folder}" for folder in [".git", ".hg", ".svn"]]
         self._serialize(fso)
         return
 
