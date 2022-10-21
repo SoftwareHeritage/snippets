@@ -7,8 +7,9 @@ import hashlib
 import io
 import os
 import stat
-import sys
 from pathlib import Path
+
+import click
 
 
 class Nar:
@@ -30,9 +31,9 @@ class Nar:
         # named 'int'
         if isinstance(thing, str):
             byte_sequence = thing.encode("utf-8")
-            l = len(byte_sequence)
+            length = len(byte_sequence)
         elif isinstance(thing, io.BufferedReader):
-            l = os.stat(thing.name).st_size
+            length = os.stat(thing.name).st_size
 
         # ease reading of _serialize
         elif isinstance(thing, list):
@@ -42,7 +43,7 @@ class Nar:
         else:
             raise ValueError("not string nor file")
 
-        blen = l.to_bytes(8, byteorder="little")  # 64-bit little endian
+        blen = length.to_bytes(8, byteorder="little")  # 64-bit little endian
         self._update(blen)
 
         # first part of 'pad'
@@ -53,7 +54,7 @@ class Nar:
                 self._update(chunk)
 
         # second part of 'pad
-        m = l % 8
+        m = length % 8
         if m == 0:
             offset = 0
         else:
@@ -107,40 +108,43 @@ class Nar:
         return
 
 
-if __name__ == "__main__":
-    directory = sys.argv[1]
-    try:
-        if sys.argv[2] == "sha1":
-            h = hashlib.sha1()
-        else:
-            h = hashlib.sha256()
-        updater = h.update
-        try:
-            if sys.argv[3] == "hex":
-                convert = lambda hsh: hsh
-            elif sys.argv[3] == "base64":  # hex -> base64
-                convert = lambda hsh: base64.b64encode(bytes.fromhex(hsh)).decode()
-            elif sys.argv[3] == "BASE32":
-                convert = lambda hsh: base64.b32encode(bytes.fromhex(hsh)).decode()
-            elif sys.argv[3] == "base32":
-                convert = (
-                    lambda hsh: base64.b32encode(bytes.fromhex(hsh)).decode().lower()
-                )
-            else:
-                convert = lambda hsh: hsh
-        except:
-            convert = lambda hsh: hsh
-        isPrintable = True
-    except:
-        updater = sys.stdout.buffer.write
-        isPrintable = False
+@click.command()
+@click.argument("directory")
+@click.option("--hash-algo", "-H", default="sha256")
+@click.option(
+    "--format-output",
+    "-f",
+    default="hex",
+    type=click.Choice(["hex", "base32", "base64"], case_sensitive=False),
+)
+@click.option("--debug/--no-debug", default=lambda: os.environ.get("DEBUG", False))
+def cli(directory, hash_algo, format_output, debug):
+    """Compute NAR hashes on a directory."""
+    h = hashlib.sha256() if hash_algo == "sha256" else "sha1"
+    updater = h.update
+    format_output = format_output.lower()
 
-    d = os.environ.get("DEBUG")
-    if d and d != "no":
-        debug = True
-    else:
-        debug = False
-    nar = Nar(updater, debug)
+    def identity(hsh):
+        return hsh
+
+    def convert_b64(hsh: str):
+        return base64.b64encode(bytes.fromhex(hsh)).decode().lower()
+
+    def convert_b32(hsh: str):
+        return base64.b32encode(bytes.fromhex(hsh)).decode().lower()
+
+    convert_fn = {
+        "hex": identity,
+        "base64": convert_b64,
+        "base32": convert_b32,
+    }
+
+    convert = convert_fn[format_output]
+
+    nar = Nar(updater, isdebug=debug)
     nar.serialize(directory)
-    if isPrintable:
-        print(convert(h.hexdigest()))
+    print(convert(h.hexdigest()))
+
+
+if __name__ == "__main__":
+    cli()
