@@ -125,7 +125,30 @@ class Nar:
         boffset = bytearray(offset)
         self._update(boffset)
 
-    def _serialize(self, fso):
+    def _filter_and_serialize(self, fso):
+        """On the first level of the main tree, we may have to skip some paths (e.g.
+        .git, ...). Once those are ignored, we can serialize the remaining part of the
+        entries.
+
+        """
+        for path in sorted(Path(fso).iterdir()):
+            ignore = False
+            for path_to_ignore in self.__paths_to_ignore:
+                if path.match(path_to_ignore):  # Ignore specific folder
+                    ignore = True
+                    break
+            if not ignore:
+                self._serializeEntry(path)
+
+    def _only_serialize(self, fso):
+        """Every other level of the nested tree, we do not have to check for any path so
+        we can just serialize the entries of the tree.
+
+        """
+        for path in sorted(Path(fso).iterdir()):
+            self._serializeEntry(path)
+
+    def _serialize(self, fso, first_level: bool = False):
         if self.__isdebug:
             self.__indent += 1
         self.str_("(")
@@ -146,15 +169,10 @@ class Nar:
 
         elif stat.S_ISDIR(mode):
             self.str_(["type", "directory"])
-            for path in sorted(Path(fso).iterdir()):
-                ignore = False
-                for path_to_ignore in self.__paths_to_ignore:
-                    if path.match(path_to_ignore):  # Ignore specific folder from hash
-                        ignore = True
-                        break
-                if ignore:
-                    continue
-                self._serializeEntry(path)
+            serialize_fn = (
+                self._filter_and_serialize if first_level else self._only_serialize
+            )
+            serialize_fn(fso)
 
         else:
             raise ValueError("unsupported file type")
@@ -177,7 +195,7 @@ class Nar:
         self.__paths_to_ignore = [
             f"{fso}/{folder}" for folder in [".git", ".hg", ".svn"]
         ]
-        self._serialize(fso)
+        self._serialize(fso, first_level=True)
         return
 
 
