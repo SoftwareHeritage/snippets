@@ -18,6 +18,8 @@ class Nar:
 
         self.__isdebug = isdebug
         self.__indent = 0
+        # Will be set in the serialize call
+        self.__path_to_ignore: str = ""
 
     def str_(self, thing):
         # named 'str' in Figure 5.2 p.93 (page 101 of pdf)
@@ -84,6 +86,8 @@ class Nar:
         elif stat.S_ISDIR(mode):
             self.str_(["type", "directory"])
             for path in sorted(Path(fso).iterdir()):
+                if path.match(self.__path_to_ignore):  # Ignore .git folder
+                    continue
                 self._serializeEntry(path)
 
         else:
@@ -104,6 +108,7 @@ class Nar:
 
     def serialize(self, fso):
         self.str_("nix-archive-1")
+        self.__path_to_ignore = f"{fso}/.git"
         self._serialize(fso)
         return
 
