@@ -4,22 +4,21 @@
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable
 
 import click
 
 DATASET_DIR = "/var/tmp/nixguix/dataset"
 
 
-def read_dataset(date_dir: str, obj_type: str, dataset_name: str) -> List[str]:
+def read_dataset(filepath: str) -> Iterable[str]:
     """Read the dataset file."""
-    filepath = f"{DATASET_DIR}/{date_dir}/list-contents-{dataset_name}.csv"
     with open(filepath, "r") as f:
-        data = [line.rstrip() for line in f]
-    return data
+        for line in f:
+            yield line.rstrip()
 
 
-def group_by_extensions(data: List[str]) -> Dict[str, int]:
+def group_by_extensions(data: Iterable[str]) -> Dict[str, int]:
     """Group the data read by extensions."""
     extensions: Dict[str, int] = defaultdict(int)
     for url in data:
@@ -46,8 +45,9 @@ def group_by_extensions(data: List[str]) -> Dict[str, int]:
 def main(dataset_date, datasets, obj_type):
     """For each dataset required, read and group by extensions the dataset."""
     for dataset_name in datasets:
-        data = read_dataset(dataset_date, obj_type, dataset_name)
-        print(f"dataset: {dataset_name}\n")
+        filepath = f"{DATASET_DIR}/{dataset_date}/list-{obj_type}-{dataset_name}.csv"
+        data = read_dataset(filepath)
+        print(f"dataset <{dataset_name}> with type {obj_type}: {filepath}\n")
         extensions = group_by_extensions(data)
         from pprint import pprint
 
