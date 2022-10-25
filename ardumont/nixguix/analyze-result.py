@@ -2,13 +2,20 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable
+from urllib.parse import urlparse
 
 import click
 
 DATASET_DIR = "/var/tmp/nixguix/dataset"
+
+
+PATTERN_ONLY_VERSION = re.compile(r"(v*[0-9]+[.])([0-9]+[.]*)+")
+
+PATTERN_ENDING_VERSION = re.compile(r"(.*)([0-9]+[\.]*)+$")
 
 
 def read_dataset(filepath: str) -> Iterable[str]:
@@ -22,7 +29,8 @@ def group_by_extensions(data: Iterable[str]) -> Dict[str, int]:
     """Group the data read by extensions."""
     extensions: Dict[str, int] = defaultdict(int)
     for url in data:
-        suffixes = Path(url).suffixes
+        urlparsed = urlparse(url)
+        suffixes = Path(urlparsed.path).suffixes
         if suffixes:
             if ".patch" in suffixes or ".patch" in suffixes[-1]:
                 key = ".patch"
@@ -31,7 +39,13 @@ def group_by_extensions(data: Iterable[str]) -> Dict[str, int]:
             elif ".cgi" in suffixes or ".cgi" in suffixes[-1]:
                 key = ".cgi"
             else:
-                key = suffixes[-1]
+                name = Path(urlparsed.path).name
+                if PATTERN_ONLY_VERSION.match(name):
+                    key = "only-version-should-be-tarball"
+                elif PATTERN_ENDING_VERSION.match(name):
+                    key = "ending-version-ok"
+                else:
+                    key = suffixes[-1]
             extensions[key] += 1
     return dict(extensions)
 
