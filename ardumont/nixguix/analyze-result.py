@@ -55,18 +55,26 @@ def group_by_extensions(data: Iterable[str]) -> Dict[str, int]:
 @click.option(
     "--dataset", "datasets", multiple=True, type=click.Choice(["guix", "nixpkgs"])
 )
-@click.option("--obj-type", type=click.Choice(["contents", "directories"]))
-def main(dataset_date, datasets, obj_type):
+@click.option(
+    "--obj-type",
+    "obj_types",
+    multiple=True,
+    type=click.Choice(["contents", "directories"]),
+)
+def main(dataset_date, datasets, obj_types):
     """For each dataset required, read and group by extensions the dataset."""
     for dataset_name in datasets:
-        filepath = f"{DATASET_DIR}/{dataset_date}/list-{obj_type}-{dataset_name}.csv"
-        data = read_dataset(filepath)
-        print(f"dataset <{dataset_name}> with type {obj_type}: {filepath}\n")
-        extensions = group_by_extensions(data)
-        from pprint import pprint
+        for obj_type in obj_types:
+            filepath = (
+                f"{DATASET_DIR}/{dataset_date}/list-{obj_type}-{dataset_name}.csv"
+            )
+            data = read_dataset(filepath)
+            print(f"dataset <{dataset_name}> with type {obj_type}: {filepath}\n")
+            extensions = group_by_extensions(data)
+            from pprint import pprint
 
-        pprint(extensions)
-        print()
+            pprint(extensions)
+            print()
 
 
 if __name__ == "__main__":
