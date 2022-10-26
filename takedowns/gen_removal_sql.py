@@ -199,7 +199,7 @@ if __name__ == "__main__":
 
     nodes = graph.vs.select(has_inbound_edges_outside_subgraph_eq=False)["swhid"]
 
-    values = ", ".join(
+    values = ",\n".join(
         f"('{swhid.object_type.value}', '\\x{swhid.object_id.hex()}')"
         for swhid in nodes
     )

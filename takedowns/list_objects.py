@@ -5,6 +5,7 @@
 
 import datetime
 import functools
+import hashlib
 import logging
 import os
 import pickle
@@ -315,6 +316,7 @@ def origin_outbound_edges_from_storage(
         return
 
     for visit in iter_origin_visits(storage, origin["url"]):
+        assert visit.visit
         for status in iter_origin_visit_statuses(storage, visit.origin, visit.visit):
             if status.snapshot:
                 snapshot_swhid = SWHID(
@@ -713,6 +715,7 @@ def get_one_inbound_edge_storage_directory(
                     found = SWHID(object_id=line[0], object_type=ObjectType.DIRECTORY)
                     if found not in known_predecessors:
                         return found
+    return None
 
 
 def plot_graph(graph: Graph):
@@ -748,7 +751,17 @@ if __name__ == "__main__":
             cls="postgresql", db="service=swh", objstorage={"cls": "memory"}
         )
 
-        swhids = [SWHID.from_string(arg) for arg in sys.argv[1:]]
+        swhids = []
+        for arg in sys.argv[1:]:
+            if arg.startswith('swh:1:'):
+                swhid = SWHID.from_string(arg)
+            else:
+                sha1 = hashlib.sha1(arg.encode()).hexdigest()
+                swhid = SWHID.from_string(f"swh:1:ori:{sha1}")
+                logger.info("Assuming %s is an origin URL; computed origin swhid: %s", arg, swhid)
+
+            swhids.append(swhid)
+
         swhid = swhids[0]
 
         graph_baseurl = "http://granet.internal.softwareheritage.org:5009/"
