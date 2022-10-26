@@ -59,25 +59,27 @@ groups:
       vsellier: Maintainer
       zack: Owner
     remove_extra_memberships: true
-  infra:
+  infra-private:
     users:
       phabricator-migration: Owner
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
-  modules:
+  swh:
     users:
       phabricator-migration: Owner
-    share_with_groups:
-      teams/developers: Maintainer
     remove_extra_memberships: true
-  migrated:
+    share_with_groups:
+      teams/interns: Reporter
+      teams/staff: Reporter
+      teams/developers: Maintainer
+  swh/infra:
     users:
       phabricator-migration: Owner
     share_with_groups:
       teams/sysadmin: Owner
-      teams/developers: Maintainer
     remove_extra_memberships: true
+
 
 projects:
   # [1] https://docs.gitlab.com/ee/api/projects.html#edit-project
