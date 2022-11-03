@@ -16,7 +16,7 @@ from diagrams.azure.storage import StorageAccounts
 from diagrams.azure.network import PrivateEndpoints
 from diagrams.azure.network import PrivateLinkServices
 
-with Diagram("Gitlab infrastructure", show=False):
+with Diagram("Gitlab infrastructure", show=False, outformat="svg"):
     rg = Cluster("zone-gitlab-instance resource group")
     rg_internal = Cluster("zone-gitlab-instance-internal resource group")
 
@@ -63,7 +63,6 @@ with Diagram("Gitlab infrastructure", show=False):
             # internalLB << internalIp
             aks - kubeApiInterface
             aks - internalLB
-
 
             privateLinkServiceLBInterface = NetworkInterfaces("Private Link Service Interface")
             privateLinkServiceLBInterface - internalLB
