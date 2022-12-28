@@ -1,18 +1,7 @@
 import xlrd
-import json
-import requests
 import sys
-
-if len(sys.argv) == 1:
-    print("gitlab access-token required as argument")
-    exit()
-
-# TODO : log results
-# TODO : use python-gitlab library
-
-labels = list()
-milestones = list()
-issues = list()
+import gitlab
+import logging
 
 
 class Milestone:
@@ -51,7 +40,7 @@ class Issue:
 
     def __str__(self) -> str:
         str_labels = ",".join(self.labels)
-        return f"issue #{self.id} - project #{self.project_id} - milestone #{self.milestone_id} - {self.title} - labels : {str_labels}"
+        return f"issue #{self.id} - project #{self.project_id} - milestone #{self.milestone_id} - {self.title} - labels : {str_labels}"
 
 
 # spreadsheet parameters:
@@ -74,16 +63,22 @@ ACTIVITY_LABELS_COLOR = get_param_from_spreadsheet("activity_labels_color")
 EXTRA_LABELS_COLOR = get_param_from_spreadsheet("extra_labels_color")
 ROADMAP_PREFIX = get_param_from_spreadsheet("roadmap_prefix")
 
-# api parameters:
-API_TOKEN = sys.argv[1]
-API_HEADERS = {"PRIVATE-TOKEN": API_TOKEN}
-ENDPOINTS_BASE_URL = "https://gitlab-staging.swh.network/api/v4"
-API_LABEL_ENDPOINT = f"{ENDPOINTS_BASE_URL}/groups/{SWH_GROUP_ID}/labels"
-API_MILESTONE_ENDPOINT = f"{ENDPOINTS_BASE_URL}/groups/{SWH_GROUP_ID}/milestones"
-API_ISSUE_ENDPOINT = f"{ENDPOINTS_BASE_URL}/projects/{META_PROJECT_ID}/issues"
+gl = gitlab.Gitlab.from_config("staging", ["./python-gitlab.cfg"])
+gl.auth()
+swh_group = gl.groups.get(25)
+meta_project = gl.projects.get(2)
 
 # LABELS
-def read_activity_labels():
+
+
+def load_labels():
+    labels = list()
+    _read_activity_labels(labels)
+    _read_extra_labels(labels)
+    return labels
+
+
+def _read_activity_labels(labels):
     for row in range(1, sheet_data.nrows):
         label_name = sheet_data.cell(row, 3).value
         if label_name != "":
@@ -97,7 +92,7 @@ def read_activity_labels():
                 labels.append(label)
 
 
-def read_extra_labels():
+def _read_extra_labels(labels):
     for row in range(1, sheet_data.nrows):
 
         content = sheet_data.cell(row, 4).value
@@ -113,27 +108,27 @@ def read_extra_labels():
                     labels.append(label)
 
 
-def insert_labels():
+def insert_labels(labels):
     for label in labels:
-        body = {
-            "name": label.full_name(),
-            "color": label.color,
-        }
-        response = requests.post(
-            API_LABEL_ENDPOINT, json=body, headers=API_HEADERS
-        ).json()
-        label.id = response["id"]
-        print(f"inserted label #{label.name}")
+        lbl = swh_group.labels.create(
+            {
+                "name": label.full_name(),
+                "color": label.color,
+            }
+        )
+        label.id = lbl.id
+        logging.info(f"inserted label #{label.full_name()}")
 
 
-def get_label_by_name(name):
+def get_label_by_name(name, labels):
     for label in labels:
         if label.name == name.strip():
             return label
 
 
 # MILESTONES
-def read_milestones():
+def load_milestones():
+    milestones = list()
     for row in range(1, sheet_data.nrows):
         milestone_title = ROADMAP_PREFIX + sheet_data.cell(row, 1).value
         found = False
@@ -145,51 +140,55 @@ def read_milestones():
             milestone = Milestone(milestone_title)
             milestones.append(milestone)
 
+    return milestones
 
-def insert_milestones():
+
+def insert_milestones(milestones):
     for milestone in milestones:
-        body = {"title": milestone.title}
-        response = requests.post(API_MILESTONE_ENDPOINT, json=body, headers=API_HEADERS)
-        milestone.id = response.json()["id"]
-        print(f"inserted milestone #{milestone.id} - {milestone.title}")
+        mlst = swh_group.milestones.create({"title": milestone.title})
+        milestone.id = mlst.id
+        logging.info(f"inserted milestone #{milestone.id} - {milestone.title}")
 
 
-def get_milestone_by_title(title):
+def get_milestone_by_title(title, milestones):
     for milestone in milestones:
         if milestone.title == title:
             return milestone
 
 
 # ISSUES
-def read_issues():
+def load_issues(milestones, labels):
+    issues = list()
     for row in range(1, sheet_data.nrows):
         issue_title = sheet_data.cell(row, 2).value
         if issue_title != "":
             milestone_title = sheet_data.cell(row, 1).value
-            milestone = get_milestone_by_title(ROADMAP_PREFIX + milestone_title)
+            milestone = get_milestone_by_title(
+                ROADMAP_PREFIX + milestone_title, milestones
+            )
             issue = Issue(issue_title, milestone.id, META_PROJECT_ID)
             activity_label_name = sheet_data.cell(row, 3).value
-            activity_label = get_label_by_name(activity_label_name)
+            activity_label = get_label_by_name(activity_label_name, labels)
             issue.labels.append(activity_label.full_name())
             # extra labels :
             extra_labels = sheet_data.cell(row, 4).value
             if extra_labels != "":
                 for xl in extra_labels.split(","):
-                    issue.labels.append(get_label_by_name(xl).full_name())
+                    issue.labels.append(get_label_by_name(xl, labels).full_name())
             issues.append(issue)
+    return issues
 
 
-def insert_issues():
+def insert_issues(issues):
     for issue in issues:
-        body = {
-            "title": issue.title,
-            "milestone_id": issue.milestone_id,
-            "labels": ",".join(issue.labels),
-        }
-        response = requests.post(
-            API_ISSUE_ENDPOINT, json=body, headers=API_HEADERS
-        ).json()
-        issue.id = response["id"]
-        print(
-            f"inserted issue #{issue.id} : {issue.title} - milestone: {issue.milestone_id}"
+        iss = meta_project.issues.create(
+            {
+                "title": issue.title,
+                "milestone_id": issue.milestone_id,
+                "labels": ",".join(issue.labels),
+            }
+        )
+        issue.id = iss.id
+        logging.info(
+            f"inserted issue #{iss.iid} : {issue.title} - milestone: {issue.milestone_id}"
         )

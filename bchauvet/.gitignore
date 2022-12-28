@@ -1,0 +1,7 @@
+python-gitlab.cfg
+
+logs/
+
+*lock*
+
+rmp

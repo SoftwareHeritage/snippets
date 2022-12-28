@@ -1,56 +1,46 @@
 from roadmap_xls_to_gitlab import *
 
+from datetime import datetime
+
+logging.basicConfig(
+    filename=f"logs/rollback_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",
+    encoding="utf-8",
+    level=logging.INFO,
+    format="%(levelname)s:%(message)s",
+)
+
 
 def delete_roadmap_milestones():
-    response = requests.get(
-        API_MILESTONE_ENDPOINT, {"per_page": 100}, headers=API_HEADERS
-    )
 
-    for milestone in response.json():
-        if milestone["title"].startswith(ROADMAP_PREFIX):
-            url = f"{API_MILESTONE_ENDPOINT}/{milestone['id']}"
-            response = requests.delete(url, headers=API_HEADERS)
-            print(response)
-            print(f"deleted milestone: id={milestone['id']} - {milestone['title']}")
+    _milestones = swh_group.milestones.list(get_all=True)
+
+    for milestone in _milestones:
+        if milestone.title.startswith(ROADMAP_PREFIX):
+            swh_group.milestones.delete(milestone.id)
+            logging.info(f"deleted milestone: id={milestone.id} - {milestone.title}")
 
 
 def delete_issues_by_label(label, project_id):
-    response = requests.get(
-        API_ISSUE_ENDPOINT,
-        {"labels": label, "per_page": 100},
-        headers=API_HEADERS,
-    )
-    print(response.headers["X-total"])
-    total_pages = int(response.headers["X-total-pages"])
 
-    for issue in response.json():
-        issue_iid = int(issue["iid"])
-        url = f"{ENDPOINTS_BASE_URL}/projects/{project_id}/issues/{issue_iid}"
-        response = requests.delete(url, headers=API_HEADERS)
-        print(f"deleted issue: issue_iid={issue_iid} - {issue['title']}")
+    _project = gl.projects.get(project_id)
 
-    if total_pages > 1:
-        delete_issues_by_label(label, project_id)
-    else:
-        return
+    _issues = _project.issues.list(get_all=True, labels=label)
+
+    for issue in _issues:
+        _project.issues.delete(issue.iid)
+        logging.info(f"deleted issue: issue_iid={issue.iid} - {issue.title}")
 
 
 def delete_labels():
-    read_activity_labels()
-    read_extra_labels()
+    labels = load_labels()
 
     for label in labels:
-        response = requests.delete(
-            f"{API_LABEL_ENDPOINT}/{label.full_name()}", headers=API_HEADERS
-        )
-        print(response)
-        print(f"deleted label: {label.name}")
-
-    # labels = list()
+        swh_group.labels.delete(label.full_name())
+        logging.info(f"deleted label: {label.full_name()}")
 
 
-# delete_roadmap_milestones()
+delete_roadmap_milestones()
 
-# delete_issues_by_label("roadmap_import", META_PROJECT_ID)
+delete_issues_by_label("roadmap_import", META_PROJECT_ID)
 
-# delete_labels()
+delete_labels()
