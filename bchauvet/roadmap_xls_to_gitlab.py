@@ -75,6 +75,7 @@ def load_labels():
     labels = list()
     _read_activity_labels(labels)
     _read_extra_labels(labels)
+    _read_goal_labels(labels)
     return labels
 
 
@@ -89,6 +90,20 @@ def _read_activity_labels(labels):
                     break
             if not found:
                 label = Label(label_name, ACTIVITY_LABELS_COLOR, ACTIVITY_LABELS_PREFIX)
+                labels.append(label)
+
+
+def _read_goal_labels(labels):
+    for row in range(1, sheet_data.nrows):
+        label_name = sheet_data.cell(row, 0).value.lower().strip()
+        if label_name != "":
+            found = False
+            for lbl in labels:
+                if lbl.name == label_name:
+                    found = True
+                    break
+            if not found:
+                label = Label(label_name, ACTIVITY_LABELS_COLOR, "goal")
                 labels.append(label)
 
 
@@ -117,7 +132,7 @@ def insert_labels(labels):
             }
         )
         label.id = lbl.id
-        logging.info(f"inserted label #{label.full_name()}")
+        logging.info(f"inserted label: {label.full_name()}")
 
 
 def get_label_by_name(name, labels):
@@ -167,14 +182,23 @@ def load_issues(milestones, labels):
                 ROADMAP_PREFIX + milestone_title, milestones
             )
             issue = Issue(issue_title, milestone.id, META_PROJECT_ID)
+
+            # goal label :
+            goal_label_name = sheet_data.cell(row, 0).value.lower()
+            goal_label = get_label_by_name(goal_label_name, labels)
+            issue.labels.append(goal_label.full_name())
+
+            # activity label :
             activity_label_name = sheet_data.cell(row, 3).value
             activity_label = get_label_by_name(activity_label_name, labels)
             issue.labels.append(activity_label.full_name())
+
             # extra labels :
             extra_labels = sheet_data.cell(row, 4).value
             if extra_labels != "":
                 for xl in extra_labels.split(","):
                     issue.labels.append(get_label_by_name(xl, labels).full_name())
+
             issues.append(issue)
     return issues
 
