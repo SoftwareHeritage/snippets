@@ -80,7 +80,7 @@ def write_milestones(output):
             output.write("\n")
 
 
-output = open(f"docs/roadmap-{YEAR}.rst", "w")
+output = open(f"./docs/roadmap-{YEAR}.rst", "w")
 
 write_header(output)
 write_milestones(output)
