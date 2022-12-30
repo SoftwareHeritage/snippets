@@ -1,6 +1,7 @@
 python-gitlab.cfg
 
-logs/
+logs/*
+docs/*
 
 *lock*
 

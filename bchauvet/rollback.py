@@ -15,9 +15,9 @@ def delete_roadmap_milestones():
     _milestones = swh_group.milestones.list(get_all=True)
 
     for milestone in _milestones:
-        if milestone.title.startswith(ROADMAP_PREFIX):
-            swh_group.milestones.delete(milestone.id)
-            logging.info(f"deleted milestone: id={milestone.id} - {milestone.title}")
+        # if milestone.title.startswith(ROADMAP_PREFIX):
+        swh_group.milestones.delete(milestone.id)
+        logging.info(f"deleted milestone: id={milestone.id} - {milestone.title}")
 
 
 def delete_issues_by_label(label, project_id):

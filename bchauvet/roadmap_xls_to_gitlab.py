@@ -5,12 +5,16 @@ import logging
 
 
 class Milestone:
-    def __init__(self, title, id=0):
+    def __init__(self, title, prefix, id=0):
         self.title = title
+        self.prefix = prefix
         self.id = id
 
     def __str__(self) -> str:
-        return f"milestone #{self.id} - {self.title}"
+        return f"milestone #{self.id} - {self.full_title()}"
+
+    def full_title(self) -> str:
+        return self.prefix + self.title
 
 
 class Label:
@@ -65,8 +69,8 @@ ROADMAP_PREFIX = get_param_from_spreadsheet("roadmap_prefix")
 
 gl = gitlab.Gitlab.from_config("staging", ["./python-gitlab.cfg"])
 gl.auth()
-swh_group = gl.groups.get(25)
-meta_project = gl.projects.get(2)
+swh_group = gl.groups.get(SWH_GROUP_ID)
+meta_project = gl.projects.get(META_PROJECT_ID)
 
 # LABELS
 
@@ -75,7 +79,7 @@ def load_labels():
     labels = list()
     _read_activity_labels(labels)
     _read_extra_labels(labels)
-    _read_goal_labels(labels)
+    # _read_goal_labels(labels)
     return labels
 
 
@@ -93,18 +97,18 @@ def _read_activity_labels(labels):
                 labels.append(label)
 
 
-def _read_goal_labels(labels):
-    for row in range(1, sheet_data.nrows):
-        label_name = sheet_data.cell(row, 0).value.lower().strip()
-        if label_name != "":
-            found = False
-            for lbl in labels:
-                if lbl.name == label_name:
-                    found = True
-                    break
-            if not found:
-                label = Label(label_name, ACTIVITY_LABELS_COLOR, "goal")
-                labels.append(label)
+# def _read_goal_labels(labels):
+#     for row in range(1, sheet_data.nrows):
+#         label_name = sheet_data.cell(row, 0).value.lower().strip()
+#         if label_name != "":
+#             found = False
+#             for lbl in labels:
+#                 if lbl.name == label_name:
+#                     found = True
+#                     break
+#             if not found:
+#                 label = Label(label_name, ACTIVITY_LABELS_COLOR, "goal")
+#                 labels.append(label)
 
 
 def _read_extra_labels(labels):
@@ -145,14 +149,16 @@ def get_label_by_name(name, labels):
 def load_milestones():
     milestones = list()
     for row in range(1, sheet_data.nrows):
-        milestone_title = ROADMAP_PREFIX + sheet_data.cell(row, 1).value
+        goal_name = sheet_data.cell(row, 0).value.lower().strip()
+        prefix = ROADMAP_PREFIX.replace("$GOAL", goal_name)
+        milestone_title = sheet_data.cell(row, 1).value
         found = False
         for m in milestones:
             if m.title == milestone_title:
                 found = True
                 break
         if not found:
-            milestone = Milestone(milestone_title)
+            milestone = Milestone(milestone_title, prefix)
             milestones.append(milestone)
 
     return milestones
@@ -160,9 +166,9 @@ def load_milestones():
 
 def insert_milestones(milestones):
     for milestone in milestones:
-        mlst = swh_group.milestones.create({"title": milestone.title})
+        mlst = swh_group.milestones.create({"title": milestone.full_title()})
         milestone.id = mlst.id
-        logging.info(f"inserted milestone #{milestone.id} - {milestone.title}")
+        logging.info(f"inserted milestone #{milestone.id} - {milestone.full_title()}")
 
 
 def get_milestone_by_title(title, milestones):
@@ -178,15 +184,13 @@ def load_issues(milestones, labels):
         issue_title = sheet_data.cell(row, 2).value
         if issue_title != "":
             milestone_title = sheet_data.cell(row, 1).value
-            milestone = get_milestone_by_title(
-                ROADMAP_PREFIX + milestone_title, milestones
-            )
+            milestone = get_milestone_by_title(milestone_title, milestones)
             issue = Issue(issue_title, milestone.id, META_PROJECT_ID)
 
             # goal label :
-            goal_label_name = sheet_data.cell(row, 0).value.lower()
-            goal_label = get_label_by_name(goal_label_name, labels)
-            issue.labels.append(goal_label.full_name())
+            # goal_label_name = sheet_data.cell(row, 0).value.lower()
+            # goal_label = get_label_by_name(goal_label_name, labels)
+            # issue.labels.append(goal_label.full_name())
 
             # activity label :
             activity_label_name = sheet_data.cell(row, 3).value
