@@ -1,12 +1,12 @@
-# from roadmap_xls_to_gitlab import *
+from roadmap_xls_to_gitlab import *
 from datetime import datetime
 import gitlab
 
 import logging
 
-gl = gitlab.Gitlab.from_config("staging")
+#gl = gitlab.Gitlab.from_config("staging")
 
-gl.auth()
+#gl.auth()
 
 
 swh_group = gl.groups.get(25)
@@ -14,8 +14,7 @@ swh_group = gl.groups.get(25)
 meta_project = gl.projects.get(2)
 
 
-issue = meta_project.issues.get(5078)
-print(issue)
+print(meta_project)
 
 # swh_group.labels.delete("plop")
 

@@ -1,6 +1,10 @@
 from roadmap_xls_to_gitlab import *
+import os
 
 from datetime import datetime
+
+if not os.path.exists("logs"):
+    os.makedirs("logs")
 
 logging.basicConfig(
     filename=f"logs/rollback_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",

@@ -1,5 +1,9 @@
 from roadmap_xls_to_gitlab import *
 from datetime import datetime
+import os
+
+if not os.path.exists("logs"):
+    os.makedirs("logs")
 
 logging.basicConfig(
     filename=f"logs/import_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",
