@@ -1,4 +1,5 @@
 import gitlab
+import os
 from datetime import datetime
 
 YEAR = 2023
@@ -79,6 +80,8 @@ def write_milestones(output):
             output.write(f"{milestone.description}\n")
             output.write("\n")
 
+if not os.path.exists("docs"):
+    os.makedirs("docs")
 
 output = open(f"./docs/roadmap-{YEAR}.rst", "w")
 

@@ -14,7 +14,7 @@ class Milestone:
         return f"milestone #{self.id} - {self.full_title()}"
 
     def full_title(self) -> str:
-        return self.prefix + self.title
+        return self.title + ' ' + self.prefix
 
 
 class Label:

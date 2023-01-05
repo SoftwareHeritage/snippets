@@ -18,13 +18,7 @@ hiring_project = gl.projects.create(
     {"name": "Hiring", "namespace_id": MANAGEMENT_GROUP_ID}
 )
 
-# move hiring issues to the new hiring project
-for issue in hiring_issues:
-    issue.move(hiring_project.id)
-
 # create labels for hiring project
-
-
 label = hiring_project.labels.create({"name": "decision::hired", "color": "#00b140"})
 label = hiring_project.labels.create({"name": "decision::rejected", "color": "#ff0000"})
 
@@ -47,3 +41,20 @@ label = hiring_project.labels.create(
 label = hiring_project.labels.create(
     {"name": "status::4_validated", "color": "#6eb985"}
 )
+
+
+# move hiring issues to the new hiring project
+for issue in hiring_issues:
+
+    issue.move(hiring_project.id)
+
+    # affect position labels:
+    if (issue.title.lower().startswith("[devops")):
+        issue.labels = ['position::devops']
+    elif (issue.title.lower().startswith("[backend") or issue.title.lower().startswith("[dev")):
+        issue.labels = ['position::backend-dev']
+    elif (issue.title.lower().startswith("[sysadm")):
+        issue.labels = ['position::sysadmin']
+
+    issue.save()    
+
