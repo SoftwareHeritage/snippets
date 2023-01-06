@@ -20,6 +20,7 @@ spec:
       labels:
         app: {{ .Values.loader.name }}-{{ .Values.loader.type }}
     spec:
+      terminationGracePeriodSeconds: 60  # pod-level
       containers:
       - name: loaders
         image: {{ .Values.swh.loader.image }}:{{ .Values.swh.loader.version }}
@@ -37,6 +38,18 @@ spec:
           preStop:
            exec:
              command: ["kill", "1"]
+        ports:
+        - name: liveness-port
+          containerPort: 8080
+          hostPort: 8080
+
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: liveness-port
+          failureThreshold: 1
+          periodSeconds: 60
+
         env:
         - name: CONCURRENCY
           value: "1"
