@@ -9,7 +9,7 @@ from collections import defaultdict
 from itertools import zip_longest
 
 import click
-from phabricator import Phabricator
+from phabricator import APIError, Phabricator
 
 import gitlab
 
@@ -165,13 +165,28 @@ def mark_phabricator_task_as_migrated(phabricator, task, gitlab_url, new_owner, 
     help="Phabricator host",
 )
 @click.option(
+    "--allowed-status",
+    "-s",
+    "allowed_statuses",
+    help="Allowed task statuses",
+    multiple=True,
+    default=[],
+)
+@click.option(
     "--do-it",
     "do_it",
     is_flag=True,
     help="Actually perform the operations",
 )
 @click.argument("mapping_file")
-def cli(gitlab_instance, phabricator_token, phabricator_host, do_it, mapping_file):
+def cli(
+    gitlab_instance,
+    phabricator_token,
+    phabricator_host,
+    allowed_statuses,
+    do_it,
+    mapping_file,
+):
     phab = get_phabricator(host=phabricator_host, token=phabricator_token)
     me = phab.user.whoami()
     if me.userName != "gitlab-migration":
@@ -192,10 +207,22 @@ def cli(gitlab_instance, phabricator_token, phabricator_host, do_it, mapping_fil
     for task_id in mapping["ticket-completed"]:
         phab_task_id = int(task_id)
 
+        if phab_task_id not in maniphest_tasks:
+            logger.warning("Cannot act on Phabricator task %s, skipping", phab_task_id)
+            continue
+
         phab_task_status = maniphest_tasks[phab_task_id]["fields"]["status"]["value"]
 
         if phab_task_status == "migrated":
             logger.debug("Already migrated Phabricator task %s, skipping", phab_task_id)
+            continue
+
+        if allowed_statuses and phab_task_status not in allowed_statuses:
+            logger.debug(
+                "Phabricator task %s has status %s, skipping",
+                phab_task_id,
+                phab_task_status,
+            )
             continue
 
         mapped_task = mapping["ticket"].get(task_id)
@@ -205,17 +232,20 @@ def cli(gitlab_instance, phabricator_token, phabricator_host, do_it, mapping_fil
         gl_project = gl.projects.get(mapped_task["project_id"])
         gl_issue = gl_project.issues.get(mapped_task["iid"])
 
-        mark_phabricator_task_as_migrated(
-            phabricator=phab,
-            task=maniphest_tasks[phab_task_id],
-            gitlab_url=gl_issue.web_url,
-            new_owner=me.phid,
-            do_it=do_it,
-        )
+        try:
+            mark_phabricator_task_as_migrated(
+                phabricator=phab,
+                task=maniphest_tasks[phab_task_id],
+                gitlab_url=gl_issue.web_url,
+                new_owner=me.phid,
+                do_it=do_it,
+            )
+        except APIError:
+            logger.exception("Could not migrate phabricator task %s", task_id)
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(name)s:%(levelname)s %(message)s"
+        level=logging.DEBUG, format="%(asctime)s %(name)s:%(levelname)s %(message)s"
     )
     cli(auto_envvar_prefix="SWH")
