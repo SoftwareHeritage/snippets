@@ -62,6 +62,9 @@ groups:
   infra-private:
     users:
       phabricator-migration: Owner
+      olasd: Owner
+      vsellier: Owner
+      ardumont: Owner
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
@@ -88,35 +91,35 @@ projects:
   # project namespace). Other unmanaged projects will be skipped during the script
   # execution.
   managed_namespaces:
-    - infra
+    - swh
+    - infra-private
 
   namespace_settings:
     # Dict[str, Any] of key the project namespace, and value a dict of any of the global
     # settings keys above and value, whatever we want to set.
-    infra/puppet/3rdparty:
+    swh/infra/puppet/3rdparty:
       issues_access_level: disabled
-    infra/ci-cd/debs:
+    swh/infra/ci-cd/debs:
       issues_access_level: disabled
+    infra-private:
+      visibility: private
 
   # Dict[str, Any] of key the project with its path namespace, and value a dict of any of
   # the global settings keys above (e.g. visibility) and value, whatever we want to set
   # (e.g. assuming the key 'visibility', some credentials repositories, we want to set it
   # 'private').
   project_settings:
-    infra/ci-cd/k8s-swh-private-data:
+    infra-private/k8s-swh-private-data:
       visibility: private
-    infra/puppet/puppet-swh-private-data:
+    infra-private/puppet-swh-private-data:
       visibility: private
-    # staging extra repositories
-    infra/websites/www.softwareheritage.org-gandi:
+    swh/infra/websites/www.softwareheritage.org-gandi:
       visibility: private
-    infra/credentials:
+    swh/infra/credentials:
       visibility: private
-    infra/k8s-swh-private-data:
+    swh/infra/annex/annex-private:
       visibility: private
-    infra/annex/annex-private:
-      visibility: private
-    infra/iFWCFG:
+    swh/infra/iFWCFG:
       visibility: private
 
   # Dict[str, Any] of key the setting to change (e.g. 'merge_method') and as value
@@ -167,7 +170,7 @@ projects:
     # string (optional): Short project description.
     # description: ""
     # boolean (optional): Disable email notifications.
-    # emails_disabled: true
+    emails_disabled: false
     # boolean (optional): Enforce auth checks on uploads.
     # enforce_auth_checks_on_uploads: true
     # string (optional): One of disabled, private, or enabled.
