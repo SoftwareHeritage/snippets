@@ -50,9 +50,13 @@ groups:
     users:
       phabricator-migration: Owner
     remove_extra_memberships: true
+  teams/leadership:
+    users:
+      rdicosmo: Owner
+      zack: Owner
+    remove_extra_memberships: true
   teams/management:
     users:
-      phabricator-migration: Owner
       bchauvet: Owner
       douardda: Maintainer
       rdicosmo: Owner
@@ -68,6 +72,9 @@ groups:
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
+  research:
+    users:
+      zack: Owner
   swh:
     users:
       phabricator-migration: Owner
