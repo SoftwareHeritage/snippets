@@ -4,17 +4,24 @@ import gitlab
 
 import logging
 
-#gl = gitlab.Gitlab.from_config("staging")
+gl = gitlab.Gitlab.from_config("prod", ["./python-gitlab.cfg"])
 
-#gl.auth()
+gl.auth()
 
 
 swh_group = gl.groups.get(25)
 
-meta_project = gl.projects.get(2)
+milestones = swh_group.milestones.list(get_all=True)
+
+for milestone in milestones:
+    if "Roadmap" in milestone.title:
+        print(f"{milestone.id} - {milestone.title}")
 
 
-print(meta_project)
+# meta_project = gl.projects.get(2)
+
+
+# print(meta_project)
 
 # swh_group.labels.delete("plop")
 

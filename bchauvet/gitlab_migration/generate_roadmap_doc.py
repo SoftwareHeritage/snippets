@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 
 YEAR = 2023
-BOARD_URL = "https://gitlab-staging.swh.network/groups/swh/-/milestones?sort=name_asc"
-ROADMAP_PREFIX = "[Roadmap - $GOAL] "
+BOARD_URL = "https://gitlab.softwareheritage.org/groups/swh/-/milestones?sort=name_asc"
+ROADMAP_PREFIX = "[Roadmap - $GOAL]"
 SWH_GROUP = 25
 
 
@@ -37,7 +37,7 @@ def write_header(output):
 
 
 def write_milestones(output):
-    gl = gitlab.Gitlab.from_config("staging", ["./python-gitlab.cfg"])
+    gl = gitlab.Gitlab.from_config("prod", ["./python-gitlab.cfg"])
     gl.auth()
     swh_group = gl.groups.get(SWH_GROUP)
 
@@ -48,8 +48,8 @@ def write_milestones(output):
         "Preserve",
         "Share",
         "Documentation",
-        "Technical Debt",
-        "Tooling and Infrastructure",
+        "Technical debt",
+        "Tooling and infrastructure",
     ]
 
     milestones = [[]] * len(goals)
@@ -57,10 +57,10 @@ def write_milestones(output):
     # group milestones by Goal
     for i in range(len(goals)):
         goal = goals[i]
-        prefix = ROADMAP_PREFIX.replace("$GOAL", goal).lower()
+        prefix = ROADMAP_PREFIX.replace("$GOAL", goal)
+        print(prefix)
         for milestone in _milestones:
-            if milestone.title.lower().startswith(prefix):
-                milestone.title = milestone.title[len(prefix) :]
+            if milestone.title.endswith(prefix):
                 milestones[i].append(milestone)
 
     # display goals & milestones
@@ -70,15 +70,18 @@ def write_milestones(output):
         output.write(f"{goal}\n")
         output.write("-" * len(goal) + "\n")
         output.write("\n")
+        prefix = ROADMAP_PREFIX.replace("$GOAL", goal)
         for milestone in milestones[i]:
-            output.write("\n")
-            output.write(f"{milestone.title}\n")
-            output.write("^" * len(milestone.title) + "\n")
-            output.write("\n")
+            if milestone.title.endswith(prefix):
+                output.write("\n")
+                output.write(f"{milestone.title}\n")
+                output.write("^" * len(milestone.title) + "\n")
+                output.write("\n")
 
-            output.write(f"- `Milestone: <{milestone.web_url}>`__\n")
-            output.write(f"{milestone.description}\n")
-            output.write("\n")
+                output.write(f"- `Milestone: <{milestone.web_url}>`__\n")
+                output.write(f"{milestone.description}\n")
+                output.write("\n")
+
 
 if not os.path.exists("docs"):
     os.makedirs("docs")

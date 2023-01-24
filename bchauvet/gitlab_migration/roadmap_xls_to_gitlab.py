@@ -14,7 +14,7 @@ class Milestone:
         return f"milestone #{self.id} - {self.full_title()}"
 
     def full_title(self) -> str:
-        return self.title + ' ' + self.prefix
+        return self.title + " " + self.prefix
 
 
 class Label:
@@ -67,7 +67,7 @@ ACTIVITY_LABELS_COLOR = get_param_from_spreadsheet("activity_labels_color")
 EXTRA_LABELS_COLOR = get_param_from_spreadsheet("extra_labels_color")
 ROADMAP_PREFIX = get_param_from_spreadsheet("roadmap_prefix")
 
-gl = gitlab.Gitlab.from_config("staging", ["./python-gitlab.cfg"])
+gl = gitlab.Gitlab.from_config("prod", ["./python-gitlab.cfg"])
 gl.auth()
 swh_group = gl.groups.get(SWH_GROUP_ID)
 meta_project = gl.projects.get(META_PROJECT_ID)
