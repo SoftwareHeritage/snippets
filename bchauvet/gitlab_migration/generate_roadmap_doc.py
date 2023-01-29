@@ -58,7 +58,6 @@ def write_milestones(output):
     for i in range(len(goals)):
         goal = goals[i]
         prefix = ROADMAP_PREFIX.replace("$GOAL", goal)
-        print(prefix)
         for milestone in _milestones:
             if milestone.title.endswith(prefix):
                 milestones[i].append(milestone)
@@ -73,9 +72,10 @@ def write_milestones(output):
         prefix = ROADMAP_PREFIX.replace("$GOAL", goal)
         for milestone in milestones[i]:
             if milestone.title.endswith(prefix):
+                title = milestone.title.replace(prefix, "")
                 output.write("\n")
-                output.write(f"{milestone.title}\n")
-                output.write("^" * len(milestone.title) + "\n")
+                output.write(f"{title}\n")
+                output.write("^" * len(title) + "\n")
                 output.write("\n")
 
                 output.write(f"- `Milestone: <{milestone.web_url}>`__\n")
