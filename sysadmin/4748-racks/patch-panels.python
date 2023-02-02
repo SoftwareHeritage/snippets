@@ -1,0 +1,17 @@
+
+SIDE_A_DEVICES=["C14-1-optical", "C14-2-optical", "C15-1-optical", "C15-2-optical"]
+SIDE_B_DEVICES=["C14-1-optical-arrival", "C14-2-optical-arrival", "C15-1-optical-arrival", "C15-2-optical-arrival"]
+STATUS="connected"
+
+PORT_PREFIX="snapin-rear"
+PORT_TYPE="dcim.rearport"
+CABLE_TYPE="mmf-om3"
+
+print("side_a_device,side_a_type,side_a_name,side_b_device,side_b_type,side_b_name,type,status")
+
+for (i, side_a_device) in enumerate(SIDE_A_DEVICES):
+  side_b_device = SIDE_B_DEVICES[i]
+  for port_num in range(1,25):
+    port = f"{PORT_PREFIX}{port_num}"
+    print(f"{side_a_device},{PORT_TYPE},{port},{side_b_device},{PORT_TYPE},{port},{CABLE_TYPE},{STATUS}")
+
