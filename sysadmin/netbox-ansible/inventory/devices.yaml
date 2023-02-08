@@ -1,0 +1,15 @@
+devices:
+  hosts:
+    new-postgresql-server step 2:
+        device_type: proliant-dl38x
+        device_role: swh-database
+        rack: 30-C-12
+        position: 9
+        face: front
+        device_status: planned
+        platform: "buster"
+        site: "sesi_rocquencourt"
+        tenant: swh-archive-production
+        comments: "2x AMD EPYC 7302 FIO Kit \ \n 256Go (8x32Go DDR4) \ \n 8x HPE 3.84TB NVMe Gen4 High Performance Read Intensive SFF SC U.3 PM1733 SSD = 30To"
+  vars:
+    airflow: front-to-rear

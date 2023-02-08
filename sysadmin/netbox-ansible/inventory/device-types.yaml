@@ -1,0 +1,9 @@
+device-types:
+  hosts:
+    Proliant DL38X:
+      slug: "proliant-dl38x"
+      manufacturer: HPE
+      airflow: "front-to-rear"
+      u_height: 2
+      is_full_depth: true
+      comments: "* 380 -> Intel CPU \n * 385 -> AMD CPU"

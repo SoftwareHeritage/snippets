@@ -1,0 +1,25 @@
+---
+- name: Device types
+  hosts: device-types
+  connection: local
+  collections:
+    - netbox.netbox
+  tasks:
+  - include: device-types.yaml
+
+- name: Device type interfaces
+  hosts: device-type-interfaces
+  connection: local
+  collections:
+    - netbox.netbox
+  tasks:
+  - include: device-type-interfaces.yaml
+
+- name: Devices
+  hosts: devices
+  connection: local
+  collections:
+    - netbox.netbox
+  tasks:
+  - include: devices.yaml
+

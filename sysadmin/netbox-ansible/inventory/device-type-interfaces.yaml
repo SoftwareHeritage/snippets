@@ -1,0 +1,16 @@
+device-type-interfaces:
+  hosts:
+    proliant_dl38x_sfp0:
+      device_type: Proliant DL38X
+      name: spf0
+      type: 25gbase-x-sfp28
+    proliant_dl38x_sfp1:
+      device_type: Proliant DL38X
+      name: sfp1
+      type: 25gbase-x-sfp28
+    proliant_dl38x_iLo:
+      device_type: Proliant DL38X
+      name: iLo
+      mgmt_only: true
+      type: 1000base-t
+
