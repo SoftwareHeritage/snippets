@@ -12,6 +12,7 @@ groups:
       ardumont: Maintainer
       bchauvet: Owner
       douardda: Maintainer
+      guillaume: Maintainer
       jayeshv: Maintainer
       lunar: Maintainer
       marla.dasilva: Maintainer
@@ -30,6 +31,7 @@ groups:
       ardumont: Maintainer
       bchauvet: Maintainer
       douardda: Maintainer
+      guillaume: Maintainer
       jayeshv: Maintainer
       lunar: Maintainer
       moranegg: Maintainer
@@ -43,6 +45,7 @@ groups:
     users:
       phabricator-migration: Owner
       ardumont: Owner
+      guillaume: Owner
       olasd: Owner
       vsellier: Owner
     remove_extra_memberships: true
@@ -69,6 +72,7 @@ groups:
       olasd: Owner
       vsellier: Owner
       ardumont: Owner
+      guillaume: Owner
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
