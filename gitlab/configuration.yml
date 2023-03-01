@@ -33,10 +33,12 @@ groups:
       douardda: Maintainer
       guillaume: Maintainer
       jayeshv: Maintainer
+      jenkins: Maintainer
       lunar: Maintainer
       moranegg: Maintainer
       olasd: Maintainer
       rdicosmo: Maintainer
+      swh-sentry-integration: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
       zack: Maintainer
@@ -46,7 +48,9 @@ groups:
       phabricator-migration: Owner
       ardumont: Owner
       guillaume: Owner
+      jenkins: Maintainer
       olasd: Owner
+      swh-sentry-integration: Maintainer
       vsellier: Owner
     remove_extra_memberships: true
   teams/interns:
