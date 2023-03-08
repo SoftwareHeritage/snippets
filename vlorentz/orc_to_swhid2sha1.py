@@ -83,8 +83,12 @@ if PROCESSES is None:
 
     # Upper-round the number of processes to a multiple of the number of shards,
     # to evenly distribute the load
-    shards_per_process = len(shards) / PROCESSES
-    PROCESSES = int(len(shards) / math.floor(shards_per_process))
+    if PROCESSES > len(shards):
+        PROCESSES = len(shards)
+    else:
+        shards_per_process = len(shards) / PROCESSES
+        PROCESSES = int(len(shards) / math.floor(shards_per_process))
+
 
 print(
     f"Converting {len(shards)} shards from {input_dir} to "
