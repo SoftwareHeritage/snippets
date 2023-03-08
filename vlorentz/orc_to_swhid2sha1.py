@@ -1,6 +1,6 @@
 """
 Given the path to a directory containing .orc files for contents (eg. downloaded with
-``aws s3 cp -r s3://softwareheritage/graph/2022-04-25/orc/content/ ./content/``)
+``aws s3 sync s3://softwareheritage/graph/2022-04-25/orc/content/ ./content/``)
 and a destination path, writes ``.csv.zst`` files at the destination, with
 ``SWHID,sha1`` as header, usable as a map between both hashes.
 """
