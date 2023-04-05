@@ -56,6 +56,7 @@ groups:
   teams/interns:
     users:
       phabricator-migration: Owner
+      zom: Maintainer
     remove_extra_memberships: true
   teams/leadership:
     users:
