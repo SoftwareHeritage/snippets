@@ -25,6 +25,10 @@ response = s3.list_objects(
 )
 """
 
+#####################################################################################
+# Look at the inventory bucket to find the date of the latest inventory
+#####################################################################################
+
 paginator = s3.get_paginator("list_objects")
 pages = paginator.paginate(
     Bucket="softwareheritage-inventory",
@@ -44,6 +48,10 @@ last_inventory_date = datetime.date.fromisoformat(
 if datetime.date.today() - last_inventory_date > datetime.timedelta(days=10):
     print("Last inventory is older than 10 days:", last_inventory_dt)
 
+
+#####################################################################################
+# Request generation of a big CSV containing the last inventory, using Athena
+#####################################################################################
 
 query_string = f"""
 SELECT key FROM swhinventory.inventory WHERE dt='{last_inventory_dt}';
@@ -66,6 +74,14 @@ logging.info(
 
 # stats = athena.get_query_runtime_statistics(QueryExecutionId=result["QueryExecutionId"])
 # rows_count = stats["QueryRuntimeStatistics"]["Rows"]["OutputRows"]
+
+
+#####################################################################################
+# Download the CSV and pipe directly to GNU sort
+#####################################################################################
+
+# We have to use GNU sort instead of 'ORDER BY' in the Athena query, because Athena
+# times out.
 
 bucket, path = _s3_url_to_bucket_path(result["ResultConfiguration"]["OutputLocation"])
 
@@ -107,6 +123,12 @@ with tqdm.tqdm(
 assert buf == b"", buf
 
 sort_proc.stdin.close()
+
+
+#####################################################################################
+# Read the output of GNU sort, then convert hex digests to binary and write them
+# to the output file
+#####################################################################################
 
 HEX_SHA1_SIZE = 40
 LINE_SIZE = HEX_SHA1_SIZE + 1  # sha1 + \n
