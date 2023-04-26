@@ -51,7 +51,8 @@ type_to_obj_type = {
 def run(ctx, storage_url, track_renaming, verbose, rev_swhids):
     """From a given list of revision SWHIDS, provided as arguments or read from
     standard input line by line, output the list of files each of them modifies
-    in NDJSON format.
+    (equivalent to "git diff --stat", but without the detail of the number of
+    lines added/removed to each modified path) in NDJSON format.
 
     By default, output a list of modifications with their type (modify/insert/delete)
     and their modified path.
@@ -113,6 +114,7 @@ def run(ctx, storage_url, track_renaming, verbose, rev_swhids):
                     for rev_change in rev_changes
                 ]
             )
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":
