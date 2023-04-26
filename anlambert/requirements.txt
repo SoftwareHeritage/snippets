@@ -1,2 +1,5 @@
 click
+ndjson
 python-keycloak
+swh-model
+swh-storage
