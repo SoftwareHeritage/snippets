@@ -1,0 +1,36 @@
+goal|milestone|priority|lead|effort
+Collect|Add support for write APIs features in GraphQL |low|jayesh|??
+Collect|Tooling for takedown notices |high|lunar|??
+Collect|Automate add forge now |low|vsellier|??
+Collect|Minimize archival lag w.r.t. upstream code hosting platforms |medium|olasd|??
+Collect|Extend archive coverage |medium|ardumont|??
+Preserve|Explore possibility of replacing SHA1 with SHA1-DC |high|olasd|??
+Preserve|Regularly scrub journal, storage, and objstorage |medium|vlorentz|??
+Preserve|Publicly available standard for SWHID version 1 |high|rdicosmo|??
+Preserve|SWH Mirror at GRNET |medium|douardda|??
+Preserve|SWH Mirror at Duisburg-Essen university |low|douardda|??
+Preserve|SWH Mirror at ENEA |high|douardda|??
+Preserve|Mirrors tooling |high|douardda|??
+Preserve|Archive cold-copy at CINES via Vitam |medium|douardda|??
+Preserve|Support archiving repositories containing SHA1 hash conflicts on blobs |high|olasd|??
+Share|Propose Web UI sections for dedicated partner collections |medium|bchauvet|??
+Share|Create a cost-calculator in the Vault |medium|vlorentz|??
+Share|Publish derived datasets |medium|vlorentz|??
+Share|Collect and index forge metadata |high|vlorentz|3 PM
+Share|Evaluate the storage of indexed metadata in a triple-store  |medium|vlorentz|??
+Share|Release a first version of the swh-scanner product |high|bchauvet|??
+Share|Webhook-based notification for long-running user tasks |high|anlambert|??
+Share|Self-host Software Stories software stack |high|bchauvet|??
+Share|Design presentation of Metadata on Web UI |high|moranegg|??
+Documentation|Provide a landing page for docs.s.o |high|Lunar|??
+Technical debt|Setup efficient and consistent swh-storage pagination |high|jayesh|??
+Technical debt|Improve support for malformed git commits |high|vlorentz|??
+Tooling and infrastructure|Dynamic infrastructure |high|vsellier|2 PM
+Tooling and infrastructure|Use a common workflow management tool for swh-web |medium|lunar|??
+Tooling and infrastructure|Provide a management-friendly monitoring dashboard of services |high|vsellier|2PM
+Tooling and infrastructure|Provenance in production |high|douardda|??
+Tooling and infrastructure|Scale-out objstorage in production as primary objstorage |high|olasd|??
+Tooling and infrastructure|Cassandra in production as primary storage |high|vsellier|??
+Tooling and infrastructure|Design and test a Continuous Deployment infrastructure |medium|vsellier|??
+Tooling and infrastructure|Design and test next generation CI Automation |low|olasd|??
+Tooling and infrastructure|Graph export and graph compression in production |high|vlorentz|??

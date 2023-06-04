@@ -4,7 +4,7 @@
 Roadmap 2023
 ============
 
-(Version 1.0, last modified 2023-02-02)
+(Version 1.0, last modified 2023-03-17)
 
 This document provides an overview of the technical roadmap of the Software
 Heritage initiative for the year 2023.
@@ -24,9 +24,9 @@ Collect
 Add support for write APIs features in GraphQL 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/98>`__
-- Lead: ??
-- Priority: medium
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/98>`__
+- Lead: jayesh
+- Priority: low
 - Effort: ??
 
 **Description:**
@@ -43,17 +43,17 @@ Add support for write APIs in GraphQL (eg: an API for save code now) in order to
 - GraphQL coverage of 100% of the REST API in production
 
 
-Tooling for take-down notices 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Tooling for takedown notices 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/56>`__
-- Lead: Lunar
-- Priority: medium
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/56>`__
+- Lead: lunar
+- Priority: high
 - Effort: ??
 
 **Description:**
 
-Set up a workflow to handle take-down notice requests and improve automation capabilities of the sysadmin tools for take-down notices processing.
+Set up a workflow to handle takedown requests and improve automation capabilities of the sysadmin tools for takedown notices processing.
 
 **Includes work:**
 
@@ -61,20 +61,20 @@ Set up a workflow to handle take-down notice requests and improve automation cap
 - Implement workflow integration
 - Set up technical specification for sysadmin tooling
 - Implement missing sysadmin tools (verification and automation)
-- Create a sysadmin documentation for take-down notices
+- Create a sysadmin documentation for takedown notices
 
 **KPIs:**
 
-- Take-down notice handling integrated to swh-web
-- Automated sysadmin tools for take-down notices processing 
+- Takedown notice handling integrated to swh-web
+- Automated sysadmin tools for takedown notices processing 
 
 
 Automate add forge now 
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/54>`__
-- Lead: ??
-- Priority: medium
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/54>`__
+- Lead: vsellier
+- Priority: low
 - Effort: ??
 
 **Description:**
@@ -97,9 +97,9 @@ Set up automation capabilities on Add forge now to ease and facilitate the handl
 Minimize archival lag w.r.t. upstream code hosting platforms 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/53>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/53>`__
 - Lead: olasd
-- Priority: high
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -122,7 +122,7 @@ Make lag monitoring dashboards easy to find (for decision makers)
 Extend archive coverage 
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/52>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/52>`__
 - Lead: ardumont
 - Priority: medium
 - Effort: ??
@@ -147,12 +147,33 @@ Preserve
 --------
 
 
+Explore possibility of replacing SHA1 with SHA1-DC 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/112>`__
+- Lead: olasd
+- Priority: high
+- Effort: ??
+
+**Description:**
+
+Mainstream platforms like GitHub now use SHA1-DC
+
+**Includes work:**
+
+- Study implications of aligning with the SHA1-DC adoption
+ 
+**KPIs:**
+
+- Decision/blockers whether to move to SHA1-DC
+
+
 Regularly scrub journal, storage, and objstorage 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/103>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/103>`__
 - Lead: vlorentz
-- Priority: high
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -170,15 +191,15 @@ Set up background jobs to regularly check - and repair when necessary - data val
 
 - List of scrubbers deployed in production
 - Monitoring tools deployed in production
-- % of the archive scrubbed
+- Rolling report of operations per datastore including errors found and fixed at each iteration
 
 
 Publicly available standard for SWHID version 1 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/66>`__
-- Lead: ??
-- Priority: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/66>`__
+- Lead: rdicosmo
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -187,40 +208,43 @@ Publish a stable version of the SWHID version 1 specification, approved by a sta
 
 **Includes work:**
 
-- Validate ISO normalization for SWHID V1
+- Publish publicly available standard
+- Start ISO normalization for SWHID V1
 
 **KPIs:**
 
 - Published standard for SWHID version 1
 
 
-SWH Mirror at GRNet 
+SWH Mirror at GRNET 
 ^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/65>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/65>`__
 - Lead: douardda
-- Priority: ??
+- Priority: medium
 - Effort: ??
 
 **Description:**
 
-Collaborate with GRNet to create a SWH Mirror
+Collaborate with GRNET to create a SWH Mirror
 
 **Includes work:**
 
-- 
+- Guidance and contribution to GRNET architecture and infrastructure choices 
+- Specific developments if necessary (to be determined according to the chosen technical solutions)
+- Help to deployment
 
 **KPIs:**
 
-- SWH Mirror deployed on GRNet infrastructure
+- validated architecture and first POC
 
 
 SWH Mirror at Duisburg-Essen university 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/64>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/64>`__
 - Lead: douardda
-- Priority: ??
+- Priority: low
 - Effort: ??
 
 **Description:**
@@ -229,40 +253,22 @@ Collaborate with Duisburg-Essen university to create a SWH Mirror
 
 **Includes work:**
 
-- 
+- Guidance and contribution to UniDue architecture and infrastructure choices 
+- Specific developments if necessary (to be determined according to the chosen technical solutions)
+- Developments of tools for Winery replication (for Ceph-based object storage)
+- Help to deployment
 
 **KPIs:**
 
-- SWH Mirror deployed on Duisburg-Essen university infrastructure
-
-
-SWH Mirror at Snyk 
-^^^^^^^^^^^^^^^^^^^
-
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/63>`__
-- Lead: douardda
-- Priority: ??
-- Effort: ??
-
-**Description:**
-
-Collaborate with Snyk university to create a SWH Mirror
-
-**Includes work:**
-
-- 
-
-**KPIs:**
-
-- SWH Mirror deployed on Snyk infrastructure
+- validated architecture and first POC
 
 
 SWH Mirror at ENEA 
 ^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/62>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/62>`__
 - Lead: douardda
-- Priority: ??
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -271,19 +277,20 @@ Collaborate with ENEA to create a SWH Mirror
 
 **Includes work:**
 
-- 
+- Finalize object storage copy
+- Configure the stack for the mirror public deployment
 
 **KPIs:**
 
-- SWH Mirror deployed on ENEA infrastructure
+- SWH Mirror deployed on ENEA infrastructure and publicly available
 
 
 Mirrors tooling 
 ^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/61>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/61>`__
 - Lead: douardda
-- Priority: ??
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -294,6 +301,7 @@ Provide common features required the SWH mirrors
 
 - Set up feature flags on the web app and test modules activation/deactivation
 - Implement fallback mechanism for objstorage
+- Dedicated CI for the mirroring stack
 
 **KPIs:**
 
@@ -303,9 +311,9 @@ Provide common features required the SWH mirrors
 Archive cold-copy at CINES via Vitam 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/60>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/60>`__
 - Lead: douardda
-- Priority: ??
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -329,9 +337,9 @@ Maintain the copy up-to-date periodically (on a period TBD)
 Support archiving repositories containing SHA1 hash conflicts on blobs 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/58>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/58>`__
 - Lead: olasd
-- Priority: medium
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -344,6 +352,7 @@ Enable the possibility to use multiple hash types for objects checksums in order
 
 **KPIs:**
 
+- Multiple hash storage facility in production
 - Ability to archive git repos that contains sample SHAttered collisions blobs (they are currently detected and refused)
 
 
@@ -351,12 +360,33 @@ Share
 -----
 
 
+Propose Web UI sections for dedicated partner collections 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/113>`__
+- Lead: bchauvet
+- Priority: medium
+- Effort: ??
+
+**Description:**
+
+Design and test the creation of dedicated collections pages (list of origins associated to/provided by a partner)
+
+**Includes work:**
+
+- design a web ui feature for specific software collection (list of origins) based on custom criteria (intrinsic and/or extrinsic metadata)
+
+**KPIs:**
+
+- Specification and mockup for this feature
+
+
 Create a cost-calculator in the Vault 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/106>`__
-- Lead: ??
-- Priority: low
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/106>`__
+- Lead: vlorentz
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -377,9 +407,9 @@ Implement a cost-calculator feature in swh-vault in order to estimate the cost o
 Publish derived datasets 
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/94>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/94>`__
 - Lead: vlorentz
-- Priority: ??
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -400,14 +430,14 @@ Setup tools to automate the publication of derived datasets, and generate specif
 Collect and index forge metadata 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/91>`__
-- Lead: ??
-- Priority: ??
-- Effort: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/91>`__
+- Lead: vlorentz
+- Priority: high
+- Effort: 3 PM
 
 **Description:**
 
-Collect and index metadata from more forges and package managers in order to expand extrinsic metadata coverage.
+Collect and index metadata from more forges and package managers in order to expand metadata coverage.
 
 **Includes work:**
 
@@ -424,9 +454,9 @@ Collect and index metadata from more forges and package managers in order to exp
 Evaluate the storage of indexed metadata in a triple-store  
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/89>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/89>`__
 - Lead: vlorentz
-- Priority: ??
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -448,8 +478,8 @@ Therefore, I would like to try using a proper triple-store. [Virtuoso](https://v
 Release a first version of the swh-scanner product 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/72>`__
-- Lead: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/72>`__
+- Lead: bchauvet
 - Priority: high
 - Effort: ??
 
@@ -474,9 +504,9 @@ Industrialize and improve the swh-scanner CLI to provide a full-featured product
 Webhook-based notification for long-running user tasks 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/71>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/71>`__
 - Lead: anlambert
-- Priority: ??
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -485,6 +515,7 @@ Create a reusable event-based webhook architecture and implement it on adequate 
 
 **Includes work:**
 
+- Identify technical issues and design options
 - Specification and implementation of a standard core
 - Implementation for origin visit
 - Implementation for add forge now
@@ -500,10 +531,10 @@ Create a reusable event-based webhook architecture and implement it on adequate 
 Self-host Software Stories software stack 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/70>`__
-- Lead: ??
-- Priority: ??
-- Effort: 2PM
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/70>`__
+- Lead: bchauvet
+- Priority: high
+- Effort: ??
 
 **Description:**
 
@@ -517,30 +548,25 @@ Deploy a `Software Stories instance <https://github.com/ScienceStories/swh-stori
 - Establish the migration plan / redirection plan
 
 **KPIs:**
-- [ ] SWH stories site available
-- [ ] Documentation written
-- [ ] Current stories migrated to the SWH instance
-- [ ] Public software stories instance migrated to the SWH instance
-
-
-old KPIS:
-- Software stories app deployed in production on SWH infra
-- Content of current stories migrated to SWH instance
+- SWH stories site available
+- Documentation written
+- Current stories migrated to the SWH instance
+- Public software stories instance migrated to the SWH instance
 
 
 
 
-Show Metadata on Web UI 
-^^^^^^^^^^^^^^^^^^^^^^^^
+Design presentation of Metadata on Web UI 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/68>`__
-- Lead: vlorentz
-- Priority: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/68>`__
+- Lead: moranegg
+- Priority: high
 - Effort: ??
 
 **Description:**
 
-Show intrinsic and extrinsic metadata for any artifact on web UI and add linked data capabilities (Semantic Web solutions)
+Design presentation of intrinsic and extrinsic metadata for any artifact on web UI and add linked data capabilities (Semantic Web solutions)
 
 **Includes work:**
 
@@ -552,7 +578,7 @@ Show intrinsic and extrinsic metadata for any artifact on web UI and add linked 
 
 **KPIs:**
 
-- Amount/type of metadata accessible on Web UI
+- Specification and POC
 
 
 Documentation
@@ -562,7 +588,7 @@ Documentation
 Provide a landing page for docs.s.o 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/73>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/73>`__
 - Lead: Lunar
 - Priority: high
 - Effort: ??
@@ -588,9 +614,9 @@ Technical debt
 Setup efficient and consistent swh-storage pagination 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/96>`__
-- Lead: ??
-- Priority: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/96>`__
+- Lead: jayesh
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -611,12 +637,12 @@ Pagination in the data sources (eg storage) is not very consistent and client fr
 - Existing clients updated to use this solution
 
 
-Improve support for corrupt git commits 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Improve support for malformed git commits 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/92>`__
-- Lead: ??
-- Priority: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/92>`__
+- Lead: vlorentz
+- Priority: high
 - Effort: ??
 
 **Description:**
@@ -633,36 +659,6 @@ Improve the git loader to make it able to deal with edge-case commits that cause
 - ratio of crashes on commits ingestion by the git loader (before/after)
 
 
-Overhaul mail handling for @softwareheritage.org 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/88>`__
-- Lead: olasd
-- Priority: ??
-- Effort: ??
-
-**Description:**
-
-Revamp the mail handling tools to match the 2023 standards of deliverability, enable advance email service for features such as autoreplies and integrate the mailing list management to our own infrastructure.
-
-**Includes work:**
-
-- Evaluate and shortlist possible tools
-- Deploy and configure the chosen tool
-- Configure advanced email service
-- Migrate SWH mailing lists actually hosted by Inria
-
-**KPIs:**
-
-- proper outbound email setup with SPF and DKIM signing, personal SMTP accounts for staff members
-- proper inbound email setup with
-  - archiving/shared mailboxes for role accounts
-  - reliable forwarding out to personal email addresses and other services (e.g. GitLab)
-  - autoreplies on some role accounts
-  - bonus goal: own mailing list setup
-- Use a common (external/off-the-shelf) tool
-
-
 Tooling and infrastructure
 --------------------------
 
@@ -670,8 +666,8 @@ Tooling and infrastructure
 Dynamic infrastructure 
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/105>`__
-- Lead: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/105>`__
+- Lead: vsellier
 - Priority: high
 - Effort: 2 PM
 
@@ -683,17 +679,17 @@ Setup a dynamically scalable infrastructure for Software Heritage services
 
 - [X] Setup an elastic workers infrastructure
 - [X] Configure Kubernetes clusters
-- [ ] Monitoring/Alerting solution for container-based services
-- [ ] Ingest the logs of the dynamic components into the current elk infrastructure
+-  Monitoring/Alerting solution for container-based services
+-  Ingest the logs of the dynamic components into the current elk infrastructure
 
 **KPIs:**
 
-- [ ] Dashboard displaying the status of the dynamic components
-  - [ ] Number of listers running
-  - [ ] Number of loaders running
-  - [ ] RPC services status 
-- [ ] Logs ingested and correctly parsed in kibana
-- [ ] Clusters fully backuped
+-  Dashboard displaying the status of the dynamic components
+  -  Number of listers running
+  -  Number of loaders running
+  -  RPC services status 
+-  Logs ingested and correctly parsed in kibana
+-  Clusters fully backuped
 
 
 
@@ -701,9 +697,9 @@ Setup a dynamically scalable infrastructure for Software Heritage services
 Use a common workflow management tool for swh-web 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/100>`__
-- Lead: Lunar
-- Priority: high
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/100>`__
+- Lead: lunar
+- Priority: medium
 - Effort: ??
 
 **Description:**
@@ -724,9 +720,9 @@ Find and integrate a common workflow management tool in swh-web for future modul
 Provide a management-friendly monitoring dashboard of services 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/86>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/86>`__
 - Lead: vsellier
-- Priority: ??
+- Priority: high
 - Effort: 2PM
 
 **Description:**
@@ -741,45 +737,19 @@ Provide a high-level and easy to find dashboard of running services with documen
 
 **KPIs:**
 
-- [ ] Indicators available for public sites status
-- [ ] Indicators for archive workers status
-- [ ] Indicators for archive behavior
-- [ ] Main dashboard that aggregates the indicators
-- [ ] Dashboard referenced in common web applications
+-  Indicators available for public sites status
+-  Indicators for archive workers status
+-  Indicators for archive behavior
+-  Main dashboard that aggregates the indicators
+-  Dashboard referenced in common web applications
 
-
-
-User support ticket system and process 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/85>`__
-- Lead: ??
-- Priority: ??
-- Effort: ??
-
-**Description:**
-
-Create a user-facing ticket system to support user requests and bug reports (e.g., a support@ address that automatically create support tasks that we can triage and follow)
-
-Define the process to ensure some basic quality of service (e.g., time to first answer) and that pending tasks are not forgotten.
-
-**Includes work:**
-
-- Evaluate GitLab Service Desk features
-- If the choice of GitLab Service Desk is validated, configure it for relevant projects
-- Implement a web UI user support feature
-
-**KPIs:**
-
-- Automated ticket system deployed in production
-- User support feature available on web UI
 
 
 Provenance in production 
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/84>`__
-- Lead: ??
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/84>`__
+- Lead: douardda
 - Priority: high
 - Effort: ??
 
@@ -804,7 +774,7 @@ Publish swh-provenance services in production, including revision and origin lay
 Scale-out objstorage in production as primary objstorage 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/83>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/83>`__
 - Lead: olasd
 - Priority: high
 - Effort: ??
@@ -818,6 +788,7 @@ Have the Ceph-based objstorage for SWH (Winery) in production as primary storage
 - Deploy Ceph objstorage/Winery on CEA infrastructure
 - Benchmark Ceph-based objstorage
 - Switch to Ceph-based objstorage as primary storage
+- Handle Mirroring
 
 **KPIs:**
 
@@ -827,7 +798,7 @@ Have the Ceph-based objstorage for SWH (Winery) in production as primary storage
 Cassandra in production as primary storage 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/82>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/82>`__
 - Lead: vsellier
 - Priority: high
 - Effort: ??
@@ -838,32 +809,30 @@ Use Cassandra as primary storage in production, in replacement of PostgreSQL
 
 **Includes work:**
 
-- [ ] Finalize and validate the replayed data
-- [ ] Install the new bare metal servers for staging and production
-- [ ] Deploy a Cassandra-based production instance for tests
-- [ ] Benchmark the Cassandra infrastructure
-- [ ] Switch to Cassandra in production for primary storage
-- [ ] History of takedown notices applied in the cassandra dataset
+-  Finalize and validate the replayed data
+-  Install the new bare metal servers for staging and production
+-  Deploy a Cassandra-based production instance for tests
+-  Benchmark the Cassandra infrastructure
+-  Switch to Cassandra in production for primary storage
+-  History of takedown notices applied in the cassandra dataset
 
 **KPIs:**
 
-- [ ] Replayed data validated
-- [ ] Live staging archive instance in parallel of the legacy postgresql instance
-- [ ] Live production archive instance in parallel of the legacy postgresql instance
-- [ ] Cassandra primary storage in staging
-- [ ] Cassandra primary storage in production
+-  Replayed data validated
+-  Live staging archive instance in parallel of the legacy postgresql instance
+-  Live production archive instance in parallel of the legacy postgresql instance
+-  Cassandra primary storage in staging
+-  Cassandra primary storage in production
 
 
 
-Continuous Deployment 
-^^^^^^^^^^^^^^^^^^^^^^
+Design and test a Continuous Deployment infrastructure 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/80>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/80>`__
 - Lead: vsellier
-- Priority: ??
+- Priority: medium
 - Effort: ??
-
-[*imported from 2022 Roadmap, needs to be reviewed*]
 
 **Description:**
 
@@ -881,29 +850,24 @@ Set up a Continuous Deployment infrastructure in order to improve bug detection 
 
 **KPIs:**
 
-- [ ] Docker image build triggered by a new version deployed in pypi
-- [ ] Docker image build by the CI
-- [ ] Component versions updated by the CI
-- [ ] Automatically redeployed staging on new release
-- [ ] Staging / whatever environment testing before pushing to production
-
-**deliberately ignore production deployment because it's too early at this stage**
+-  Docker image build triggered by a new version deployed in pypi
+-  Docker image build by the CI
+-  Component versions updated by the CI
+-  Automatically redeployed staging on new release
+-  Staging / whatever environment testing before pushing to production
 
 
+Design and test next generation CI Automation 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
-
-Next generation CI Automation 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/79>`__
-- Lead: ??
-- Priority: medium
-- Effort: 1PM
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/79>`__
+- Lead: olasd
+- Priority: low
+- Effort: ??
 
 **Description:**
 
-Improve the actual Continuous Integration tools to match the infrastructure evolutions and provide more features
+Design and tests solutions in order to improve the actual Continuous Integration tools to match the infrastructure evolutions and provide more features
 
 **Includes work:**
 
@@ -913,19 +877,15 @@ Improve the actual Continuous Integration tools to match the infrastructure evol
 
 **KPIs:**
 
-- [ ] Gitlab CI used or tested in one or more sysadmin projects
-- [ ] Evaluation matrix (Pros/Cons) for a migration from jenkins to gitlab ci or other tool
-- [ ] Pros/Cons to deploy a code audit tool
-
-Old kpi:
-- New features deployed
-- Identified vulnerabilities or code smells thanks to analysis tools
+-  Gitlab CI used or tested in one or more sysadmin projects
+-  Evaluation matrix (Pros/Cons) for a migration from jenkins to gitlab ci or other tool
+-  Pros/Cons to deploy a code audit tool
 
 
 Graph export and graph compression in production 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- `View milestone in GitLab <https://gitlab.softwareheritage.org/groups/swh/-/milestones/59>`__
+- `Milestone: <https://gitlab.softwareheritage.org/groups/swh/-/milestones/59>`__
 - Lead: vlorentz
 - Priority: high
 - Effort: ??

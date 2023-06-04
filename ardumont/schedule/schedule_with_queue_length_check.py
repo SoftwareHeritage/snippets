@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2017-2022  The Software Heritage developers
+# Copyright (C) 2017 The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
 
-import click
 import sys
 import time
+from typing import Dict, Iterator, List, Optional
 
-from typing import Dict, Optional
-
+import click
 from swh.scheduler.celery_backend.config import app as main_app
-
 
 MAX_WAITING_TIME = 10
 
 
-def stdin_to_mercurial_tasks(batch_size):
+def create_task_arguments(args: List = [], kwargs: Dict = {}) -> Dict:
+    return {"arguments": {"args": args, "kwargs": kwargs}}
+
+
+def stdin_to_mercurial_tasks(batch_size: int) -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the
        loader-mercurial worker.
 
     Args:
-        batch_size (int): Not used
+        batch_size: Not used
 
     Yields:
         expected dictionary of 'arguments' key
@@ -32,24 +34,21 @@ def stdin_to_mercurial_tasks(batch_size):
     for line in sys.stdin:
         line = line.rstrip()
         origin_url, archive_path = line.split(" ")
-        yield {
-            "arguments": {
-                "args": [],
-                "kwargs": {
-                    "origin_url": origin_url,
-                    "archive_path": archive_path,
-                    "visit_date": "Tue, 3 May 2016 17:16:32 +0200",
-                },
-            },
-        }
+        yield create_task_arguments(
+            kwargs={
+                "origin_url": origin_url,
+                "archive_path": archive_path,
+                "visit_date": "Tue, 3 May 2016 17:16:32 +0200",
+            }
+        )
 
 
-def stdin_to_bitbucket_mercurial_tasks(batch_size):
+def stdin_to_bitbucket_mercurial_tasks(batch_size: int) -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the
        bitbucket loader-mercurial worker.
 
     Args:
-        batch_size (int): Not used
+        batch_size: Not used
 
     Yields:
         expected dictionary of 'arguments' key
@@ -59,24 +58,21 @@ def stdin_to_bitbucket_mercurial_tasks(batch_size):
         line = line.rstrip()
         origin_url, directory, visit_date_day, visit_date_hour = line.split(" ")
         visit_date = " ".join([visit_date_day, visit_date_hour])
-        yield {
-            "arguments": {
-                "args": [],
-                "kwargs": {
-                    "url": origin_url,
-                    "directory": directory,
-                    "visit_date": visit_date,
-                },
-            },
-        }
+        yield create_task_arguments(
+            kwargs={
+                "url": origin_url,
+                "directory": directory,
+                "visit_date": visit_date,
+            }
+        )
 
 
-def stdin_to_svn_tasks(batch_size, type="svn"):
+def stdin_to_svn_tasks(batch_size: int, type: str = "svn") -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the loader-svn
        worker.
 
     Args:
-        batch_size (int): Not used
+        batch_size: Not used
 
     Yields:
         expected dictionary of 'arguments' key
@@ -91,30 +87,20 @@ def stdin_to_svn_tasks(batch_size, type="svn"):
         }
         if type == "svn":
             kwargs.update(
-                {
-                    "svn_url": origin_url,
-                }
+                {"svn_url": origin_url,}
             )
         else:
             kwargs.update(
-                {
-                    "archive_path": path,
-                    "origin_url": origin_url,
-                }
+                {"archive_path": path, "origin_url": origin_url,}
             )
-        yield {
-            "arguments": {
-                "args": [],
-                "kwargs": kwargs,
-            },
-        }
+        yield create_task_arguments(kwargs=kwargs)
 
 
-def stdin_to_git_large_tasks(batch_size, type="git"):
+def stdin_to_git_large_tasks(batch_size: int, type: str = "git") -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the loader-git worker.
 
     Args:
-        batch_size (int): Not used
+        batch_size: Not used
 
     Yields:
         expected dictionary of 'arguments' key
@@ -122,25 +108,35 @@ def stdin_to_git_large_tasks(batch_size, type="git"):
     """
     for line in sys.stdin:
         origin_url = line.rstrip()
-        kwargs = {
-            "url": origin_url,
-            "lister_name": "github",
-            "lister_instance_name": "github",
-            "pack_size_bytes": 34359738368,
-        }
-        yield {
-            "arguments": {
-                "args": [],
-                "kwargs": kwargs,
-            },
-        }
+        kwargs = create_git_task_kwargs(origin_url)
+        kwargs.update(
+            {"pack_size_bytes": 34359738368,}
+        )
+
+        yield create_task_arguments(kwargs=kwargs)
 
 
-def stdin_to_git_normal_tasks(batch_size, type="git"):
+def create_git_task_kwargs(origin_url: str) -> Dict:
+    """Create simple git task kwargs from an origin_url.
+
+    """
+    kwargs = {
+        "url": origin_url,
+    }
+
+    if "github.com" in origin_url:
+        kwargs.update(
+            {"lister_name": "github", "lister_instance_name": "github",}
+        )
+
+    return kwargs
+
+
+def stdin_to_git_normal_tasks(batch_size: int, type: str = "git") -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the loader-git worker.
 
     Args:
-        batch_size (int): Not used
+        batch_size: Not used
 
     Yields:
         expected dictionary of 'arguments' key
@@ -148,20 +144,11 @@ def stdin_to_git_normal_tasks(batch_size, type="git"):
     """
     for line in sys.stdin:
         origin_url = line.rstrip()
-        kwargs = {
-            "url": origin_url,
-            "lister_name": "github",
-            "lister_instance_name": "github",
-        }
-        yield {
-            "arguments": {
-                "args": [],
-                "kwargs": kwargs,
-            },
-        }
+        kwargs = create_git_task_kwargs(origin_url)
+        yield create_task_arguments(kwargs=kwargs)
 
 
-def stdin_to_index_tasks(batch_size=1000):
+def stdin_to_index_tasks(batch_size: int = 1000) -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the orchestrator.
 
     Args:
@@ -175,9 +162,7 @@ def stdin_to_index_tasks(batch_size=1000):
         from swh.indexer.producer import gen_sha1
 
         for sha1s in gen_sha1(batch=batch_size):
-            yield {
-                "arguments": {"args": [sha1s], "kwargs": {}},
-            }
+            yield create_task_arguments(args=[sha1s])
     except ImportError:
         pass
 
@@ -189,9 +174,9 @@ def print_last_hash(arguments: Dict) -> None:
     """
     from swh.model.hashutil import hash_to_hex
 
-    l = arguments["args"]
-    if l:
-        print(hash_to_hex(l[0][-1]))
+    args = arguments["args"]
+    if args:
+        print(hash_to_hex(args[0][-1]))
 
 
 QUEUES = {
@@ -233,15 +218,15 @@ QUEUES = {
         "task_generator_fn": stdin_to_index_tasks,
         "print_fn": print_last_hash,
     },
-    "oneshot-large-git": {
-        "task_name": "oneshot2:swh.loader.git.tasks.UpdateGitRepository",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_git_large_tasks,
-        "print_fn": print,
-    },
     "oneshot-normal-git": {
         "task_name": "oneshot:swh.loader.git.tasks.UpdateGitRepository",
+        "threshold": 1000,
+        # to_task the function to use to transform the input in task
+        "task_generator_fn": stdin_to_git_normal_tasks,
+        "print_fn": print,
+    },
+    "oneshot-large-git": {
+        "task_name": "oneshot2:swh.loader.git.tasks.UpdateGitRepository",
         "threshold": 1000,
         # to_task the function to use to transform the input in task
         "task_generator_fn": stdin_to_git_large_tasks,
@@ -335,12 +320,7 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     # scheduling queue as checking queue
     queues_to_check = queue_information.get(
         "queues_to_check",
-        [
-            {
-                "task_name": task_name_without_prefix,
-                "threshold": threshold,
-            }
-        ],
+        [{"task_name": task_name_without_prefix, "threshold": threshold,}],
     )
 
     while True:
