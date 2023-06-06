@@ -1,5 +1,6 @@
 click
 ndjson
 python-keycloak
+requests
 swh-model
 swh-storage
