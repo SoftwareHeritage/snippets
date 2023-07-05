@@ -1,0 +1,74 @@
+@startuml
+
+package "Rocquencourt DC" as rocquencourt {
+    collections "Services SWH" as swhServices
+    interface "ipsec" as rocqIpSec
+    interface "ipsec?" as rocqPTCCIpSec
+}
+
+package "Inria DC?" as inriaDC {
+    collections "Gestion Moyens Calcul" as computeManagement
+
+    package "Plateforme PTCC" {
+        node "Périmètre SWH" as swhPerimeter {
+            collections "Compute SWH" as swhCompute
+            node "swh-graph" as swhGraph
+            storage "Storage SWH" as swhStorage
+            node "bastion?" as bastion {
+                interface "ipsec?" as ptccRocqIpSec
+            }
+        }
+        node "Périmètre Moyens de calcul INRIA" as inriaPerimeter {
+            collections "Compute recherche" as searchCompute
+        }
+
+        node "Périmètre PTCC" as ptccPerimeter {
+            node "Portail / API" as website
+            node "Federation d'identité" as SSO
+
+            website -> SSO
+        }
+    }
+}
+
+cloud "Azure" {
+    storage "Object storage" as azureStorage
+}
+
+package "CEA" as ceaDC {
+    storage "SWH stockage object" as ceaStorage
+    interface "ipsec" as ceaIpSec
+}
+
+ceaIpSec -up- rocqIpSec
+ceaStorage -left- ceaIpSec
+swhServices -- rocqIpSec
+ptccRocqIpSec -right-> swhGraph : refresh
+swhServices --> azureStorage : "Upload graph\net contenu"
+swhCompute -> ptccRocqIpSec : "get info"
+swhCompute -> azureStorage : "get contenu"
+swhCompute -> swhStorage : "Store Repo&Dataset"
+swhCompute -up-> swhGraph
+swhGraph -up-> azureStorage : refresh
+searchCompute -up-> swhStorage : "get repositories & datasets"
+
+actor "Chercheur" as searcher
+actor "Inria sysadmin" as inriaOps
+actor "SWH sysadmin" as swhOps
+actor "PTCC? sysadmin" as ptccOps
+
+searcher --> searchCompute : "experimentations"
+searcher --> website
+website --> computeManagement : "Reservation ressources"
+computeManagement --> searchCompute : "Create ressources"
+
+website --> swhCompute: "Prépare un dataset"
+
+swhOps -- swhPerimeter : "Administre"
+inriaOps -- inriaPerimeter : "Administre"
+ptccOps -- ptccPerimeter : "Administre"
+
+ptccRocqIpSec -- rocqPTCCIpSec
+rocqPTCCIpSec -- swhServices
+
+@enduml
