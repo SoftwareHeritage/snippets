@@ -10,71 +10,68 @@ __license__ = "GPL-3.0-or-later"
 import click
 import requests
 import json
+from gql import gql, Client
+from gql.transport.aiohttp import AIOHTTPTransport
 
-def get_dir_latest(origin_url,bearer_token):
+API_URL = "https://archive.softwareheritage.org/graphql/"
+
+
+def get_dir_latest(url, bearer_token):
     # GraphQL API endpoint
-    url = "https://archive.softwareheritage.org/graphql/"
-
     # GraphQL query with parameters for origin URL and number of commits
-    query = f"""
-         query getOriginEntries {{
-           origin(url: "{origin_url}") {{
-             url
-             latestVisit(requireSnapshot: true) {{
-               date
-               latestStatus(requireSnapshot: true, allowedStatuses: [full]) {{
-                 snapshot {{
-                   swhid
-                   branches(first: 10, nameInclude: "main", types: [revision]) {{
-                     pageInfo {{
-                       endCursor
-                       hasNextPage
-                     }}
-                     nodes {{
-                       name {{
-                         text
-                       }}
-                       target {{
-                         type
-                         node {{
-                           ... on Revision {{
-                             swhid
-                             directory {{
-                               swhid
-                             }}
-                           }}
-                         }}
-                       }}
-                     }}
-                   }}
-                 }}
-               }}
-             }}
-           }}
-         }}     
-    """
+    query = gql("""
+    query getOriginEntries($url: String!) {
+      origin(url: $url) {
+        url
+          latestSnapshot {
+            swhid
+            branches(first: 1, nameInclude: "HEAD") {
+              nodes {
+                name {
+                  text
+                }
+                target {
+                  resolveChain {
+                    text
+                  }
+                  node {
+                    ...on Revision {
+                      directory {
+                        swhid
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    }
+    """)
 
-    # Headers
     headers = {"Content-Type": "application/json"}
     if (bearer_token):
-        headers["Authorization"] = "Bearer "+bearer_token
-
-    # Request payload
-    payload = {"query": query}
-
-    # Send the POST request
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-    # Parse the JSON response
-    data = response.json()
-    
+        headers["Authorization"] = "Bearer " + bearer_token
+    transport = AIOHTTPTransport(
+        url=API_URL,
+        headers=headers
+    )
+    client = Client(
+        transport=transport,
+        fetch_schema_from_transport=False,
+    )
+    response = client.execute(query, {"url": url})
     # Extract the SWHIDs of the commits
-    directory = data["data"]["origin"]["latestVisit"]["latestStatus"]["snapshot"]["branches"]["nodes"][0]["target"]["node"]["directory"]
-    swhid = directory["swhid"]
+    branches = response["origin"]["latestSnapshot"]["branches"]["nodes"]
+    if len(branches) < 1:
+        print("Unable to identify the main branch for this origin")
+        return None
+    else:
+        directory = response["origin"]["latestSnapshot"]["branches"]["nodes"][0]["target"]["node"]["directory"]
+        swhid = directory["swhid"]
+        return swhid
 
-    return swhid
-
-# now return 
+# now return
 
 @click.command()
 @click.option('--url', prompt='Software origin URL', help='The URL of the software origin.')
