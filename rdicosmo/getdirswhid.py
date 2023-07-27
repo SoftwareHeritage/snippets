@@ -13,11 +13,10 @@ import json
 from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
 
+# GraphQL API endpoint
 API_URL = "https://archive.softwareheritage.org/graphql/"
 
-
 def get_dir_latest(url, bearer_token):
-    # GraphQL API endpoint
     # GraphQL query with parameters for origin URL and number of commits
     query = gql("""
     query getOriginEntries($url: String!) {
@@ -36,6 +35,7 @@ def get_dir_latest(url, bearer_token):
                   }
                   node {
                     ...on Revision {
+                      swhid
                       directory {
                         swhid
                       }
@@ -68,8 +68,12 @@ def get_dir_latest(url, bearer_token):
         return None
     else:
         directory = response["origin"]["latestSnapshot"]["branches"]["nodes"][0]["target"]["node"]["directory"]
-        swhid = directory["swhid"]
-        return swhid
+        dir_swhid = directory["swhid"]
+        snapshot =  response["origin"]["latestSnapshot"]
+        snp_swhid = snapshot["swhid"]
+        revision = response["origin"]["latestSnapshot"]["branches"]["nodes"][0]["target"]["node"]
+        rev_swhid=revision["swhid"]
+        return (dir_swhid,rev_swhid,snp_swhid)
 
 # now return
 
@@ -83,8 +87,13 @@ def get_dir_latest(url, bearer_token):
     show_default=True,
     help="bearer token to bypass SWH API rate limit",
 )
-def main(url,swh_bearer_token):
-    print(get_dir_latest(url,swh_bearer_token))
+@click.option('--nofqid',is_flag=True, help='Print core directory SWHID instead of fully qualified directory SWHID.')
+def main(url,swh_bearer_token,nofqid):
+    d,r,s=get_dir_latest(url,swh_bearer_token)
+    if nofqid:
+        print(d)
+    else:
+        print(f"{d};origin={url};visit={s};anchor={r}")
 
 if __name__ == '__main__':
     main()
