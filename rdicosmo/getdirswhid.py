@@ -11,7 +11,7 @@ import click
 import requests
 import json
 
-def get_dir_latest(origin_url):
+def get_dir_latest(origin_url,bearer_token):
     # GraphQL API endpoint
     url = "https://archive.softwareheritage.org/graphql/"
 
@@ -25,7 +25,7 @@ def get_dir_latest(origin_url):
                latestStatus(requireSnapshot: true, allowedStatuses: [full]) {{
                  snapshot {{
                    swhid
-                   branches(first: 1, types: [revision]) {{
+                   branches(first: 10, nameInclude: "main", types: [revision]) {{
                      pageInfo {{
                        endCursor
                        hasNextPage
@@ -56,6 +56,8 @@ def get_dir_latest(origin_url):
 
     # Headers
     headers = {"Content-Type": "application/json"}
+    if (bearer_token):
+        headers["Authorization"] = "Bearer "+bearer_token
 
     # Request payload
     payload = {"query": query}
@@ -65,7 +67,7 @@ def get_dir_latest(origin_url):
 
     # Parse the JSON response
     data = response.json()
-
+    
     # Extract the SWHIDs of the commits
     directory = data["data"]["origin"]["latestVisit"]["latestStatus"]["snapshot"]["branches"]["nodes"][0]["target"]["node"]["directory"]
     swhid = directory["swhid"]
@@ -76,9 +78,16 @@ def get_dir_latest(origin_url):
 
 @click.command()
 @click.option('--url', prompt='Software origin URL', help='The URL of the software origin.')
-
-def main(url):
-    print(get_dir_latest(url))
+@click.option(
+    "-a",
+    "--swh-bearer-token",
+    default="",
+    metavar="SWHTOKEN",
+    show_default=True,
+    help="bearer token to bypass SWH API rate limit",
+)
+def main(url,swh_bearer_token):
+    print(get_dir_latest(url,swh_bearer_token))
 
 if __name__ == '__main__':
     main()
