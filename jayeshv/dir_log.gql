@@ -1,0 +1,27 @@
+query getOriginEntries {
+  origin(url: "https://github.com/Leaflet/Leaflet") {
+    latestSnapshot {
+      branches(first: 1, nameInclude: "HEAD") {
+        nodes {
+          target {
+            node {
+              ... on Revision {
+                swhid
+                revisionLog(first: 12) {
+                  nodes {
+                    date {
+                      date
+                    }
+                    directory {
+                      swhid
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
