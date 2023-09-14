@@ -27,6 +27,8 @@ FOUND_DB = 2
 NOT_FOUND_DB = 3
 # The DB for the objects with a wrong recomputed hash
 WRONG_HASH_DB = 4
+# The DB for the objects with another error (deserialization, ...)
+ERROR_DB = 9
 
 cli = WebAPIClient(api_url=API_URL, bearer_token=API_TOKEN)
 
@@ -54,7 +56,14 @@ while True:
     print(f"cursor={cursor} keys={len(keys)}")
 
     pos += len(keys)
-    checked = cli.known(keys)
+    # print(f"keys: {keys}")
+    try:
+        checked = cli.known(keys)
+    except Exception as e:
+        print(e)
+        print(f"keys: {keys}")
+        exit(1)
+
 
     # breakpoint()
     print(f"storage reply received, checking the entries")
@@ -85,7 +94,12 @@ while True:
                 print(f"unsupported {swhid}")
 
             if model_converter:
-                object_as_model = model_converter.from_dict(object_as_dict)
+                try:
+                    object_as_model = model_converter.from_dict(object_as_dict)
+                except Exception as e:
+                    print(f"Error deserializing {key}: {e}")
+                    reported.move(key, ERROR_DB)
+                    continue
 
                 computed_hash = object_as_model.compute_hash()
 
