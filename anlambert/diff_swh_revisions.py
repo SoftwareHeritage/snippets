@@ -5,6 +5,7 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import difflib
 import sys
 
 import click
@@ -29,6 +30,13 @@ type_to_obj_type = {
     help="SWH storage service URL",
 )
 @click.option(
+    "--with-content-diffs",
+    default=False,
+    is_flag=True,
+    show_default=True,
+    help="Compute diffs of modified files and add them in output",
+)
+@click.option(
     "--verbose",
     default=False,
     is_flag=True,
@@ -48,7 +56,7 @@ type_to_obj_type = {
 )
 @click.argument("rev_swhids", nargs=-1, required=False)
 @click.pass_context
-def run(ctx, storage_url, track_renaming, verbose, rev_swhids):
+def run(ctx, storage_url, with_content_diffs, track_renaming, verbose, rev_swhids):
     """From a given list of revision SWHIDS, provided as arguments or read from
     standard input line by line, output the list of files each of them modifies
     (equivalent to "git diff --stat", but without the detail of the number of
@@ -102,18 +110,38 @@ def run(ctx, storage_url, track_renaming, verbose, rev_swhids):
             if rev_change["to_path"]:
                 rev_change["to_path"] = rev_change["to_path"].decode("utf-8", "replace")
 
+            rev_change["diff"] = None
+
+            if with_content_diffs and rev_change["type"] == "modify":
+                from_sha1 = rev_change["from"]["sha1"]
+                to_sha1 = rev_change["to"]["sha1"]
+                from_bytes = storage.content_get_data(from_sha1)
+                to_bytes = storage.content_get_data(to_sha1)
+                from_lines = from_bytes.decode("utf-8", "replace")
+                to_lines = to_bytes.decode("utf-8", "replace")
+                diff_lines = difflib.unified_diff(
+                    from_lines.splitlines(keepends=True),
+                    to_lines.splitlines(keepends=True),
+                    fromfile=rev_change["from_path"],
+                    tofile=rev_change["to_path"],
+                )
+                diff_str = "".join(diff_lines)
+                rev_change["diff"] = diff_str
+
         if verbose or track_renaming:
             writer.writerow(rev_changes)
         else:
-            writer.writerow(
-                [
+            row = []
+            for rev_change in rev_changes:
+                row.append(
                     {
                         "type": rev_change["type"],
                         "path": rev_change["to_path"] or rev_change["from_path"],
                     }
-                    for rev_change in rev_changes
-                ]
-            )
+                )
+                if with_content_diffs:
+                    row[-1]["diff"] = rev_change["diff"]
+            writer.writerow(row)
         sys.stdout.flush()
 
 
