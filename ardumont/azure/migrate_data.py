@@ -3,6 +3,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+"""Tools to migrate old vault gzip blobs (in a given blobstorage) by unzipping the blobs
+and push them to another blobstorage.
+
+"""
+
 import click
 import gzip
 import yaml
@@ -17,15 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_CONFIG_FILE = "~/.config/swh-azure/config.yaml"
+# Expected format of the configuration file:
+# account_name: accountnamewithoutseparator
+# account_key: accountkey
+# src_container_name: container-name
+# dst_container_name: other-container-name
 
 AZURE_CONNECTION_STRING = """DefaultEndpointsProtocol=https;\
 AccountName={account_name};\
 AccountKey={account_key};\
 BlobEndpoint={blob_endpoint};"""
-
-
-SRC_CONTAINER_NAME = "contents"
-DST_CONTAINER_NAME = f"{SRC_CONTAINER_NAME}-uncompressed"
 
 
 @click.command()
@@ -54,18 +60,23 @@ def migrate(config_file, already_migrated_hashes_file, debug):
 
     account_name = config["account_name"]
     account_key = config["account_key"]
+    src_container_name = config["src_container_name"]
+    dst_container_name = config["dst_container_name"]
     blob_endpoint = f"https://{account_name}.blob.core.windows.net/"
 
     conn_str = AZURE_CONNECTION_STRING.format(account_name=account_name,
                                               account_key=account_key,
                                               blob_endpoint=blob_endpoint)
 
-    src_container_client = Client.from_connection_string(conn_str, SRC_CONTAINER_NAME)
-    dst_container_client = Client.from_connection_string(conn_str, DST_CONTAINER_NAME)
+    src_container_client = Client.from_connection_string(conn_str, src_container_name)
+    dst_container_client = Client.from_connection_string(conn_str, dst_container_name)
 
     hash_already_migrated = hash_already_migrated if hash_already_migrated else set()
     count = 0
-    for blob in src_container_client.list_blobs():
+
+    all_blobs = src_container_client.list_blobs()
+
+    for blob in all_blobs:
         count += 1
         if blob.name in hash_already_migrated:
             # Skipping already pushed blob
@@ -73,7 +84,7 @@ def migrate(config_file, already_migrated_hashes_file, debug):
         try:
             blob_data = src_container_client.download_blob(blob)
             logger.debug("Push uncompress blob <%s> in container <%s>",
-                         blob.name, DST_CONTAINER_NAME)
+                         blob.name, dst_container_name)
             dst_container_client.upload_blob(blob, gzip.decompress(blob_data.readall()))
             # Output what's been migrated so it can be flushed in a file for ulterior
             # runs
@@ -85,6 +96,7 @@ def migrate(config_file, already_migrated_hashes_file, debug):
         hash_already_migrated.add(blob.name)
 
     assert count != len(hash_already_migrated)
+
 
 if __name__ == "__main__":
     logging.basicConfig()
