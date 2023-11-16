@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# SPDX-FileCopyrightText: 2020-2023 Stefano Zacchiroli <zack@upsilon.cc>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+API_URL="https://archive.internal.softwareheritage.org/api/1"
+
+if [ -z "$1" ] ; then
+    echo "Error: missing SWHID argument"
+    echo "Usage: swh-whereis SWHID"
+    echo "Example: swh-whereis swh:1:rev:6ff48b43dc4e164d5dc0464e3e13048dc3ba757d"
+    exit 1
+fi
+SWHID="$1"
+
+api_request="${API_URL}/graph/leaves/${SWHID}/?direction=backward&resolve_origins=true"
+# api_request="${API_URL}/graph/randomwalk/${SWHID}/ori/?direction=backward&resolve_origins=true&limit=-1"
+
+curl --silent --fail --location "$api_request"
+
+rc="$?"
+if [ "$rc" -ne 0 ] ; then
+    echo "Error: API request failed with curl exit code: ${rc}."
+    echo "Details: requested URL was ${api_request}"
+    exit "$rc"
+fi
