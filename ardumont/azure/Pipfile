@@ -9,3 +9,5 @@ ipython = "*"
 
 [packages]
 azure-storage-blob = "*"
+click = "*"
+pyyaml = "*"
