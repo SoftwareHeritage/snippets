@@ -92,7 +92,10 @@ def migrate(config_file, path_files_to_migrate, already_migrated_files, limit, d
             assert blob_path.exists()
             count += 1
             blob_path_str = blob_path.as_posix()
-            blob_filename = blob_path_str.lstrip(path_files_to_migrate)
+            if path_files_to_migrate in blob_path_str:
+                blob_filename = blob_path_str.lstrip(path_files_to_migrate)
+            else:
+                blob_filename = blob_path_str
             if blob_path.exists() and blob_filename in already_migrated:
                 # Skipping already pushed blob
                 continue
