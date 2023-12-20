@@ -1,36 +1,36 @@
-goal|milestone|priority|lead|effort
-Collect|Add support for write APIs features in GraphQL |low|jayesh|??
-Collect|Tooling for takedown notices |high|lunar|??
-Collect|Automate add forge now |low|vsellier|??
-Collect|Minimize archival lag w.r.t. upstream code hosting platforms |medium|olasd|??
-Collect|Extend archive coverage |medium|ardumont|??
-Preserve|Explore possibility of replacing SHA1 with SHA1-DC |high|olasd|??
-Preserve|Regularly scrub journal, storage, and objstorage |medium|vlorentz|??
-Preserve|Publicly available standard for SWHID version 1 |high|rdicosmo|??
-Preserve|SWH Mirror at GRNET |medium|douardda|??
-Preserve|SWH Mirror at Duisburg-Essen university |low|douardda|??
-Preserve|SWH Mirror at ENEA |high|douardda|??
-Preserve|Mirrors tooling |high|douardda|??
-Preserve|Archive cold-copy at CINES via Vitam |medium|douardda|??
-Preserve|Support archiving repositories containing SHA1 hash conflicts on blobs |high|olasd|??
-Share|Propose Web UI sections for dedicated partner collections |medium|bchauvet|??
-Share|Create a cost-calculator in the Vault |medium|vlorentz|??
-Share|Publish derived datasets |medium|vlorentz|??
-Share|Collect and index forge metadata |high|vlorentz|3 PM
-Share|Evaluate the storage of indexed metadata in a triple-store  |medium|vlorentz|??
-Share|Release a first version of the swh-scanner product |high|bchauvet|??
-Share|Webhook-based notification for long-running user tasks |high|anlambert|??
-Share|Self-host Software Stories software stack |high|bchauvet|??
-Share|Design presentation of Metadata on Web UI |high|moranegg|??
-Documentation|Provide a landing page for docs.s.o |high|Lunar|??
-Technical debt|Setup efficient and consistent swh-storage pagination |high|jayesh|??
-Technical debt|Improve support for malformed git commits |high|vlorentz|??
-Tooling and infrastructure|Dynamic infrastructure |high|vsellier|2 PM
-Tooling and infrastructure|Use a common workflow management tool for swh-web |medium|lunar|??
-Tooling and infrastructure|Provide a management-friendly monitoring dashboard of services |high|vsellier|2PM
-Tooling and infrastructure|Provenance in production |high|douardda|??
-Tooling and infrastructure|Scale-out objstorage in production as primary objstorage |high|olasd|??
-Tooling and infrastructure|Cassandra in production as primary storage |high|vsellier|??
-Tooling and infrastructure|Design and test a Continuous Deployment infrastructure |medium|vsellier|??
-Tooling and infrastructure|Design and test next generation CI Automation |low|olasd|??
-Tooling and infrastructure|Graph export and graph compression in production |high|vlorentz|??
+goal,milestone,priority,lead
+Collect,Collect and index forge metadata ,1 – High,vlorentz
+Collect,Tooling for takedown notices ,1 – High,lunar
+Preserve,Explore possibility of replacing SHA1 with SHA1-DC ,1 – High,olasd
+Preserve,Publicly available standard for SWHID version 1 ,1 – High,rdicosmo
+Preserve,SWH Mirror at ENEA ,1 – High,douardda
+Preserve,Mirrors tooling ,1 – High,douardda
+Preserve,Support archiving repositories containing SHA1 hash conflicts on blobs ,1 – High,olasd
+Share,Release a first version of the swh-scanner product ,1 – High,bchauvet
+Share,Webhook-based notification for long-running user tasks ,1 – High,anlambert
+Share,Self-host Software Stories software stack ,1 – High,bchauvet
+Share,Design presentation of Metadata on Web UI ,1 – High,moranegg
+Documentation,Provide a landing page for docs.s.o ,1 – High,Lunar
+Technical debt,Setup efficient and consistent swh-storage pagination ,1 – High,jayesh
+Technical debt,Improve support for malformed git commits ,1 – High,vlorentz
+Tooling and infrastructure,Dynamic infrastructure ,1 – High,vsellier
+Tooling and infrastructure,Provide a management-friendly monitoring dashboard of services ,1 – High,vsellier
+Tooling and infrastructure,Provenance in production ,1 – High,douardda
+Tooling and infrastructure,Scale-out objstorage in production as primary objstorage ,1 – High,olasd
+Tooling and infrastructure,Cassandra in production as primary storage ,1 – High,vsellier
+Tooling and infrastructure,Graph export and graph compression in production ,1 – High,vlorentz
+Collect,Minimize archival lag w.r.t. upstream code hosting platforms ,2 – Medium,olasd
+Collect,Extend archive coverage ,2 – Medium,ardumont
+Preserve,Regularly scrub journal storage and objstorage,2 – Medium,vlorentz
+Preserve,SWH Mirror at GRNET ,2 – Medium,douardda
+Preserve,Archive cold-copy at CINES via Vitam ,2 – Medium,douardda
+Share,Propose Web UI sections for dedicated partner collections ,2 – Medium,bchauvet
+Share,Create a cost-calculator in the Vault ,2 – Medium,vlorentz
+Share,Publish derived datasets ,2 – Medium,vlorentz
+Share,Evaluate the storage of indexed metadata in a triple-store  ,2 – Medium,vlorentz
+Tooling and infrastructure,Use a common workflow management tool for swh-web ,2 – Medium,lunar
+Tooling and infrastructure,Design and test a Continuous Deployment infrastructure ,2 – Medium,vsellier
+Collect,Add support for write APIs features in GraphQL ,3 – Low,jayesh
+Collect,Automate add forge now ,3 – Low,vsellier
+Preserve,SWH Mirror at Duisburg-Essen university ,3 – Low,douardda
+Tooling and infrastructure,Design and test next generation CI Automation ,3 – Low,olasd
