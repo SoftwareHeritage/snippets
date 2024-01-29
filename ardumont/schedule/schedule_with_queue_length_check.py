@@ -87,11 +87,16 @@ def stdin_to_svn_tasks(batch_size: int, type: str = "svn") -> Iterator[Dict]:
         }
         if type == "svn":
             kwargs.update(
-                {"svn_url": origin_url,}
+                {
+                    "svn_url": origin_url,
+                }
             )
         else:
             kwargs.update(
-                {"archive_path": path, "origin_url": origin_url,}
+                {
+                    "archive_path": path,
+                    "origin_url": origin_url,
+                }
             )
         yield create_task_arguments(kwargs=kwargs)
 
@@ -110,8 +115,9 @@ def stdin_to_git_large_tasks(batch_size: int, type: str = "git") -> Iterator[Dic
         origin_url = line.rstrip()
         kwargs = create_git_task_kwargs(origin_url)
         kwargs.update(
-            { "pack_size_bytes": 34359738368,
-              "verify_certs": False,
+            {
+                "pack_size_bytes": 34359738368,
+                "verify_certs": False,
             }
         )
 
@@ -119,9 +125,7 @@ def stdin_to_git_large_tasks(batch_size: int, type: str = "git") -> Iterator[Dic
 
 
 def create_git_task_kwargs(origin_url: str) -> Dict:
-    """Create simple git task kwargs from an origin_url.
-
-    """
+    """Create simple git task kwargs from an origin_url."""
     kwargs = {
         "url": origin_url,
         "verify_certs": False,
@@ -129,7 +133,10 @@ def create_git_task_kwargs(origin_url: str) -> Dict:
 
     if "github.com" in origin_url:
         kwargs.update(
-            {"lister_name": "github", "lister_instance_name": "github",}
+            {
+                "lister_name": "github",
+                "lister_instance_name": "github",
+            }
         )
 
     return kwargs
