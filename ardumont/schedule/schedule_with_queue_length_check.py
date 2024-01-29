@@ -6,242 +6,107 @@
 # See top-level LICENSE file for more information
 
 
+from functools import partial
+import os
 import sys
 import time
-from typing import Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import click
+
+from swh.core import config
+from swh.scheduler import DEFAULT_CONFIG, get_scheduler
 from swh.scheduler.celery_backend.config import app as main_app
+from swh.scheduler.cli.utils import parse_options
 
 MAX_WAITING_TIME = 10
 
 
-def create_task_arguments(args: List = [], kwargs: Dict = {}) -> Dict:
-    return {"arguments": {"args": args, "kwargs": kwargs}}
+def create_task_arguments(args: Tuple = (), kwargs: Dict = {}) -> Dict:
+    return {"args": args, "kwargs": kwargs}
 
 
-def stdin_to_mercurial_tasks(batch_size: int) -> Iterator[Dict]:
-    """Generates from stdin the proper task argument for the
-       loader-mercurial worker.
-
-    Args:
-        batch_size: Not used
-
-    Yields:
-        expected dictionary of 'arguments' key
-
-    """
-    for line in sys.stdin:
-        line = line.rstrip()
-        origin_url, archive_path = line.split(" ")
-        yield create_task_arguments(
-            kwargs={
-                "origin_url": origin_url,
-                "archive_path": archive_path,
-                "visit_date": "Tue, 3 May 2016 17:16:32 +0200",
-            }
-        )
+def lines_to_task_args(
+    lines: Iterable[str],
+    columns: List[str] = ["url"],
+    postprocess: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
+    **kwargs,
+) -> Iterator[Dict[str, Any]]:
+    for line in lines:
+        values = line.strip().split()
+        ret = dict(zip(columns, values))
+        ret.update(kwargs)
+        if postprocess:
+            ret = postprocess(ret)
+        yield create_task_arguments(kwargs=ret)
 
 
-def stdin_to_bitbucket_mercurial_tasks(batch_size: int) -> Iterator[Dict]:
-    """Generates from stdin the proper task argument for the
-       bitbucket loader-mercurial worker.
-
-    Args:
-        batch_size: Not used
-
-    Yields:
-        expected dictionary of 'arguments' key
-
-    """
-    for line in sys.stdin:
-        line = line.rstrip()
-        origin_url, directory, visit_date_day, visit_date_hour = line.split(" ")
-        visit_date = " ".join([visit_date_day, visit_date_hour])
-        yield create_task_arguments(
-            kwargs={
-                "url": origin_url,
-                "directory": directory,
-                "visit_date": visit_date,
-            }
-        )
+stdin_to_mercurial_tasks = partial(
+    lines_to_task_args, lines=sys.stdin, columns=["origin_url", "archive_path"]
+)
+stdin_to_bitbucket_mercurial_tasks = partial(
+    lines_to_task_args, lines=sys.stdin, columns=["url", "directory", "visit_date"]
+)
 
 
-def stdin_to_svn_tasks(batch_size: int, type: str = "svn") -> Iterator[Dict]:
+def stdin_to_svn_tasks(type: str = "svn", **kwargs) -> Iterator[Dict]:
     """Generates from stdin the proper task argument for the loader-svn
        worker.
 
-    Args:
-        batch_size: Not used
-
     Yields:
         expected dictionary of 'arguments' key
 
     """
-    for line in sys.stdin:
-        line = line.rstrip()
-        origin_url, path = line.split(" ")
-        kwargs = {
-            "visit_date": "Tue, 3 May 2016 17:16:32 +0200",
-            "start_from_scratch": True,
-        }
-        if type == "svn":
-            kwargs.update(
-                {
-                    "svn_url": origin_url,
-                }
-            )
-        else:
-            kwargs.update(
-                {
-                    "archive_path": path,
-                    "origin_url": origin_url,
-                }
-            )
-        yield create_task_arguments(kwargs=kwargs)
-
-
-def stdin_to_git_large_tasks(batch_size: int, type: str = "git") -> Iterator[Dict]:
-    """Generates from stdin the proper task argument for the loader-git worker.
-
-    Args:
-        batch_size: Not used
-
-    Yields:
-        expected dictionary of 'arguments' key
-
-    """
-    for line in sys.stdin:
-        origin_url = line.rstrip()
-        kwargs = create_git_task_kwargs(origin_url)
-        kwargs.update(
-            {
-                "pack_size_bytes": 34359738368,
-                "verify_certs": False,
-            }
+    if type == "svn":
+        yield from lines_to_task_args(lines=sys.stdin, columns=["url"], **kwargs)
+    else:
+        yield from lines_to_task_args(
+            lines=sys.stdin,
+            columns=["origin_url", "archive_path"],
+            **kwargs,
         )
 
-        yield create_task_arguments(kwargs=kwargs)
 
+def update_git_task_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Create simple git task kwargs from an url."""
 
-def create_git_task_kwargs(origin_url: str) -> Dict:
-    """Create simple git task kwargs from an origin_url."""
-    kwargs = {
-        "url": origin_url,
-        "verify_certs": False,
-    }
+    ret = kwargs.copy()
 
-    if "github.com" in origin_url:
-        kwargs.update(
+    if "github.com" in ret["url"]:
+        ret.update(
             {
                 "lister_name": "github",
                 "lister_instance_name": "github",
             }
         )
 
-    return kwargs
+    return ret
 
 
-def stdin_to_git_normal_tasks(batch_size: int, type: str = "git") -> Iterator[Dict]:
-    """Generates from stdin the proper task argument for the loader-git worker.
-
-    Args:
-        batch_size: Not used
-
-    Yields:
-        expected dictionary of 'arguments' key
-
-    """
-    for line in sys.stdin:
-        origin_url = line.rstrip()
-        kwargs = create_git_task_kwargs(origin_url)
-        yield create_task_arguments(kwargs=kwargs)
+stdin_to_git_normal_tasks = partial(
+    lines_to_task_args,
+    lines=sys.stdin,
+    columns=["url"],
+    postprocess=update_git_task_kwargs,
+)
 
 
-def stdin_to_index_tasks(batch_size: int = 1000) -> Iterator[Dict]:
-    """Generates from stdin the proper task argument for the orchestrator.
+stdin_to_git_large_tasks = partial(
+    stdin_to_git_normal_tasks,
+    pack_size_bytes=34359738368,
+    verify_certs=False,
+)
 
-    Args:
-        batch_size (int): Number of sha1s to group together
-
-    Yields:
-        expected dictionary of 'arguments' key
-
-    """
-    try:
-        from swh.indexer.producer import gen_sha1
-
-        for sha1s in gen_sha1(batch=batch_size):
-            yield create_task_arguments(args=[sha1s])
-    except ImportError:
-        pass
-
-
-def print_last_hash(arguments: Dict) -> None:
-    """Given a dict of arguments, take the sha1s list, print the last
-    element as hex hash.
-
-    """
-    from swh.model.hashutil import hash_to_hex
-
-    args = arguments["args"]
-    if args:
-        print(hash_to_hex(args[0][-1]))
-
-
-QUEUES = {
-    "svndump": {  # for svn, we use the same queue for length checking
-        # and scheduling
-        "task_name": "swh.loader.svn.tasks.MountAndLoadSvnRepository",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": (lambda b: stdin_to_svn_tasks(b, type="dump")),
-        "print_fn": print,
-    },
-    "svn": {  # for svn, we use the same queue for length checking
-        # and scheduling
-        "task_name": "swh.loader.svn.tasks.LoadSvnRepository",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_svn_tasks,
-        "print_fn": print,
-    },
-    "mercurial": {  # for mercurial, we use the same queue for length
-        # checking and scheduling
-        "task_name": "swh.loader.mercurial.tasks.LoadArchiveMercurial",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_mercurial_tasks,
-        "print_fn": print,
-    },
-    "bitbucket-mercurial": {
-        "task_name": "oneshot:swh.loader.mercurial.tasks.LoadMercurial",
-        "threshold": None,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_bitbucket_mercurial_tasks,
-        "print_fn": print,
-    },
-    "indexer": {  # for indexer, we schedule using the orchestrator's queue
-        # we check the length on the mimetype queue though
-        "task_name": "swh.indexer.tasks.OrchestratorAllContents",
-        "threshold": 1000,
-        "task_generator_fn": stdin_to_index_tasks,
-        "print_fn": print_last_hash,
-    },
-    "oneshot-normal-git": {
-        "task_name": "oneshot:swh.loader.git.tasks.UpdateGitRepository",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_git_normal_tasks,
-        "print_fn": print,
-    },
-    "oneshot-large-git": {
-        "task_name": "large_repository:swh.loader.git.tasks.UpdateGitRepository",
-        "threshold": 1000,
-        # to_task the function to use to transform the input in task
-        "task_generator_fn": stdin_to_git_large_tasks,
-        "print_fn": print,
-    },
+ARGS_GENERATORS = {
+    "load-svn-dump": partial(stdin_to_svn_tasks, type="dump"),
+    "load-svn": stdin_to_svn_tasks,
+    "load-mercurial-archive": partial(
+        stdin_to_mercurial_tasks,
+        visit_date="Tue, 3 May 2016 17:16:32 +0200",
+    ),
+    "load-mercurial": stdin_to_bitbucket_mercurial_tasks,
+    "load-git-normal": stdin_to_git_normal_tasks,
+    "load-git-large": stdin_to_git_large_tasks,
 }
 
 
@@ -264,15 +129,9 @@ def queue_length_get(app, queue_name: str) -> Optional[int]:
 
 
 @click.command(help="Read from stdin and send message to queue ")
-@click.option("--queue-name", help="Queue concerned", type=click.Choice(QUEUES))
+@click.option("--queue-name-prefix", help="Prefix to add to the queue name if needed")
 @click.option(
     "--threshold", help="Threshold for the queue", type=click.INT, default=1000
-)
-@click.option(
-    "--batch-size",
-    help="Batch size if batching is possible",
-    type=click.INT,
-    default=1000,
 )
 @click.option(
     "--waiting-time",
@@ -280,22 +139,59 @@ def queue_length_get(app, queue_name: str) -> Optional[int]:
     type=click.INT,
     default=MAX_WAITING_TIME,
 )
-def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
-    if queue_name not in QUEUES:
-        raise ValueError("Unsupported %s, possible values: %s" % (queue_name, QUEUES))
+@click.option("--dry-run", is_flag=True)
+@click.argument(
+    "task_type",
+    nargs=1,
+    required=True,
+)
+@click.argument(
+    "options",
+    nargs=-1,
+)
+@click.pass_context
+def main(
+    ctx,
+    queue_name_prefix,
+    threshold,
+    waiting_time,
+    dry_run,
+    task_type,
+    options,
+    app=main_app,
+):
+    conf = config.read(os.environ["SWH_CONFIG_FILENAME"], DEFAULT_CONFIG)
+    if "scheduler" not in conf:
+        ctx.fail("scheduler config missing")
 
-    for module in app.conf.CELERY_IMPORTS:
-        __import__(module)
+    scheduler = get_scheduler(**conf["scheduler"])
 
-    queue_information = QUEUES[queue_name]
-    task_name = queue_information["task_name"]
-    if ":" in task_name:
-        task_name_without_prefix = task_name.split(":")[1]
+    scheduler_task_type = task_type
+    scheduler_info = scheduler.get_task_type(scheduler_task_type)
+    while not scheduler_info:
+        print(f"Could not find task type {scheduler_task_type}")
+        new_scheduler_task_type = scheduler_task_type.rsplit("-", 1)[0]
+        if new_scheduler_task_type == scheduler_task_type:
+            ctx.fail(f"Could not find scheduler task type for {task_type}")
+        scheduler_task_type = new_scheduler_task_type
+        scheduler_info = scheduler.get_task_type(scheduler_task_type)
+
+    print(scheduler_info)
+
+    celery_task_name = scheduler_info["backend_name"]
+    if queue_name_prefix:
+        queue_name = f"{queue_name_prefix}:{celery_task_name}"
     else:
-        task_name_without_prefix = task_name
+        queue_name = celery_task_name
 
     if not threshold:
-        threshold = queue_information["threshold"]
+        threshold = scheduler_info.get("max_queue_length") or 1000
+
+    task_fn = ARGS_GENERATORS.get(
+        task_type, partial(lines_to_task_args, lines=sys.stdin, columns=["url"])
+    )
+
+    (extra_args, extra_kwargs) = parse_options(options)
 
     while True:
         throttled = False
@@ -303,7 +199,7 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
         pending_tasks = []
 
         # we can send new tasks, compute how many we can send
-        queue_length = queue_length_get(app, task_name)
+        queue_length = queue_length_get(app, queue_name)
         if queue_length is not None:
             nb_tasks_to_send = threshold - queue_length
         else:
@@ -311,8 +207,7 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
 
         if nb_tasks_to_send > 0:
             count = 0
-            task_fn = queue_information["task_generator_fn"]
-            for _task in task_fn(batch_size):
+            for _task in task_fn(**extra_kwargs):
                 pending_tasks.append(_task)
                 count += 1
 
@@ -327,18 +222,21 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
                     # if no more data, we break to exit
                     break
 
-            print_fn = queue_information.get("print_fn", print)
             from kombu.utils.uuid import uuid
 
-            for _task in pending_tasks:
-                app.send_task(
-                    task_name_without_prefix,
+            for _task_args in pending_tasks:
+                send_task_kwargs = dict(
+                    name=celery_task_name,
                     task_id=uuid(),
-                    args=_task["arguments"]["args"],
-                    kwargs=_task["arguments"]["kwargs"],
-                    queue=task_name,
+                    args=tuple(_task_args["args"]) + tuple(extra_args),
+                    kwargs=_task_args["kwargs"],
+                    queue=queue_name,
                 )
-                print_fn(_task["arguments"])
+                if dry_run:
+                    print("would call app.send_task with:", send_task_kwargs)
+                else:
+                    app.send_task(**send_task_kwargs)
+                    print(_task_args)
 
         else:
             throttled = True
