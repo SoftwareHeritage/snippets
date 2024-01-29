@@ -35,7 +35,14 @@ import requests
     help="Sentry issue number to extract origin URLs",
     required=True,
 )
-def run(sentry_url, sentry_token, sentry_issue_number):
+@click.option(
+    "--environment",
+    "-e",
+    default="",
+    help="Filter on environment: production or staging, both are selected by default",
+    required=True,
+)
+def run(sentry_url, sentry_token, sentry_issue_number, environment):
     """Extract origin URLs from a Sentry issue related to a Software Heritage
     loader and dumps them to stdout."""
 
@@ -54,7 +61,8 @@ def run(sentry_url, sentry_token, sentry_issue_number):
             break
         for event in events:
             tags = {tag["key"]: tag["value"] for tag in event.get("tags", [])}
-            if "swh.loader.origin_url" in tags:
+            env_match = environment in tags.get("environment", "")
+            if "swh.loader.origin_url" in tags and env_match:
                 origin_urls.add(tags["swh.loader.origin_url"])
 
         sentry_issue_events_url = response.links.get("next", {}).get("url")
