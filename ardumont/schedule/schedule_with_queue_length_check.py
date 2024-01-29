@@ -229,7 +229,7 @@ QUEUES = {
         "print_fn": print,
     },
     "oneshot-large-git": {
-        "task_name": "oneshot2:swh.loader.git.tasks.UpdateGitRepository",
+        "task_name": "large_repository:swh.loader.git.tasks.UpdateGitRepository",
         "threshold": 1000,
         # to_task the function to use to transform the input in task
         "task_generator_fn": stdin_to_git_large_tasks,
