@@ -110,7 +110,9 @@ def stdin_to_git_large_tasks(batch_size: int, type: str = "git") -> Iterator[Dic
         origin_url = line.rstrip()
         kwargs = create_git_task_kwargs(origin_url)
         kwargs.update(
-            {"pack_size_bytes": 34359738368,}
+            { "pack_size_bytes": 34359738368,
+              "verify_certs": False,
+            }
         )
 
         yield create_task_arguments(kwargs=kwargs)
@@ -122,6 +124,7 @@ def create_git_task_kwargs(origin_url: str) -> Dict:
     """
     kwargs = {
         "url": origin_url,
+        "verify_certs": False,
     }
 
     if "github.com" in origin_url:
