@@ -250,38 +250,10 @@ def queue_length_get(app, queue_name: str) -> Optional[int]:
 
     """
     try:
-        queue_length = app.get_queue_length(app.tasks[queue_name].task_queue)
+        queue_length = app.get_queue_length(queue_name)
     except Exception:
         queue_length = None
     return queue_length
-
-
-def send_new_tasks(app, queues_to_check):
-    """Send new tasks for scheduling when possible. Check the queues_to_check's current
-    number of scheduled tasks.
-
-    If any of queues_to_check sees its threshold reached, we cannot
-    send new tasks so this return False.  Otherwise, we can send new
-    tasks so this returns True.
-
-    Args:
-        app: Application
-        queues_to_check ([dict]): List of dict with keys 'task_name',
-                                  'threshold'.
-
-    Returns:
-        True if we can send new tasks, False otherwise
-
-    """
-    for queue_to_check in queues_to_check:
-        queue_name = queue_to_check["task_name"]
-        threshold = queue_to_check["threshold"]
-
-        _queue_length = queue_length_get(app, queue_name)
-        if _queue_length is not None and _queue_length >= threshold:
-            return False
-
-    return True
 
 
 @click.command(help="Read from stdin and send message to queue ")
@@ -318,28 +290,17 @@ def main(queue_name, threshold, batch_size, waiting_time, app=main_app):
     if not threshold:
         threshold = queue_information["threshold"]
 
-    # Retrieve the queues to check for current threshold limit reached
-    # or not.  If none is provided (default case), we use the
-    # scheduling queue as checking queue
-    queues_to_check = queue_information.get(
-        "queues_to_check",
-        [{"task_name": task_name_without_prefix, "threshold": threshold,}],
-    )
-
     while True:
         throttled = False
         remains_data = False
         pending_tasks = []
 
-        if send_new_tasks(app, queues_to_check):
-            # we can send new tasks, compute how many we can send
-            queue_length = queue_length_get(app, task_name_without_prefix)
-            if queue_length is not None:
-                nb_tasks_to_send = threshold - queue_length
-            else:
-                nb_tasks_to_send = threshold
+        # we can send new tasks, compute how many we can send
+        queue_length = queue_length_get(app, task_name)
+        if queue_length is not None:
+            nb_tasks_to_send = threshold - queue_length
         else:
-            nb_tasks_to_send = 0
+            nb_tasks_to_send = threshold
 
         if nb_tasks_to_send > 0:
             count = 0
