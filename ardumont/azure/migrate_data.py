@@ -15,6 +15,8 @@ import logging
 
 from pathlib import Path
 
+from collections import defaultdict
+
 from typing import Optional, Union
 from datetime import datetime, timezone
 from dateutil.parser import parse
@@ -115,7 +117,10 @@ def file_type(fp):
 @click.option("--dry-run/--no-dry-run",
               default=False,
               help="Dry Run mode. Read fs but do not write to blobstorage")
-def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, limit, dry_run):
+@click.option("--just-count/--no-just-count",
+              default=False,
+              help="Just count blobs grouping by compression nature")
+def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, limit, dry_run, just_count):
     logger.setLevel(logging.INFO if not debug else logging.DEBUG)
 
     since_date = parse_date(since_date_str) if since_date_str else None
@@ -149,8 +154,14 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
     if since_date:
         all_blobs = (blob for blob in all_blobs if blob["creation_time"] >= since_date)
 
+    if just_count:
+        all_blobs = list(all_blobs)
+        count_all_blobs = len(all_blobs)
+        count_types = defaultdict(int)
+
     overwrite = src_container_name == dst_container_name
 
+    count_global = 0
     for blob in all_blobs:
         if limit and count >= limit:
             break
@@ -160,7 +171,10 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
         try:
             blob_data = src_container_client.download_blob(blob)
             file_type_blob = file_type(blob_data)
-            if file_type_blob == "gz":
+            if just_count:
+                count_global += 1
+                count_types[file_type_blob] += 1
+            elif file_type_blob == "gz":
                 count += 1
                 logger.debug("%sPush uncompressed blob <%s> in container <%s>",
                              "** DRY RUN ** " if dry_run else "", blob.name, dst_container_name)
@@ -178,6 +192,7 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
                 logger.debug("########### %sblob <%s> with filetype <%s> detected",
                              "** DRY RUN ** " if dry_run else "", blob.name, file_type_blob)
         except UncompressedContent:
+            count_types["uncompressed"] += 1
             # Good, we skip it.
             pass
         except ResourceExistsError:
@@ -186,6 +201,12 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
             pass
         hash_already_migrated.add(blob.name)
 
+        if debug and just_count:
+            percent = 100.0 * count_global / count_all_blobs
+            print(f"Counter per types: {dict(count_types)} - Completion: {percent:.2f}%" )
+
+    if debug == 0 and just_count:
+        print("Counter per types:", dict(count_types))
 
 if __name__ == "__main__":
     logging.basicConfig()
