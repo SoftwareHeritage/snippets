@@ -201,7 +201,7 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
             pass
         hash_already_migrated.add(blob.name)
 
-        if debug and just_count:
+        if debug and just_count and count_global % 100 == 0:
             percent = 100.0 * count_global / count_all_blobs
             print(f"Counter per types: {dict(count_types)} - Completion: {percent:.2f}%" )
 
