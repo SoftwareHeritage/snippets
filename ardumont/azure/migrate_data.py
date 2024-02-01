@@ -54,7 +54,8 @@ def parse_date(date_str: Optional[Union[datetime, str]]) -> Optional[datetime]:
 
     if isinstance(date_str, str):
         date = parse(date_str)
-        date = date.replace(tzinfo=timezone.utc)
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=timezone.utc)
         return date
 
     raise ValueError(f"invalid visit date {date_str!r}")
