@@ -176,9 +176,9 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
                 count_types[file_type_blob] += 1
             elif file_type_blob == "gz":
                 count += 1
-                # belt and suspenders: ensure we did not already migrated the data
-                # if already migrated, these dates will differ while they match at
-                # creation time
+                # belt and suspenders: ensure we did not already migrate the data. If
+                # already migrated, these dates will differ while they match at creation
+                # time
                 if blob.creation_time == blob.last_modified:
                     logger.debug("%sPush uncompressed blob <%s> in container <%s>",
                                  "** DRY RUN ** " if dry_run else "", blob.name, dst_container_name)
