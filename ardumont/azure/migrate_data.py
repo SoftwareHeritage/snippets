@@ -1,4 +1,4 @@
-# Copyright (C) 2023  The Software Heritage developers
+# Copyright (C) 2023-2024  The Software Heritage developers
 # See the AUTHORS file at the top-level directory of this distribution
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
@@ -14,6 +14,10 @@ import yaml
 import logging
 
 from pathlib import Path
+
+from typing import Optional, Union
+from datetime import datetime, timezone
+from dateutil.parser import parse
 
 from azure.storage.blob import ContainerClient as Client
 from azure.core.exceptions import ResourceExistsError
@@ -34,6 +38,60 @@ AccountKey={account_key};\
 BlobEndpoint={blob_endpoint};"""
 
 
+def parse_date(date_str: Optional[Union[datetime, str]]) -> Optional[datetime]:
+    """Convert visit date from either None, a string or a datetime to either None or
+    datetime.
+
+    """
+    if date_str is None:
+        return None
+
+    if isinstance(date_str, datetime):
+        return date_str
+
+    if date_str == "now":
+        return datetime.now(tz=timezone.utc)
+
+    if isinstance(date_str, str):
+        date = parse(date_str)
+        date = date.replace(tzinfo=timezone.utc)
+        return date
+
+    raise ValueError(f"invalid visit date {date_str!r}")
+
+
+MAGIC_DICT = {
+    b'\x1f\x8b\x08': "gz",
+    b'\x42\x5a\x68': "bz2",
+    b'\x50\x4b\x03\x04': "zip"
+}
+
+MAX_LEN = max(len(x) for x in MAGIC_DICT)
+
+
+class UncompressedContent(ValueError):
+    """An uncompressed event"""
+    pass
+
+
+def file_type(fp):
+    """Given a filehandle to read from, determine the filetype. Raise when the
+    compression format (amongst gz, bz2, zip) is not one of those supported format (and
+    consider the file uncompressed).
+
+    """
+    file_start = fp.read(MAX_LEN)
+    if hasattr(fp, "seek"):  # usual python fp have this
+        fp.seek(0)
+    if hasattr(fp, "_offset"):  # Azure BlobData have hidden internal _offset
+        fp._offset = 0
+
+    for magic, filetype in MAGIC_DICT.items():
+        if file_start.startswith(magic):
+            return filetype
+    raise UncompressedContent("Not compressed")
+
+
 @click.command()
 @click.option("-C", "--config-file",
               default=DEFAULT_CONFIG_FILE,
@@ -43,11 +101,23 @@ BlobEndpoint={blob_endpoint};"""
               "already_migrated_hashes_file",
               type=click.Path(exists=True, readable=True),
               help="List of hashes of blob already pushed")
+@click.option("-s", "--since",
+              "since_date_str",
+              help="The optional date from which the listing blobs should start")
 @click.option("--debug/--no-debug",
               default=False,
               help="Debug")
-def migrate(config_file, already_migrated_hashes_file, debug):
+@click.option("-l", "--limit",
+              default=None,
+              type=click.INT,
+              help="Max number of files to process")
+@click.option("--dry-run/--no-dry-run",
+              default=False,
+              help="Dry Run mode. Read fs but do not write to blobstorage")
+def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, limit, dry_run):
     logger.setLevel(logging.INFO if not debug else logging.DEBUG)
+
+    since_date = parse_date(since_date_str) if since_date_str else None
 
     if already_migrated_hashes_file:
         # Retrieve data already migrated if provided
@@ -75,27 +145,45 @@ def migrate(config_file, already_migrated_hashes_file, debug):
     count = 0
 
     all_blobs = src_container_client.list_blobs()
+    if since_date:
+        all_blobs = (blob for blob in all_blobs if blob["creation_time"] >= since_date)
+
+    overwrite = src_container_name == dst_container_name
 
     for blob in all_blobs:
-        count += 1
+        if limit and count >= limit:
+            break
         if blob.name in hash_already_migrated:
             # Skipping already pushed blob
             continue
         try:
             blob_data = src_container_client.download_blob(blob)
-            logger.debug("Push uncompress blob <%s> in container <%s>",
-                         blob.name, dst_container_name)
-            dst_container_client.upload_blob(blob, gzip.decompress(blob_data.readall()))
-            # Output what's been migrated so it can be flushed in a file for ulterior
-            # runs
-            print(blob.name)
+            file_type_blob = file_type(blob_data)
+            if file_type_blob == "gz":
+                count += 1
+                logger.debug("%sPush uncompressed blob <%s> in container <%s>",
+                             "** DRY RUN ** " if dry_run else "", blob.name, dst_container_name)
+                logger.debug("%sBlob created on <%s>, last modified on <%s>",
+                             "** DRY RUN ** " if dry_run else "", blob.creation_time, blob.last_modified)
+                if not dry_run:
+                    # Beware: if the configuration use the same src and destination
+                    # blobstorages this will overwrite the remote blob
+                    dst_container_client.upload_blob(blob, gzip.decompress(blob_data.readall()),
+                                                     overwrite=overwrite)
+                    # Output what's been migrated so it can be flushed in a file for
+                    # ulterior runs
+                    print(blob.name)
+            else:
+                logger.debug("########### %sblob <%s> with filetype <%s> detected",
+                             "** DRY RUN ** " if dry_run else "", blob.name, file_type_blob)
+        except UncompressedContent:
+            # Good, we skip it.
+            pass
         except ResourceExistsError:
             # Somehow, we did not see we already pushed it but azure tells us as much so
             # let's skip it (instead of breaking the loop)
             pass
         hash_already_migrated.add(blob.name)
-
-    assert count != len(hash_already_migrated)
 
 
 if __name__ == "__main__":
