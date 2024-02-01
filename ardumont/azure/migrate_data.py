@@ -176,23 +176,28 @@ def migrate(config_file, already_migrated_hashes_file, debug, since_date_str, li
                 count_types[file_type_blob] += 1
             elif file_type_blob == "gz":
                 count += 1
-                logger.debug("%sPush uncompressed blob <%s> in container <%s>",
-                             "** DRY RUN ** " if dry_run else "", blob.name, dst_container_name)
-                logger.debug("%sBlob created on <%s>, last modified on <%s>",
-                             "** DRY RUN ** " if dry_run else "", blob.creation_time, blob.last_modified)
-                if not dry_run:
-                    # Beware: if the configuration use the same src and destination
-                    # blobstorages this will overwrite the remote blob
-                    dst_container_client.upload_blob(blob, gzip.decompress(blob_data.readall()),
-                                                     overwrite=overwrite)
-                    # Output what's been migrated so it can be flushed in a file for
-                    # ulterior runs
-                    print(blob.name)
+                # belt and suspenders: ensure we did not already migrated the data
+                # if already migrated, these dates will differ while they match at
+                # creation time
+                if blob.creation_time == blob.last_modified:
+                    logger.debug("%sPush uncompressed blob <%s> in container <%s>",
+                                 "** DRY RUN ** " if dry_run else "", blob.name, dst_container_name)
+                    logger.debug("%sBlob created on <%s>, last modified on <%s>",
+                                 "** DRY RUN ** " if dry_run else "", blob.creation_time, blob.last_modified)
+                    if not dry_run:
+                        # Beware: if the configuration use the same src and destination
+                        # blobstorages this will overwrite the remote blob
+                        dst_container_client.upload_blob(blob, gzip.decompress(blob_data.readall()),
+                                                         overwrite=overwrite)
+                        # Output what's been migrated so it can be flushed in a file for
+                        # ulterior runs
+                        print(blob.name)
             else:
                 logger.debug("########### %sblob <%s> with filetype <%s> detected",
                              "** DRY RUN ** " if dry_run else "", blob.name, file_type_blob)
         except UncompressedContent:
-            count_types["uncompressed"] += 1
+            if just_count:
+                count_types["uncompressed"] += 1
             # Good, we skip it.
             pass
         except ResourceExistsError:
