@@ -13,9 +13,10 @@ groups:
       bchauvet: Owner
       douardda: Maintainer
       guillaume: Maintainer
-      jayeshv: Maintainer
+      lcruse: Maintainer
       lunar: Maintainer
       marla.dasilva: Maintainer
+      mathfichen: Maintainer
       moranegg: Maintainer
       olasd: Maintainer
       rdicosmo: Owner
@@ -32,7 +33,6 @@ groups:
       bchauvet: Maintainer
       douardda: Maintainer
       guillaume: Maintainer
-      jayeshv: Maintainer
       jenkins: Maintainer
       lunar: Maintainer
       moranegg: Maintainer
@@ -67,9 +67,18 @@ groups:
     users:
       bchauvet: Owner
       douardda: Maintainer
+      lcruse: Maintainer
+      moranegg: Maintainer
       rdicosmo: Owner
       vsellier: Maintainer
       zack: Owner
+    remove_extra_memberships: true
+  teams/octobus:
+    name: Octobus
+    users:
+      Alphare: Owner
+      marmoute: Owner
+      franckbret: Owner
     remove_extra_memberships: true
   infra-private:
     users:
@@ -137,6 +146,9 @@ projects:
       visibility: private
     swh/infra/iFWCFG:
       visibility: private
+    swh/devel/swh-scanner:
+      shared_with_groups:
+        - teams/octobus
 
   # Dict[str, Any] of key the setting to change (e.g. 'merge_method') and as value
   # whatever we want to set (e.g. assuming the 'merge_method', 'ff' as in fast-forward).
