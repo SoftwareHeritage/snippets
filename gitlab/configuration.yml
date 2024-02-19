@@ -146,6 +146,8 @@ projects:
       visibility: private
     swh/infra/iFWCFG:
       visibility: private
+    swh/devel/seirl-data:
+      visibility: private
     swh/devel/swh-scanner:
       shared_with_groups:
         - teams/octobus
