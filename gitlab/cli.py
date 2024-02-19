@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import click
 import yaml
@@ -257,10 +257,12 @@ def namespaces_from_path(path_with_namespace: str) -> Iterable[str]:
 
 @manage.command("projects")
 @click.argument("config_file")
+@click.argument("project_list", nargs=-1, required=False)
 @click.pass_context
 def projects(
     ctx,
     config_file: str,
+    project_list: List[str],
 ) -> None:
     gl = ctx.obj["gitlab"]
     do_it = ctx.obj["do_it"]
@@ -297,6 +299,8 @@ def projects(
     # project override)
     for project in gl.projects.list(iterator=True):
         path_with_namespace = project.path_with_namespace
+        if project_list and path_with_namespace not in project_list:
+            continue
         # For the last print statement to explain how many got updated
         projects[path_with_namespace] = project
 
