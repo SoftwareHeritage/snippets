@@ -38,7 +38,10 @@ def load_config_file(config_file: str) -> Dict[str, Any]:
     help="Which GitLab instance to use, as configured in the python-gitlab config",
 )
 @click.option(
-    "--do-it", "do_it", is_flag=True, help="Actually perform the operations",
+    "--do-it",
+    "do_it",
+    is_flag=True,
+    help="Actually perform the operations",
 )
 @click.pass_context
 def manage(ctx, gitlab_instance, do_it):
@@ -72,7 +75,25 @@ def groups(ctx, config_file):
         )
 
     for group_path, group_conf in config_groups.items():
-        group = gl.groups.get(group_path, with_projects=False)
+        try:
+            group = gl.groups.get(group_path, with_projects=False)
+        except gitlab.exceptions.GitlabGetError:
+            parent, subgroup = group_path.rsplit("/", 1)
+            parent_ns = gl.namespaces.get(parent)
+            logger.info(
+                "Creating group %s under parent namespace %s", subgroup, parent_ns.name
+            )
+            if do_it:
+                group = gl.groups.create(
+                    {
+                        "path": subgroup,
+                        "name": group_conf.get("name", subgroup),
+                        "parent_id": parent_ns.id,
+                    }
+                )
+            else:
+                continue
+
         expected_members = {
             username: gitlab.const.AccessLevel[access_level.upper()]
             for username, access_level in group_conf["users"].items()
@@ -237,7 +258,10 @@ def namespaces_from_path(path_with_namespace: str) -> Iterable[str]:
 @manage.command("projects")
 @click.argument("config_file")
 @click.pass_context
-def projects(ctx, config_file: str,) -> None:
+def projects(
+    ctx,
+    config_file: str,
+) -> None:
     gl = ctx.obj["gitlab"]
     do_it = ctx.obj["do_it"]
 
