@@ -317,12 +317,17 @@ def projects(
         project_config = project_settings.get(path_with_namespace, {})
 
         logger.debug("Project <%s> %s", path_with_namespace, project.id)
+
         updates, project = update_project(
             project, global_settings, namespace_config, project_config
         )
 
-        if shared_groups := updates.pop("shared_with_groups", {}).get("new", []):
-            for group_path in shared_groups:
+        if "shared_with_groups" in updates:
+            s = updates.pop("shared_with_groups")
+            old = s["old"]
+            new = s["new"]
+            old_paths = set(g["group_full_path"] for g in old)
+            for group_path in set(new) - old_paths:
                 group = gl.groups.get(group_path, with_projects=False)
                 logger.info(
                     "Sharing project %s with group %s", path_with_namespace, group_path
