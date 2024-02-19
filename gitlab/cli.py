@@ -321,6 +321,17 @@ def projects(
             project, global_settings, namespace_config, project_config
         )
 
+        if shared_groups := updates.pop("shared_with_groups", {}).get("new", []):
+            for group_path in shared_groups:
+                group = gl.groups.get(group_path, with_projects=False)
+                logger.info(
+                    "Sharing project %s with group %s", path_with_namespace, group_path
+                )
+                if do_it:
+                    project.share(
+                        group_id=group.id, group_access=40
+                    )  # Hardcoded to maintainer
+
         if updates and do_it:
             project.save()
             project_updated_count += 1
