@@ -14,7 +14,7 @@ nb_issues = 0
 
 output = open(f"./docs/2024.csv", "w")
 
-output.write(f"issue|project|roadmap2024|url|\n")
+output.write(f"project|issue|priority|status|url|\n")
 
 projects = swh_group.projects.list(iterator=True)
 
@@ -26,13 +26,25 @@ for gproject in projects:
 
     for issue in issues:
         if issue.type == 'ISSUE':
+            priority = ''
+            status = 'created'
             r24 = 'n'
-            if 'roadmap 2024' in issue.labels:
-                r24='y'
-            output.write(f"{project.name}|{issue.title}|{r24}|{issue.web_url}\n")
-            print(issue.title, ' : ', issue.labels)
-            nb_issues+=1
-            print(issue)
+            for label in issue.labels:
+                if label == 'roadmap 2024' :
+                    r24='y'
+                    nb_issues+=1
+
+                if label.startswith('priority::'):
+                    priority = label[10:]
+
+                if label.startswith('status::'):
+                    status = label[8:]
+
+                
+            if r24 == 'y':
+                output.write(f"{project.name}|{issue.title}|{priority}|{status}|{issue.web_url}\n")
+                print(issue.title, ' : ', issue.labels)
+
 
 
 print(nb_issues, " issues")
