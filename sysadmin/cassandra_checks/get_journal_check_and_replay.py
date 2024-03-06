@@ -44,24 +44,27 @@ def process(objects):
 
     Pseudo code:
 
-       for all object in journal
-         read object in cassandra
-         it exists, we found it:
-           nothing to do, stop
-         else (it does not exist):
-           read object in postgresql
+        for all object in journal
+          read object in cassandra
+            it exists, we found it:
+              nothing to do, stop
+            else (it does not exist):
+             read object in postgresql
              it exists, we found it:
-               write to `<object-type>-to-replay.lst`
+               write <swhid> to `<object-type>-to-replay.lst`
+               mkdir -p `to-replay/<object-type>/<swhid>/`
+               echo $(kafka-object-as-string) > `<object-type>-to-replay/<swhid>/journal`
+               echo $(postgresql-object-as-string) > `<object-type>-to-replay/<swhid>/postgresql`
                stop
-             else: (present in journal only)
-               add an entry in `<object_type>-swhid-in-journal-only.lst`
+             else (present in journal only)
+               mkdir -p `journal-only/<object-type>/<swhid>/`
+               echo $(kafka-object-as-string) > `<object-type>-to-replay/<swhid>/journal`
 
     """
     cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
     pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
     for otype, objs in objects.items():
         for obj in objs:
-            #print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'📥 ##########':<12} {otype.upper()}{bcolors.ENDC}")
             if otype == "content":
                 obj_model = Content.from_dict(obj)
                 cs_get = cs_storage.content_get
@@ -167,21 +170,37 @@ def process(objects):
                     if _pg_obj == obj_model:
                         pg_obj = _pg_obj
                         break
+            swhid = swhid_str(obj_model)
             if pg_obj == obj_model:
                 # kafka and postgresql objects match
                 with open(f"{otype}-swhid-toreplay.lst",'w+') as f:
-                    f.write(swhid_str(obj_model))
+                    f.write(swhid)
+                # save object representation in dedicated tree
+                dir_path = f"to-replay/{otype}/{swhid}/"
+                os.makedirs(dir_path, exist_ok=True)
+                journal_path = os.path.join(dir_path, "journal_representation")
+                with open(journal_path, 'w') as f:
+                    f.write(repr(obj))
+                postgresql_path = os.path.join(dir_path, "postgresql_representation")
+                with open(postgresql_path, 'w') as f:
+                    f.write(repr(pg_obj))
                 continue
+
             # object is present only in journal
             with open(f"{otype}-swhid-in-journal-only.lst",'w+') as f:
-                f.write(swhid_str(obj_model))
+                f.write(swhid)
+            # save object representation in dedicated tree
+            dir_path = f"journal-only/{otype}/{swhid}/"
+            os.makedirs(dir_path, exist_ok=True)
+            journal_path = os.path.join(dir_path, "journal_representation")
+            with open(journal_path, 'w') as f:
+                f.write(repr(obj))
 
 try:
     jn_storage = get_journal_client(**client_cfg)
 except ValueError as exc:
     print(exc)
     exit(1)
-#print(f"{bcolors.OKGREEN}🚧 Processing objects...{bcolors.ENDC}")
 try:
     # Run the client forever
     jn_storage.process(process)
