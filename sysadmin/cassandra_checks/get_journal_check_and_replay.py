@@ -8,18 +8,15 @@ source env/get_journal_check_and_replay_passwords
 
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
-from swh.model.swhids import CoreSWHID, ObjectType
-from swh.model import hashutil
 from swh.storage import get_storage
 from swh.storage.algos import directory, snapshot, origin as algos_origin
 from config import *
-import hashlib
-from swh.core.api.classes import PagedResult
 from functools import partial
 import attr
 from types import GeneratorType
 from swh.journal.serializers import pprint_key
 from swh.storage.utils import round_to_milliseconds
+from swh.model.hashutil import hash_to_hex, hash_git_data
 
 
 def swhid_str(obj):
@@ -31,6 +28,17 @@ def swhid_str(obj):
     if hasattr(obj, 'swhid'):
         return str(obj.swhid())
     return pprint_key(obj.unique_key())
+
+
+def swhid_key(obj):
+    """Build a swhid like string representation for model object with SWHID (e.g. most
+    swh dag objects). Otherwise, just write a unique representation of the object (e.g.
+    extid, origin_visit, origin_visit_status)
+
+    """
+    if hasattr(obj, 'swhid'):
+        return str(obj.swhid())
+    return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
 
 
 def process(objects):
@@ -154,9 +162,15 @@ def process(objects):
                     if _cs_obj == truncated_obj_model:
                         cs_obj = _cs_obj
                         break
+
+            # Some objects have no swhid...
+            swhid = swhid_str(obj_model)
+            # so we compute a unique key without the swhid (when need, e.g origin_visit, origin_visit_status,...)
+            unique_key = swhid_key(obj_model)
             # Debug: check object representation written on disk
-            #write_representation_on_disk("cassandra", "journal_representation", obj, otype, swhid_str(cs_obj))
-            #write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, swhid_str(cs_obj))
+            write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
+            write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
+
             if cs_obj == truncated_obj_model:
                 # kafka and cassandra objects match
                 continue
@@ -173,26 +187,25 @@ def process(objects):
                     if _pg_obj == obj_model:
                         pg_obj = _pg_obj
                         break
-            swhid = swhid_str(obj_model)
+
             if pg_obj == obj_model:
                 # kafka and postgresql objects match
                 with open(f"{otype}-swhid-toreplay.lst",'a') as f:
                     f.write(swhid)
                 # save object representation in dedicated tree
-                write_representation_on_disk("to_replay", "journal_representation", obj, otype, swhid)
-                write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, swhid)
-                with open(postgresql_path, 'w') as f:
-                    f.write(repr(pg_obj))
+                write_representation_on_disk("to_replay", "journal_representation", obj, otype, unique_key)
+                write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
                 continue
 
             # object is present only in journal
             with open(f"{otype}-swhid-in-journal-only.lst",'w+') as f:
                 f.write(swhid)
             # save object representation in dedicated tree
-            write_representation_on_disk("journal_only", "journal_representation", obj, otype, swhid)
+            write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
 
-def write_representation_on_disk(top_level_path, representation_type, obj, otype, swhid):
-    dir_path = f"{top_level_path}/{otype}/{swhid}/"
+
+def write_representation_on_disk(top_level_path, representation_type, obj, otype, unique_key):
+    dir_path = f"{top_level_path}/{otype}/{unique_key}/"
     os.makedirs(dir_path, exist_ok=True)
     journal_path = os.path.join(dir_path, representation_type)
     with open(journal_path, 'w') as f:
