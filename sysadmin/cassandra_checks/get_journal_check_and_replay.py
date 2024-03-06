@@ -154,6 +154,9 @@ def process(objects):
                     if _cs_obj == truncated_obj_model:
                         cs_obj = _cs_obj
                         break
+            # Debug: check object representation written on disk
+            #write_representation_on_disk("cassandra", "journal_representation", obj, otype, swhid_str(cs_obj))
+            #write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, swhid_str(cs_obj))
             if cs_obj == truncated_obj_model:
                 # kafka and cassandra objects match
                 continue
@@ -173,15 +176,11 @@ def process(objects):
             swhid = swhid_str(obj_model)
             if pg_obj == obj_model:
                 # kafka and postgresql objects match
-                with open(f"{otype}-swhid-toreplay.lst",'w+') as f:
+                with open(f"{otype}-swhid-toreplay.lst",'a') as f:
                     f.write(swhid)
                 # save object representation in dedicated tree
-                dir_path = f"to-replay/{otype}/{swhid}/"
-                os.makedirs(dir_path, exist_ok=True)
-                journal_path = os.path.join(dir_path, "journal_representation")
-                with open(journal_path, 'w') as f:
-                    f.write(repr(obj))
-                postgresql_path = os.path.join(dir_path, "postgresql_representation")
+                write_representation_on_disk("to_replay", "journal_representation", obj, otype, swhid)
+                write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, swhid)
                 with open(postgresql_path, 'w') as f:
                     f.write(repr(pg_obj))
                 continue
@@ -190,11 +189,14 @@ def process(objects):
             with open(f"{otype}-swhid-in-journal-only.lst",'w+') as f:
                 f.write(swhid)
             # save object representation in dedicated tree
-            dir_path = f"journal-only/{otype}/{swhid}/"
-            os.makedirs(dir_path, exist_ok=True)
-            journal_path = os.path.join(dir_path, "journal_representation")
-            with open(journal_path, 'w') as f:
-                f.write(repr(obj))
+            write_representation_on_disk("journal_only", "journal_representation", obj, otype, swhid)
+
+def write_representation_on_disk(top_level_path, representation_type, obj, otype, swhid):
+    dir_path = f"{top_level_path}/{otype}/{swhid}/"
+    os.makedirs(dir_path, exist_ok=True)
+    journal_path = os.path.join(dir_path, representation_type)
+    with open(journal_path, 'w') as f:
+        f.write(repr(obj))
 
 try:
     jn_storage = get_journal_client(**client_cfg)
