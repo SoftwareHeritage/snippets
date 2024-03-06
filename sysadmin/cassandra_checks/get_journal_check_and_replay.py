@@ -23,11 +23,40 @@ from swh.storage.utils import round_to_milliseconds
 
 
 def swhid_str(obj):
+    """Build a swhid like string representation for model object with SWHID (e.g. most
+    swh dag objects). Otherwise, just write a unique representation of the object (e.g.
+    extid, origin_visit, origin_visit_status)
+
+    """
     if hasattr(obj, 'swhid'):
         return str(obj.swhid())
     return pprint_key(obj.unique_key())
 
+
 def process(objects):
+    """Process objects read from the journal.
+
+    This reads journal objects and for each of them, check whether they are present in
+    the cassandra storage. If they are, the check stops there. Otherwise, check for the
+    presence of the object in the postgresql backend. If present in the postgresql
+    backend, write the object as missing in cassandra. This object needs to be replayed.
+    If not present either in the postgresql backend, just marks it as such.
+
+    Pseudo code:
+
+       for all object in journal
+         read object in cassandra
+         it exists, we found it:
+           nothing to do, stop
+         else (it does not exist):
+           read object in postgresql
+             it exists, we found it:
+               write to `<object-type>-to-replay.lst`
+               stop
+             else: (present in journal only)
+               add an entry in `<object_type>-swhid-in-journal-only.lst`
+
+    """
     cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
     pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
     for otype, objs in objects.items():
