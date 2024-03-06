@@ -18,21 +18,21 @@ from swh.core.api.classes import PagedResult
 from functools import partial
 import attr
 from types import GeneratorType
+from swh.journal.serializers import pprint_key
+from swh.storage.utils import round_to_milliseconds
 
 
-def round_to_milliseconds(date):
-    """Round datetime to milliseconds before insertion, so equality doesn't fail after a
-    round-trip through a DB (eg. Cassandra)
-
-    """
-    return date.replace(microsecond=(date.microsecond // 1000) * 1000)
+def swhid_str(obj):
+    if hasattr(obj, 'swhid'):
+        return str(obj.swhid())
+    return pprint_key(obj.unique_key())
 
 def process(objects):
     cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
     pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
     for otype, objs in objects.items():
         for obj in objs:
-            print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'📥 ##########':<12} {otype.upper()}{bcolors.ENDC}")
+            #print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'📥 ##########':<12} {otype.upper()}{bcolors.ENDC}")
             if otype == "content":
                 obj_model = Content.from_dict(obj)
                 cs_get = cs_storage.content_get
@@ -96,8 +96,7 @@ def process(objects):
                 obj_model = SkippedContent.from_dict(obj)
                 cs_get = cs_storage.skipped_content_find
                 pg_get = pg_storage.skipped_content_find
-                sha1 = obj_model.sha1
-                stargs = {"sha1":sha1}
+                stargs = obj_model.hashes()
             elif otype == "snapshot":
                 obj_model = Snapshot.from_dict(obj)
                 # snapshot_get return the dict and not the swh model object
@@ -107,43 +106,53 @@ def process(objects):
                 id = obj_model.id
                 stargs = id
             cs_obj = cs_get(stargs)
-            pg_obj = pg_get(stargs)
 
-            #print(obj_model)
-            #print(cs_obj)
+            # cassandra storage truncate timestamp to the whole millisecond
+            if otype in ("origin_visit", "origin_visit_status"):
+                date = round_to_milliseconds(obj_model.date)
+                truncated_obj_model = attr.evolve(obj_model, date=date)
+            else:
+                truncated_obj_model = obj_model
 
             if isinstance(cs_obj, (list, GeneratorType)):
                 for _cs_obj in cs_obj:
-                    if otype == "origin_visit_status":
-                        date = round_to_milliseconds(obj_model.date)
-                        obj_model = attr.evolve(obj_model, date=date)
-                    if _cs_obj == obj_model:
+                    if _cs_obj is None:
+                        # release_get may return None object
+                        continue
+                    if _cs_obj == truncated_obj_model:
                         cs_obj = _cs_obj
                         break
-            if hasattr(obj_model, 'swhid'):
-                cs_swhid = str(cs_obj.swhid())
-                jn_swhid = str(obj_model.swhid())
-            else:
-                if otype == "extid":
-                    cs_swhid = cs_obj._compute_hash_from_attributes()
-                    jn_swhid = obj_model._compute_hash_from_attributes()
-                if otype in ("origin_visit","origin_visit_status"):
-                    date = round_to_milliseconds(obj_model.date)
-                    obj_model = attr.evolve(obj_model, date=date)
-                    jn_swhid = hashlib.sha1(str(obj_model).encode('utf-8')).hexdigest()
-                    cs_swhid = hashlib.sha1(str(cs_obj).encode('utf-8')).hexdigest()
-                    #print(obj_model == cs_obj)
-            print(f"{jn_swhid=}")
+            if cs_obj == truncated_obj_model:
+                # kafka and cassandra objects match
+                continue
+
+            # object not found in cassandra
             #print(f"{obj_model=}")
-            print(f"{cs_swhid=}")
-            #print(f"{cs_obj=}")
+            pg_obj = pg_get(stargs)
+
+            if isinstance(pg_obj, (list, GeneratorType)):
+                for _pg_obj in pg_obj:
+                    if _pg_obj is None:
+                        # release_get may return None object
+                        continue
+                    if _pg_obj == obj_model:
+                        pg_obj = _pg_obj
+                        break
+            if pg_obj == obj_model:
+                # kafka and postgresql objects match
+                with open(f"{otype}-swhid-toreplay.lst",'w+') as f:
+                    f.write(swhid_str(obj_model))
+                continue
+            # object is present only in journal
+            with open(f"{otype}-swhid-in-journal-only.lst",'w+') as f:
+                f.write(swhid_str(obj_model))
 
 try:
     jn_storage = get_journal_client(**client_cfg)
 except ValueError as exc:
     print(exc)
     exit(1)
-print(f"{bcolors.OKGREEN}🚧 Processing objects...{bcolors.ENDC}")
+#print(f"{bcolors.OKGREEN}🚧 Processing objects...{bcolors.ENDC}")
 try:
     # Run the client forever
     jn_storage.process(process)

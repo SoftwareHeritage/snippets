@@ -30,7 +30,7 @@ client_cfg = {
     "cls": "kafka",
     "brokers": [BROKER],
     "group_id": "swh-gsa-test",
-    "object_types": ["origin_visit"],
+    "object_types": ["origin_visit_status"],
     #   - content
     #   - directory
     #   - extid
