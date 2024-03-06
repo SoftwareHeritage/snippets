@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
+'''
+source swhEnv/bin/activate
+source env/get_journal_check_and_replay_passwords
+./get_journal_check_and_replay.py
+'''
+
 from swh.journal.client import get_journal_client
-from swh.model.model import Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID
+from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
 from swh.model.swhids import CoreSWHID, ObjectType
 from swh.model import hashutil
 from swh.storage import get_storage
@@ -27,13 +33,6 @@ def process(objects):
     for otype, objs in objects.items():
         for obj in objs:
             print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'📥 ##########':<12} {otype.upper()}{bcolors.ENDC}")
-            swhidType = None
-            swhid = None
-            cs_hash = None
-            pg_hash = None
-            id = None
-            sha1 = None
-            hash = None
             if otype == "content":
                 obj_model = Content.from_dict(obj)
                 cs_get = cs_storage.content_get
@@ -53,7 +52,7 @@ def process(objects):
                 cs_get = partial(cs_storage.extid_get_from_extid, extid_type)
                 pg_get = partial(pg_storage.extid_get_from_extid, extid_type)
                 stargs = [extid]
-                print(stargs)
+                #print(stargs)
             elif otype == "origin":
                 obj_model = Origin.from_dict(obj)
                 cs_get = cs_storage.origin_get
@@ -107,13 +106,11 @@ def process(objects):
                 pg_get = partial(snapshot.snapshot_get_all_branches, pg_storage)
                 id = obj_model.id
                 stargs = id
-            print(f"###### {obj_model=}")
-            #print(obj_model)
-            #print(len(stargs))
-            #print(type(stargs))
-            #print(stargs)
             cs_obj = cs_get(stargs)
             pg_obj = pg_get(stargs)
+
+            #print(obj_model)
+            #print(cs_obj)
 
             if isinstance(cs_obj, (list, GeneratorType)):
                 for _cs_obj in cs_obj:
@@ -126,18 +123,20 @@ def process(objects):
             if hasattr(obj_model, 'swhid'):
                 cs_swhid = str(cs_obj.swhid())
                 jn_swhid = str(obj_model.swhid())
-                print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'🗄️  jn_swhid':<14}{bcolors.ENDC} {jn_swhid}")
-                print(f"{bcolors.BOLD}{bcolors.OKGREEN}{'🗄️  cs_swhid':<14}{bcolors.ENDC} {cs_swhid}")
             else:
                 if otype == "extid":
-                    print(cs_obj._compute_hash_from_attributes())
-                    print(obj_model._compute_hash_from_attributes())
+                    cs_swhid = cs_obj._compute_hash_from_attributes()
+                    jn_swhid = obj_model._compute_hash_from_attributes()
                 if otype in ("origin_visit","origin_visit_status"):
                     date = round_to_milliseconds(obj_model.date)
                     obj_model = attr.evolve(obj_model, date=date)
-                    print(obj_model == cs_obj)
-                print(cs_obj)
-                print(obj_model)
+                    jn_swhid = hashlib.sha1(str(obj_model).encode('utf-8')).hexdigest()
+                    cs_swhid = hashlib.sha1(str(cs_obj).encode('utf-8')).hexdigest()
+                    #print(obj_model == cs_obj)
+            print(f"{jn_swhid=}")
+            #print(f"{obj_model=}")
+            print(f"{cs_swhid=}")
+            #print(f"{cs_obj=}")
 
 try:
     jn_storage = get_journal_client(**client_cfg)

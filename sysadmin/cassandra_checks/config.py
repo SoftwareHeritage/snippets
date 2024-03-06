@@ -30,18 +30,18 @@ client_cfg = {
     "cls": "kafka",
     "brokers": [BROKER],
     "group_id": "swh-gsa-test",
-    "object_types": ["origin_visit_status"],
+    "object_types": ["origin_visit"],
     #   - content
     #   - directory
+    #   - extid
     #   - origin
+    #   - origin_visit
+    #   - origin_visit_status
     #   - raw_extrinsic_metadata
     #   - release
     #   - revision
     #   - skipped_content
     #   - snapshot
-    #   - extid
-    #   - origin_visit
-    #   - origin_visit_status
     "sasl.username": JOURNAL_USER,
     "sasl.password": JOURNAL_PASSWORD,
     "security.protocol": "sasl_ssl",
@@ -49,6 +49,7 @@ client_cfg = {
     "message.max.bytes": "524288000",
     "stop_after_objects": 4,
     "batch_size": 4,
+    "privileged": True,
 }
 
 cs_prod_storage_conf = {'hosts': ['cassandra01.internal.softwareheritage.org',
