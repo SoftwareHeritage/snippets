@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-'''
-source swhEnv/bin/activate
-source env/get_journal_check_and_replay_passwords
-./get_journal_check_and_replay.py
-'''
+"""Journal client to process objects from kafka to check cassandra object consistency.
 
-from os import makedirs
+"""
+
+from yaml import safe_load
+
+from os import makedirs, environ
 from os.path import join
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
@@ -255,7 +255,6 @@ def process(cs_storage, pg_storage, objects):
 
 
 if __name__ == "__main__":
-    from config import client_cfg, cs_staging_storage_conf, pg_staging_storage_conf
 
     FORMAT = '[%(asctime)s] %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -263,15 +262,22 @@ if __name__ == "__main__":
     cassandra_logger = logging.getLogger("cassandra.cluster")
     cassandra_logger.setLevel(logging.ERROR)
 
+    # Read the configuration out of the swh configuration file
+    with open(f"{environ['HOME']}/.config/swh/check-cassandra.staging.yaml", "r") as f:
+        data = f.read()
+        config = safe_load(data)
+
+    from pprint import pprint; breakpoint()
+
     try:
-        jn_storage = get_journal_client(**client_cfg)
+        jn_storage = get_journal_client(**config["journal_client"])
     except ValueError as exc:
         logger.info(exc)
         exit(1)
     logger.info("🚧 Processing objects...")
     try:
-        cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
-        pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
+        cs_storage = get_storage("cassandra", **config["cassandra"])
+        pg_storage = get_storage("postgresql", **config["postgresql"])
         process_fn = partial(process, cs_storage, pg_storage)
         # Run the client forever
         jn_storage.process(process_fn)
