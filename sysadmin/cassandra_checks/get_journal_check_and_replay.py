@@ -159,7 +159,7 @@ def process(objects):
                     if _cs_obj is None:
                         # release_get may return None object
                         continue
-                    if _cs_obj == truncated_obj_model:
+                    if is_equal(_cs_obj, truncated_obj_model):
                         cs_obj = _cs_obj
                         break
 
@@ -171,7 +171,12 @@ def process(objects):
             write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
             write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
 
-            if cs_obj == truncated_obj_model:
+            def is_equal (obj_ref, obj_model_ref):
+                if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
+                    return obj_ref.id == obj_model_ref.id
+                return obj_ref == obj_model_ref
+
+            if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
                 continue
 
@@ -184,22 +189,22 @@ def process(objects):
                     if _pg_obj is None:
                         # release_get may return None object
                         continue
-                    if _pg_obj == obj_model:
+                    if is_equal(_pg_obj, obj_model):
                         pg_obj = _pg_obj
                         break
 
-            if pg_obj == obj_model:
+            if is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
                 with open(f"{otype}-swhid-toreplay.lst",'a') as f:
-                    f.write(swhid)
+                    f.write(f"{swhid}\n")
                 # save object representation in dedicated tree
                 write_representation_on_disk("to_replay", "journal_representation", obj, otype, unique_key)
                 write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
                 continue
 
             # object is present only in journal
-            with open(f"{otype}-swhid-in-journal-only.lst",'w+') as f:
-                f.write(swhid)
+            with open(f"{otype}-swhid-in-journal-only.lst",'a') as f:
+                f.write(f"{swhid}\n")
             # save object representation in dedicated tree
             write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
 

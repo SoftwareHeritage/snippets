@@ -30,7 +30,7 @@ client_cfg = {
     "cls": "kafka",
     "brokers": [BROKER],
     "group_id": "swh-gsa-test",
-    "object_types": ["origin_visit"],
+    "object_types": ["directory"],
     #   - content
     #   - directory
     #   - extid
@@ -47,8 +47,8 @@ client_cfg = {
     "security.protocol": "sasl_ssl",
     "sasl.mechanism": "SCRAM-SHA-512",
     "message.max.bytes": "524288000",
-    "stop_after_objects": 10,
-    "batch_size": 10,
+    "stop_after_objects": 20,
+    "batch_size": 20,
     "privileged": True,
 }
 
