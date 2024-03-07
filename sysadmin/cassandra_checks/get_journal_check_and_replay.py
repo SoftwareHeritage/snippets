@@ -6,30 +6,49 @@ source env/get_journal_check_and_replay_passwords
 ./get_journal_check_and_replay.py
 '''
 
+from os import makedirs
+from os.path import join
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
 from swh.storage import get_storage
 from swh.storage.algos import directory, snapshot, origin as algos_origin
-from config import *
 from functools import partial
 import attr
 from types import GeneratorType
 from swh.journal.serializers import pprint_key
 from swh.storage.utils import round_to_milliseconds
 from swh.model.hashutil import hash_to_hex, hash_git_data
-from datetime import datetime, timezone
+from datetime import datetime
 import logging
 
 
 logger = logging.getLogger(__name__)
 
+
 def str_now():
+    """Generate a now() date as a string to use as suffix filename"""
     return str(datetime.now()).replace(" ","_")
 
 
 def append_swhid(filename, suffix_date, swhid):
+    """Write the swhid identifier to a filename with a suffix_date."""
     with open(f"{filename}-{suffix_date}.lst",'a') as f:
         f.write(f"{swhid}\n")
+
+
+def append_representation_on_disk_as_tree(top_level_path, representation_type, obj, otype, unique_key):
+    """Write the representation of the object obj with type otype in an arborescence
+    tree at <top_level_path>/<otype>/<unique-key> in the file <representation_type>.
+
+    If a file already exist, a new line is appended to the file with the other
+    representation.
+
+    """
+    dir_path = f"{top_level_path}/{otype}/{unique_key}/"
+    makedirs(dir_path, exist_ok=True)
+    journal_path = join(dir_path, representation_type)
+    with open(journal_path, 'a') as f:
+        f.write(repr(obj))
 
 
 def swhid_str(obj):
@@ -55,11 +74,16 @@ def swhid_key(obj):
 
 
 def is_equal (obj_ref, obj_model_ref):
-    """
-    Objects model comparison with directory scpecific case.
+    """Objects model comparison. Using mostly object comparison except for directory.
+
+    The directory comparison is specific since we could have a list of sorted entries
+    which are different due to implementation detail divergence and the current model
+    object not properly comparing those.
+
     """
     if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
-        return obj_ref.id == obj_model_ref.id and sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
+        return obj_ref.id == obj_model_ref.id and \
+            sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
     return obj_ref == obj_model_ref
 
 
@@ -81,14 +105,15 @@ def process(cs_storage, pg_storage, objects):
             else (it does not exist):
              read object in postgresql
              it exists, we found it:
-               write <swhid> to `<object-type>-to-replay.lst`
+               write <swhid> to `<object-type>-to-replay-$(date).lst`
                mkdir -p `to-replay/<object-type>/<swhid>/`
-               echo $(kafka-object-as-string) > `<object-type>-to-replay/<swhid>/journal`
-               echo $(postgresql-object-as-string) > `<object-type>-to-replay/<swhid>/postgresql`
+               echo $(kafka-object-as-string) > `to-replay/<object-type>/<swhid>/journal`
+               echo $(postgresql-object-as-string) > `to-replay/<object-type>/<swhid>/postgresql`
                stop
              else (present in journal only)
+               write <swhid> to `<object-type>-journal-only-$(date).lst`
                mkdir -p `journal-only/<object-type>/<swhid>/`
-               echo $(kafka-object-as-string) > `<object-type>-to-replay/<swhid>/journal`
+               echo $(kafka-object-as-string) > `journal-only/<object-type>/<swhid>/journal`
 
     """
 
@@ -191,17 +216,16 @@ def process(cs_storage, pg_storage, objects):
             swhid = swhid_str(obj_model)
             # so we compute a unique key without the swhid (when need, e.g origin_visit, origin_visit_status,...)
             unique_key = swhid_key(obj_model)
-            ## Debug: check object representation written on disk
-            #write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
-            #write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
-            #append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
+            # For debug purposes only: check object representation written on disk
+            # append_representation_on_disk_as_tree("cassandra", "journal_representation", obj_model, otype, unique_key)
+            # append_representation_on_disk_as_tree("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
+            # append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
                 continue
 
-            # object not found in cassandra
-            #print(f"{obj_model=}")
+            # object not found in cassandra, let's look it up on postgresql
             pg_obj = pg_get(stargs)
 
             if isinstance(pg_obj, (list, GeneratorType)):
@@ -218,30 +242,27 @@ def process(cs_storage, pg_storage, objects):
                 errors_counter += 1
                 append_swhid(f"{otype}-swhid-toreplay", suffix_timestamp, swhid)
                 # save object representation in dedicated tree
-                write_representation_on_disk("to_replay", "journal_representation", obj, otype, unique_key)
-                write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
+                append_representation_on_disk_as_tree("to_replay", "journal_representation", obj, otype, unique_key)
+                append_representation_on_disk_as_tree("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
                 continue
 
             # object is present only in journal
             append_swhid(f"{otype}-swhid-in-journal-only", suffix_timestamp, swhid)
             # save object representation in dedicated tree
-            write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
+            append_representation_on_disk_as_tree("journal_only", "journal_representation", obj, otype, unique_key)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
-def write_representation_on_disk(top_level_path, representation_type, obj, otype, unique_key):
-    dir_path = f"{top_level_path}/{otype}/{unique_key}/"
-    os.makedirs(dir_path, exist_ok=True)
-    journal_path = os.path.join(dir_path, representation_type)
-    with open(journal_path, 'a') as f:
-        f.write(repr(obj))
 
 if __name__ == "__main__":
+    from config import client_cfg, cs_staging_storage_conf, pg_staging_storage_conf
+
     FORMAT = '[%(asctime)s] %(message)s'
     logging.basicConfig(format=FORMAT)
     logger.setLevel(logging.INFO)
     cassandra_logger = logging.getLogger("cassandra.cluster")
     cassandra_logger.setLevel(logging.ERROR)
+
     try:
         jn_storage = get_journal_client(**client_cfg)
     except ValueError as exc:
