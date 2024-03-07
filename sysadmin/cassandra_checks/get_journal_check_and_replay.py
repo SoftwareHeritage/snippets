@@ -4,9 +4,10 @@
 
 """
 
+import click
 from yaml import safe_load
 
-from os import makedirs, environ
+from os import makedirs
 from os.path import join
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
@@ -21,8 +22,30 @@ from swh.model.hashutil import hash_to_hex, hash_git_data
 from datetime import datetime
 import logging
 
+from typing import Any, Dict, Optional
+
 
 logger = logging.getLogger(__name__)
+
+
+def read_config(config_file: Optional[Any] = None) -> Dict:
+    """Read configuration from config_file if provided, from the SWH_CONFIG_FILENAME if
+    set or fallback to the DEFAULT_CONFIG.
+
+    """
+    from os import environ
+
+    if not config_file:
+        config_file = environ.get("SWH_CONFIG_FILENAME")
+
+    if not config_file:
+        raise ValueError("You must provide a configuration file.")
+
+    with open(f"{environ['HOME']}/.config/swh/check-cassandra.staging.yaml", "r") as f:
+        data = f.read()
+        config = safe_load(data)
+
+    return config
 
 
 def str_now():
@@ -253,8 +276,21 @@ def process(cs_storage, pg_storage, objects):
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
-
-if __name__ == "__main__":
+@click.command()
+@click.option(
+    "--config-file",
+    "-C",
+    default=None,
+    type=click.Path(
+        exists=True,
+        dir_okay=False,
+    ),
+    help=(
+        "Configuration file. This has a higher priority than SWH_CONFIG_FILENAME "
+        "environment variable if set."
+    ),
+)
+def main(config_file):
 
     FORMAT = '[%(asctime)s] %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -263,11 +299,7 @@ if __name__ == "__main__":
     cassandra_logger.setLevel(logging.ERROR)
 
     # Read the configuration out of the swh configuration file
-    with open(f"{environ['HOME']}/.config/swh/check-cassandra.staging.yaml", "r") as f:
-        data = f.read()
-        config = safe_load(data)
-
-    from pprint import pprint; breakpoint()
+    config = read_config(config_file)
 
     try:
         jn_storage = get_journal_client(**config["journal_client"])
@@ -283,3 +315,7 @@ if __name__ == "__main__":
         jn_storage.process(process_fn)
     except KeyboardInterrupt:
         logger.info("Called Ctrl-C, exiting.")
+
+
+if __name__ == "__main__":
+    main()
