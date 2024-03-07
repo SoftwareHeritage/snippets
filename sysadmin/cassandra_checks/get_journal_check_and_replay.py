@@ -41,6 +41,15 @@ def swhid_key(obj):
     return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
 
 
+def is_equal (obj_ref, obj_model_ref):
+    """
+    Objects model comparison with directory scpecific case.
+    """
+    if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
+        return obj_ref.id == obj_model_ref.id and sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
+    return obj_ref == obj_model_ref
+
+
 def process(objects):
     """Process objects read from the journal.
 
@@ -170,11 +179,6 @@ def process(objects):
             # Debug: check object representation written on disk
             write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
             write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
-
-            def is_equal (obj_ref, obj_model_ref):
-                if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
-                    return obj_ref.id == obj_model_ref.id and sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
-                return obj_ref == obj_model_ref
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
