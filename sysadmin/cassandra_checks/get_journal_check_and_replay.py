@@ -74,6 +74,21 @@ def append_representation_on_disk_as_tree(top_level_path, representation_type, o
         f.write(repr(obj))
 
 
+def flush_objects_to_disk(top_level_path, representation_type, obj_or_list, otype, unique_key):
+    """Flush the backend <representation-type> representation of the objects we found in
+    backends but failed to compare with the journal object.
+
+    Because some functions in the storage interface returns list of elements or 1
+    element.
+
+    """
+    if isinstance(obj_or_list, (list, GeneratorType)):
+        for _obj in obj_or_list:
+            append_representation_on_disk_as_tree(top_level_path, representation_type, _obj, otype, unique_key)
+    else:
+        append_representation_on_disk_as_tree(top_level_path, representation_type, obj_or_list, otype, unique_key)
+
+
 def swhid_str(obj):
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
@@ -96,7 +111,7 @@ def swhid_key(obj):
     return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
 
 
-def is_equal (obj_ref, obj_model_ref):
+def is_equal(obj_ref, obj_model_ref):
     """Objects model comparison. Using mostly object comparison except for directory.
 
     The directory comparison is specific since we could have a list of sorted entries
@@ -253,7 +268,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 # kafka and cassandra objects match
                 continue
 
-            # object not found in cassandra, let's look it up on postgresql
+            # let's look it up on postgresql
             pg_obj = pg_get(stargs)
 
             if isinstance(pg_obj, (list, GeneratorType)):
@@ -269,6 +284,9 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 # kafka and postgresql objects match
                 errors_counter += 1
                 top_level_report_path = join(top_level_path, "to_replay")
+                # object not found or at least different in cassandra
+                # So we want to flush it on disk for later analysis
+                flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
                 # save object representation in dedicated tree
                 append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
                 append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
@@ -276,14 +294,19 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 append_swhid(report_filepath, suffix_timestamp, swhid)
                 continue
 
-            # object is present only in journal
+            # We did not found any object in cassandra and postgresql that matches what
+            # we read in the journal
+
             top_level_report_path = join(top_level_path, "journal_only")
+            flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
+            flush_objects_to_disk(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
             # save object representation in dedicated tree
             append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
             report_filepath = join(top_level_path, f"{otype}-swhid-in-journal-only")
             append_swhid(report_filepath, suffix_timestamp, swhid)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
+
 
 @click.command()
 @click.option(
