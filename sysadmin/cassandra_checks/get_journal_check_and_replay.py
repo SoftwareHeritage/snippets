@@ -173,7 +173,7 @@ def process(objects):
 
             def is_equal (obj_ref, obj_model_ref):
                 if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
-                    return obj_ref.id == obj_model_ref.id
+                    return obj_ref.id == obj_model_ref.id and sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
                 return obj_ref == obj_model_ref
 
             if is_equal(cs_obj, truncated_obj_model):

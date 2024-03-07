@@ -47,8 +47,8 @@ client_cfg = {
     "security.protocol": "sasl_ssl",
     "sasl.mechanism": "SCRAM-SHA-512",
     "message.max.bytes": "524288000",
-    "stop_after_objects": 20,
-    "batch_size": 20,
+    "stop_after_objects": 4,
+    "batch_size": 4,
     "privileged": True,
 }
 
