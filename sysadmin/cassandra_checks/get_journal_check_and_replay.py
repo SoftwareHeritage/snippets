@@ -18,7 +18,10 @@ from swh.journal.serializers import pprint_key
 from swh.storage.utils import round_to_milliseconds
 from swh.model.hashutil import hash_to_hex, hash_git_data
 from datetime import datetime, timezone
+import logging
 
+
+logger = logging.getLogger(__name__)
 
 def str_now():
     return str(datetime.now()).replace(" ","_")
@@ -60,7 +63,7 @@ def is_equal (obj_ref, obj_model_ref):
     return obj_ref == obj_model_ref
 
 
-def process(objects):
+def process(cs_storage, pg_storage, objects):
     """Process objects read from the journal.
 
     This reads journal objects and for each of them, check whether they are present in
@@ -88,11 +91,10 @@ def process(objects):
                echo $(kafka-object-as-string) > `<object-type>-to-replay/<swhid>/journal`
 
     """
-    cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
-    pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
+
     suffix_timestamp = str_now()
     for otype, objs in objects.items():
-        print(f"Processing {len(objs)} <{otype}> objects.")
+        logger.info(f"Processing {len(objs)} <{otype}> objects.")
         errors_counter = 0
         for obj in objs:
             if otype == "content":
@@ -225,7 +227,7 @@ def process(objects):
             # save object representation in dedicated tree
             write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
 
-        print(f"\tObjects missing in cassandra: {errors_counter}.")
+        logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
 def write_representation_on_disk(top_level_path, representation_type, obj, otype, unique_key):
     dir_path = f"{top_level_path}/{otype}/{unique_key}/"
@@ -234,14 +236,23 @@ def write_representation_on_disk(top_level_path, representation_type, obj, otype
     with open(journal_path, 'a') as f:
         f.write(repr(obj))
 
-try:
-    jn_storage = get_journal_client(**client_cfg)
-except ValueError as exc:
-    print(exc)
-    exit(1)
-print("🚧 Processing objects...")
-try:
-    # Run the client forever
-    jn_storage.process(process)
-except KeyboardInterrupt:
-    print("Called Ctrl-C, exiting.")
+if __name__ == "__main__":
+    FORMAT = '[%(asctime)s] %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logger.setLevel(logging.INFO)
+    cassandra_logger = logging.getLogger("cassandra.cluster")
+    cassandra_logger.setLevel(logging.ERROR)
+    try:
+        jn_storage = get_journal_client(**client_cfg)
+    except ValueError as exc:
+        logger.info(exc)
+        exit(1)
+    logger.info("🚧 Processing objects...")
+    try:
+        cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
+        pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
+        process_fn = partial(process, cs_storage, pg_storage)
+        # Run the client forever
+        jn_storage.process(process_fn)
+    except KeyboardInterrupt:
+        logger.info("Called Ctrl-C, exiting.")
