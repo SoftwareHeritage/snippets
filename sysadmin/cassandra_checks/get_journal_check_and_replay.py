@@ -41,7 +41,7 @@ def read_config(config_file: Optional[Any] = None) -> Dict:
     if not config_file:
         raise ValueError("You must provide a configuration file.")
 
-    with open(f"{environ['HOME']}/.config/swh/check-cassandra.staging.yaml", "r") as f:
+    with open(config_file) as f:
         data = f.read()
         config = safe_load(data)
 
