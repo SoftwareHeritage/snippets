@@ -17,6 +17,16 @@ from types import GeneratorType
 from swh.journal.serializers import pprint_key
 from swh.storage.utils import round_to_milliseconds
 from swh.model.hashutil import hash_to_hex, hash_git_data
+from datetime import datetime, timezone
+
+
+def str_now():
+    return str(datetime.now()).replace(" ","_")
+
+
+def append_swhid(filename, suffix_date, swhid):
+    with open(f"{filename}-{suffix_date}.lst",'a') as f:
+        f.write(f"{swhid}\n")
 
 
 def swhid_str(obj):
@@ -80,6 +90,7 @@ def process(objects):
     """
     cs_storage = get_storage("cassandra", **cs_staging_storage_conf)
     pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
+    suffix_timestamp = str_now()
     for otype, objs in objects.items():
         for obj in objs:
             if otype == "content":
@@ -179,6 +190,7 @@ def process(objects):
             # Debug: check object representation written on disk
             write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
             write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
+            append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
@@ -199,16 +211,14 @@ def process(objects):
 
             if is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
-                with open(f"{otype}-swhid-toreplay.lst",'a') as f:
-                    f.write(f"{swhid}\n")
+                append_swhid(f"{otype}-swhid-toreplay", suffix_timestamp, swhid)
                 # save object representation in dedicated tree
                 write_representation_on_disk("to_replay", "journal_representation", obj, otype, unique_key)
                 write_representation_on_disk("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
                 continue
 
             # object is present only in journal
-            with open(f"{otype}-swhid-in-journal-only.lst",'a') as f:
-                f.write(f"{swhid}\n")
+            append_swhid(f"{otype}-swhid-in-journal-only", suffix_timestamp, swhid)
             # save object representation in dedicated tree
             write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
 
@@ -217,7 +227,7 @@ def write_representation_on_disk(top_level_path, representation_type, obj, otype
     dir_path = f"{top_level_path}/{otype}/{unique_key}/"
     os.makedirs(dir_path, exist_ok=True)
     journal_path = os.path.join(dir_path, representation_type)
-    with open(journal_path, 'w') as f:
+    with open(journal_path, 'a') as f:
         f.write(repr(obj))
 
 try:
