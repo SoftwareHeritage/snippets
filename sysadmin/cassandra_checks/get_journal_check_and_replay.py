@@ -110,7 +110,7 @@ def is_equal (obj_ref, obj_model_ref):
     return obj_ref == obj_model_ref
 
 
-def process(cs_storage, pg_storage, objects):
+def process(cs_storage, pg_storage, top_level_path, objects):
     """Process objects read from the journal.
 
     This reads journal objects and for each of them, check whether they are present in
@@ -118,6 +118,11 @@ def process(cs_storage, pg_storage, objects):
     presence of the object in the postgresql backend. If present in the postgresql
     backend, write the object as missing in cassandra. This object needs to be replayed.
     If not present either in the postgresql backend, just marks it as such.
+
+    Args:
+        cs_storage: Configuration dict for cassandra storage communication
+        pg_storage: Configuration dict for postgresql storage communication
+        top_level_path: Top level directory to write swhid error reporting
 
     Pseudo code:
 
@@ -264,15 +269,17 @@ def process(cs_storage, pg_storage, objects):
                 # kafka and postgresql objects match
                 errors_counter += 1
                 append_swhid(f"{otype}-swhid-toreplay", suffix_timestamp, swhid)
+                top_level_report_path = join(top_level_path, "to_replay")
                 # save object representation in dedicated tree
-                append_representation_on_disk_as_tree("to_replay", "journal_representation", obj, otype, unique_key)
-                append_representation_on_disk_as_tree("to_replay", "postgresql_representation", pg_obj, otype, unique_key)
+                append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
+                append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
                 continue
 
             # object is present only in journal
             append_swhid(f"{otype}-swhid-in-journal-only", suffix_timestamp, swhid)
+            top_level_report_path = join(top_level_path, "journal_only")
             # save object representation in dedicated tree
-            append_representation_on_disk_as_tree("journal_only", "journal_representation", obj, otype, unique_key)
+            append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
@@ -310,7 +317,8 @@ def main(config_file):
     try:
         cs_storage = get_storage("cassandra", **config["cassandra"])
         pg_storage = get_storage("postgresql", **config["postgresql"])
-        process_fn = partial(process, cs_storage, pg_storage)
+        top_level_path = config["top_level_path"]
+        process_fn = partial(process, cs_storage, pg_storage, top_level_path)
         # Run the client forever
         jn_storage.process(process_fn)
     except KeyboardInterrupt:
