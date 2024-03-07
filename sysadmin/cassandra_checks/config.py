@@ -1,16 +1,5 @@
 import os
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
 JOURNAL_PASSWORD = os.environ['JOURNAL_PASSWORD']
 JOURNAL_USER = os.environ['JOURNAL_USER']
 BROKER = os.environ['JOURNAL_HOST'] + ":" + os.environ['JOURNAL_PORT']
@@ -30,25 +19,26 @@ client_cfg = {
     "cls": "kafka",
     "brokers": [BROKER],
     "group_id": "swh-gsa-test",
-    "object_types": ["directory"],
-    #   - content
-    #   - directory
-    #   - extid
-    #   - origin
-    #   - origin_visit
-    #   - origin_visit_status
-    #   - raw_extrinsic_metadata
-    #   - release
-    #   - revision
-    #   - skipped_content
-    #   - snapshot
+    "object_types": [
+        "content",
+        "directory",
+        "extid",
+        "origin",
+        "origin_visit",
+        "origin_visit_status",
+        "raw_extrinsic_metadata",
+        "release",
+        "revision",
+        "skipped_content",
+        "snapshot",
+    ],
     "sasl.username": JOURNAL_USER,
     "sasl.password": JOURNAL_PASSWORD,
     "security.protocol": "sasl_ssl",
     "sasl.mechanism": "SCRAM-SHA-512",
     "message.max.bytes": "524288000",
-    "stop_after_objects": 100,
-    "batch_size": 25,
+    "stop_after_objects": 10000,
+    "batch_size": 1000,
     "privileged": True,
 }
 
