@@ -92,6 +92,8 @@ def process(objects):
     pg_storage = get_storage("postgresql", **pg_staging_storage_conf)
     suffix_timestamp = str_now()
     for otype, objs in objects.items():
+        print(f"Processing {len(objs)} <{otype}> objects.")
+        errors_counter = 0
         for obj in objs:
             if otype == "content":
                 obj_model = Content.from_dict(obj)
@@ -187,10 +189,10 @@ def process(objects):
             swhid = swhid_str(obj_model)
             # so we compute a unique key without the swhid (when need, e.g origin_visit, origin_visit_status,...)
             unique_key = swhid_key(obj_model)
-            # Debug: check object representation written on disk
-            write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
-            write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
-            append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
+            ## Debug: check object representation written on disk
+            #write_representation_on_disk("cassandra", "journal_representation", obj_model, otype, unique_key)
+            #write_representation_on_disk("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
+            #append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
@@ -211,6 +213,7 @@ def process(objects):
 
             if is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
+                errors_counter += 1
                 append_swhid(f"{otype}-swhid-toreplay", suffix_timestamp, swhid)
                 # save object representation in dedicated tree
                 write_representation_on_disk("to_replay", "journal_representation", obj, otype, unique_key)
@@ -222,6 +225,7 @@ def process(objects):
             # save object representation in dedicated tree
             write_representation_on_disk("journal_only", "journal_representation", obj, otype, unique_key)
 
+        print(f"\tObjects missing in cassandra: {errors_counter}.")
 
 def write_representation_on_disk(top_level_path, representation_type, obj, otype, unique_key):
     dir_path = f"{top_level_path}/{otype}/{unique_key}/"
@@ -235,6 +239,7 @@ try:
 except ValueError as exc:
     print(exc)
     exit(1)
+print("🚧 Processing objects...")
 try:
     # Run the client forever
     jn_storage.process(process)
