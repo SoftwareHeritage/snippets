@@ -268,18 +268,20 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             if is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
                 errors_counter += 1
-                append_swhid(f"{otype}-swhid-toreplay", suffix_timestamp, swhid)
                 top_level_report_path = join(top_level_path, "to_replay")
                 # save object representation in dedicated tree
                 append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
                 append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
+                report_filepath = join(top_level_path, f"{otype}-swhid-toreplay")
+                append_swhid(report_filepath, suffix_timestamp, swhid)
                 continue
 
             # object is present only in journal
-            append_swhid(f"{otype}-swhid-in-journal-only", suffix_timestamp, swhid)
             top_level_report_path = join(top_level_path, "journal_only")
             # save object representation in dedicated tree
             append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
+            report_filepath = join(top_level_path, f"{otype}-swhid-in-journal-only")
+            append_swhid(report_filepath, suffix_timestamp, swhid)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
