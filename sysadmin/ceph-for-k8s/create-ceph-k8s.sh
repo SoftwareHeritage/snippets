@@ -19,6 +19,9 @@ ceph osd pool create "${RBD_POOL}"
 rbd pool init "${RBD_POOL}"
 
 ceph fs volume create "${CEPHFS_FS}"
+ceph fs subvolumegroup create "${CEPHFS_FS}" csi
+ceph fs subvolumegroup pin "${CEPHFS_FS}" csi distributed 1
+
 
 for pool in "${RBD_POOL}" "cephfs.${CEPHFS_FS}.data" "cephfs.${CEPHFS_FS}.meta"; do
   ceph osd pool set "${pool}" pg_autoscale_mode warn
