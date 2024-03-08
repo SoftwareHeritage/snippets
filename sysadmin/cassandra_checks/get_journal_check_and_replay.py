@@ -111,28 +111,47 @@ def swhid_key(obj):
     return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
 
 
-def is_equal(obj_ref, obj_model_ref):
-    """Objects model comparison. Using mostly object comparison except for directory.
+def compare_directory(obj_ref: Directory, obj_model_ref: Directory) -> bool:
+    """Directory model comparison.
 
-    Some comparison are specific:
-
-    - Directory: Their directory entries might be in different order when getting them
-      from postgresql or cassandra. As that does not impact the hash, that should not
-      impact the equality test. That should/could be dealt with in the model but it's
-      not currently the case so we do it here (for now).
-
-    - Revision: Revision objects in cassandra do not hold any metadata while the
-      historic revision in postgresql have it. Those cassandra revisions have been
-      replayed out of the postgresql ones with a specific fixer which drops that field.
-      So, we do not account for them during the comparison.
+    Their directory entries might be in different order when getting them from
+    postgresql or cassandra. As that does not impact the hash, that should not impact
+    the equality test. That should/could be dealt with in the model but it's not
+    currently the case so we do it here (for now).
 
     """
-    if isinstance(obj_ref, Directory) and isinstance(obj_model_ref, Directory):
-        return obj_ref.id == obj_model_ref.id and \
-            sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
-    elif isinstance(obj_ref, Revision) and isinstance(obj_model_ref, Revision):
-        return attr.evolve(obj_ref, metadata=None) == attr.evolve(obj_model_ref, metadata=None)
+    return obj_ref.id == obj_model_ref.id and \
+        sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
+
+def compare_revision(obj_ref: Revision, obj_model_ref: Revision) -> bool:
+    """Revision model comparison.
+
+    Revision: Revision objects in cassandra do not hold any metadata while the historic
+    revision in postgresql have it. Those cassandra revisions have been replayed out of
+    the postgresql ones with a specific fixer which drops that field. So, we do not
+    account for them during the comparison.
+
+    """
+
+    return attr.evolve(obj_ref, metadata=None) == attr.evolve(obj_model_ref, metadata=None)
+
+
+def compare_object(obj_ref, obj_model_ref) -> bool:
     return obj_ref == obj_model_ref
+
+
+EQUAL_FN = {
+    "directory": compare_directory,
+    "revision": compare_revision
+}
+
+
+def is_equal(obj_ref, obj_model_ref):
+    """Objects model comparison.
+
+    """
+    equal_fn = EQUAL_FN.get(obj_ref.object_type, compare_object)
+    return equal_fn(obj_ref, obj_model_ref)
 
 
 def process(cs_storage, pg_storage, top_level_path, objects):
