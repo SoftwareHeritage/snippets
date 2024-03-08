@@ -12,7 +12,7 @@ from os.path import join
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
 from swh.storage import get_storage
-from swh.storage.algos import directory, snapshot, origin as algos_origin
+from swh.storage.algos import directory as dir_algos, snapshot as snp_algos, origin as ori_algos
 from functools import partial
 import attr
 from types import GeneratorType
@@ -155,6 +155,103 @@ def is_equal(obj_ref, obj_model_ref):
     return equal_fn(obj_ref, obj_model_ref)
 
 
+def cassandra_truncate_obj_model(obj_model):
+    """Cassandra's swh representation for origin-visit and origin-visit-status use date
+    in their model (instead of other timestamp model). This has the unfortunate effect
+    to round the timestamp to the millisecond. So we need to adapt the obj_model so the
+    comparison can happen "properly".
+
+    Called only for the object type origin_visit and origin_visit_status
+
+    """
+    date = round_to_milliseconds(obj_model.date)
+    return attr.evolve(obj_model, date=date)
+
+
+def identity(obj_model):
+    return obj_model
+
+
+def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
+    """Configure how to retrieve the object with type otype. Depending on the object
+    type, this returns a tuple of the object model, a truncated model object function,
+    an equality function, a cassandra getter function and a storage getter function.
+
+    """
+    truncate_obj_model_fn = identity
+    is_equal_fn = compare_object
+
+    if otype == "content":
+        obj_model = Content.from_dict(obj)
+        sha1s = [obj_model.sha1]
+        cs_get = partial(cs_storage.content_get, sha1s)
+        pg_get = partial(pg_storage.content_get, sha1s)
+    elif otype == "directory":
+        obj_model = Directory.from_dict(obj)
+        id_ = obj_model.id
+        cs_get = partial(dir_algos.directory_get, cs_storage, id_)
+        pg_get = partial(dir_algos.directory_get, pg_storage, id_)
+        is_equal_fn = compare_directory
+    elif otype == "extid":
+        obj_model = ExtID.from_dict(obj)
+        extid_type = obj_model.extid_type
+        extids = [obj_model.extid]
+        cs_get = partial(cs_storage.extid_get_from_extid, extid_type, extids)
+        pg_get = partial(pg_storage.extid_get_from_extid, extid_type, extids)
+    elif otype == "origin":
+        obj_model = Origin.from_dict(obj)
+        url = obj_model.url
+        urls = [url]
+        cs_get = partial(cs_storage.origin_get, urls)
+        pg_get = partial(pg_storage.origin_get, urls)
+    elif otype == "origin_visit":
+        obj_model = OriginVisit.from_dict(obj)
+        origin = obj_model.origin
+        visit = obj_model.visit
+        cs_get = partial(cs_storage.origin_visit_get_by, origin, visit)
+        pg_get = partial(pg_storage.origin_visit_get_by, origin, visit)
+        truncate_obj_model_fn = cassandra_truncate_obj_model
+    elif otype == "origin_visit_status":
+        obj_model = OriginVisitStatus.from_dict(obj)
+        origin = obj_model.origin
+        visit = obj_model.visit
+        cs_get = partial(
+            ori_algos.iter_origin_visit_statuses, cs_storage, origin, visit)
+        pg_get = partial(
+            ori_algos.iter_origin_visit_statuses, pg_storage, origin, visit)
+        truncate_obj_model_fn = cassandra_truncate_obj_model
+    elif otype == "raw_extrinsic_metadata":
+        obj_model = RawExtrinsicMetadata.from_dict(obj)
+        ids = [obj_model.id]
+        cs_get = partial(cs_storage.raw_extrinsic_metadata_get_by_ids, ids)
+        pg_get = partial(pg_storage.raw_extrinsic_metadata_get_by_ids, ids)
+    elif otype == "release":
+        obj_model = Release.from_dict(obj)
+        ids = [obj_model.id]
+        cs_get = partial(cs_storage.release_get, ids)
+        pg_get = partial(pg_storage.release_get, ids)
+    elif otype == "revision":
+        obj_model = Revision.from_dict(obj)
+        ids = [obj_model.id]
+        cs_get = partial(cs_storage.revision_get, ids)
+        pg_get = partial(pg_storage.revision_get, ids)
+        is_equal_fn = compare_revision
+    elif otype == "skipped_content":
+        obj_model = SkippedContent.from_dict(obj)
+        hashes = obj_model.hashes()
+        cs_get = partial(cs_storage.skipped_content_find, hashes)
+        pg_get = partial(pg_storage.skipped_content_find, hashes)
+    elif otype == "snapshot":
+        obj_model = Snapshot.from_dict(obj)
+        id_ = obj_model.id
+        # snapshot_get return the dict and not the swh model object
+        # (deal with huge snapshot)
+        cs_get = partial(snp_algos.snapshot_get_all_branches, cs_storage, id_)
+        pg_get = partial(snp_algos.snapshot_get_all_branches, pg_storage, id_)
+
+    return obj_model, truncate_obj_model_fn, is_equal_fn, cs_get, pg_get
+
+
 def process(cs_storage, pg_storage, top_level_path, objects):
     """Process objects read from the journal.
 
@@ -195,86 +292,16 @@ def process(cs_storage, pg_storage, top_level_path, objects):
         logger.info(f"Processing {len(objs)} <{otype}> objects.")
         errors_counter = 0
         for obj in objs:
-            if otype == "content":
-                obj_model = Content.from_dict(obj)
-                cs_get = cs_storage.content_get
-                pg_get = pg_storage.content_get
-                sha1 = obj_model.sha1
-                stargs = [sha1]
-            elif otype == "directory":
-                obj_model = Directory.from_dict(obj)
-                cs_get = partial(directory.directory_get, cs_storage)
-                pg_get = partial(directory.directory_get, pg_storage)
-                id = obj_model.id
-                stargs = id
-            elif otype == "extid":
-                obj_model = ExtID.from_dict(obj)
-                extid_type = obj_model.extid_type
-                extid = obj_model.extid
-                cs_get = partial(cs_storage.extid_get_from_extid, extid_type)
-                pg_get = partial(pg_storage.extid_get_from_extid, extid_type)
-                stargs = [extid]
-                #print(stargs)
-            elif otype == "origin":
-                obj_model = Origin.from_dict(obj)
-                cs_get = cs_storage.origin_get
-                pg_get = pg_storage.origin_get
-                url = obj_model.url
-                id = obj_model.id
-                stargs = [url]
-            elif otype == "origin_visit":
-                obj_model = OriginVisit.from_dict(obj)
-                origin = obj_model.origin
-                visit = obj_model.visit
-                cs_get = partial(cs_storage.origin_visit_get_by, origin)
-                pg_get = partial(pg_storage.origin_visit_get_by, origin)
-                stargs = visit
-            elif otype == "origin_visit_status":
-                obj_model = OriginVisitStatus.from_dict(obj)
-                origin = obj_model.origin
-                visit = obj_model.visit
-                cs_get = partial(algos_origin.iter_origin_visit_statuses, cs_storage, origin)
-                pg_get = partial(algos_origin.iter_origin_visit_statuses, pg_storage, origin)
-                stargs = visit
-            elif otype == "raw_extrinsic_metadata":
-                obj_model = RawExtrinsicMetadata.from_dict(obj)
-                cs_get = cs_storage.raw_extrinsic_metadata_get_by_ids
-                pg_get = pg_storage.raw_extrinsic_metadata_get_by_ids
-                id = obj_model.id
-                stargs = [id]
-            elif otype == "release":
-                obj_model = Release.from_dict(obj)
-                cs_get = cs_storage.release_get
-                pg_get = pg_storage.release_get
-                id = obj_model.id
-                stargs = [id]
-            elif otype == "revision":
-                obj_model = Revision.from_dict(obj)
-                cs_get = cs_storage.revision_get
-                pg_get = pg_storage.revision_get
-                id = obj_model.id
-                stargs = [id]
-            elif otype == "skipped_content":
-                obj_model = SkippedContent.from_dict(obj)
-                cs_get = cs_storage.skipped_content_find
-                pg_get = pg_storage.skipped_content_find
-                stargs = obj_model.hashes()
-            elif otype == "snapshot":
-                obj_model = Snapshot.from_dict(obj)
-                # snapshot_get return the dict and not the swh model object
-                # (deal with huge snapshot)
-                cs_get = partial(snapshot.snapshot_get_all_branches, cs_storage)
-                pg_get = partial(snapshot.snapshot_get_all_branches, pg_storage)
-                id = obj_model.id
-                stargs = id
-            cs_obj = cs_get(stargs)
+            obj_model, truncate_model_fn, is_equal, cs_get, pg_get = configure_obj_get(
+                otype, obj, cs_storage, pg_storage)
 
-            # cassandra storage truncate timestamp to the whole millisecond
-            if otype in ("origin_visit", "origin_visit_status"):
-                date = round_to_milliseconds(obj_model.date)
-                truncated_obj_model = attr.evolve(obj_model, date=date)
-            else:
-                truncated_obj_model = obj_model
+            # Retrieve object in cassandra
+            cs_obj = cs_get()
+            # Due to some quirks in how cassandra stores the date for origin-visit and
+            # origin-visit-status (round to milliseconds), we eventually adapt the
+            # obj_model to compare journal object and cassandra object (for those
+            # objects)
+            truncated_obj_model = truncate_model_fn(obj_model)
 
             if isinstance(cs_obj, (list, GeneratorType)):
                 for _cs_obj in cs_obj:
@@ -301,7 +328,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 continue
 
             # let's look it up on postgresql
-            pg_obj = pg_get(stargs)
+            pg_obj = pg_get()
 
             if isinstance(pg_obj, (list, GeneratorType)):
                 for _pg_obj in pg_obj:
