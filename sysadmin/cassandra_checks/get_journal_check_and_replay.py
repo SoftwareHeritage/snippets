@@ -53,10 +53,21 @@ def str_now():
     return str(datetime.now()).replace(" ","_")
 
 
-def append_swhid(filename, suffix_date, swhid):
-    """Write the swhid identifier to a filename with a suffix_date."""
+def append_swhid(filename, suffix_date, swhid, unique_key):
+    """Write the swhid identifier to a filename with a suffix_date.
+
+    For some objects (e.g. origin-visit, origin-visit-status, ...), we don't have a real
+    swhid (it's a dict representation), so we'll also write the (different than swhid)
+    unique key first. That will be helpful to do a join on the other part of the
+    filesystem to retrieve the details on the objects.
+
+    """
+    msg = f"{swhid}\n"
+    if swhid != unique_key:
+        msg = f"{unique_key}\n{msg}"
+
     with open(f"{filename}-{suffix_date}.lst",'a') as f:
-        f.write(f"{swhid}\n")
+        f.write(msg)
 
 
 def append_representation_on_disk_as_tree(top_level_path, representation_type, obj, otype, unique_key):
@@ -321,7 +332,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # append_representation_on_disk_as_tree(top_level_debug, "journal_representation", obj_model, otype, unique_key)
             # append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
             # report_debug_filepath = join(top_level_path, f"{otype}-debug)
-            # append_swhid(report_debug_filepath, suffix_timestamp, swhid)
+            # append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
@@ -350,7 +361,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
                 append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
                 report_filepath = join(top_level_path, f"{otype}-swhid-toreplay")
-                append_swhid(report_filepath, suffix_timestamp, swhid)
+                append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
                 continue
 
             # We did not found any object in cassandra and postgresql that matches what
@@ -362,7 +373,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # save object representation in dedicated tree
             append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
             report_filepath = join(top_level_path, f"{otype}-swhid-in-journal-only")
-            append_swhid(report_filepath, suffix_timestamp, swhid)
+            append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
