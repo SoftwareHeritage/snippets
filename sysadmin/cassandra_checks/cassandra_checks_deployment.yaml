@@ -21,7 +21,7 @@ metadata:
   name: cassandra-checks
   namespace: swh-cassandra
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: cassandra-checks
@@ -30,21 +30,37 @@ spec:
       labels:
         app: cassandra-checks
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: swh/journal_client
+                operator: In
+                values:
+                - "true"
       containers:
         - name: cassandra-checks
           command:
-          - /bin/sleep
-          - infinity
-          resources:
-            limits:
-              memory: "128Mi"
-              cpu: "500m"
-          image: debian:bookworm
+          - /opt/swh/entrypoint.sh
+#          resources:
+#            limits:
+#              memory: "128Mi"
+#              cpu: "500m"
+          image: container-registry.softwareheritage.org/swh/infra/swh-apps/cassandra_checks:20240308.2
           imagePullPolicy: IfNotPresent
           volumeMounts:
-          - mountPath: /volume
-            name: cassandra-checks-volume
+          - name: cassandra-checks-volume
+            mountPath: /volume
+          - name: swh-config
+            mountPath: /etc/swh/
+          env:
+          - name: SWH_CONFIG_FILENAME
+            value: /etc/swh/config
       volumes:
         - name: cassandra-checks-volume
           persistentVolumeClaim:
             claimName: cassandra-checks-pvc
+        - name: swh-config
+          secret:
+            secretName: cassandra-check-config-secret
