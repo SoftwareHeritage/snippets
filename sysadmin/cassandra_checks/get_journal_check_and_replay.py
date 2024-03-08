@@ -92,7 +92,7 @@ def flush_objects_to_disk(top_level_path, representation_type, obj_or_list, otyp
 def swhid_str(obj):
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
-    extid, origin_visit, origin_visit_status)
+    extid, origin_visit, origin_visit_status) as a dict.
 
     """
     if hasattr(obj, 'swhid'):
@@ -103,7 +103,7 @@ def swhid_str(obj):
 def swhid_key(obj):
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
-    extid, origin_visit, origin_visit_status)
+    extid, origin_visit, origin_visit_status) which is filesystem compliant.
 
     """
     if hasattr(obj, 'swhid'):
@@ -122,6 +122,7 @@ def compare_directory(obj_ref: Directory, obj_model_ref: Directory) -> bool:
     """
     return obj_ref.id == obj_model_ref.id and \
         sorted(obj_ref.entries) == sorted(obj_model_ref.entries)
+
 
 def compare_revision(obj_ref: Revision, obj_model_ref: Revision) -> bool:
     """Revision model comparison.
@@ -289,9 +290,11 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # so we compute a unique key without the swhid (when need, e.g origin_visit, origin_visit_status,...)
             unique_key = swhid_key(obj_model)
             # For debug purposes only: check object representation written on disk
-            # append_representation_on_disk_as_tree("cassandra", "journal_representation", obj_model, otype, unique_key)
-            # append_representation_on_disk_as_tree("cassandra", "cassandra_representation", cs_obj, otype, unique_key)
-            # append_swhid(f"{otype}-debug", suffix_timestamp, swhid)
+            # top_level_debug = join(top_level_path, "debug", "cassandra")
+            # append_representation_on_disk_as_tree(top_level_debug, "journal_representation", obj_model, otype, unique_key)
+            # append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
+            # report_debug_filepath = join(top_level_path, f"{otype}-debug)
+            # append_swhid(report_debug_filepath, suffix_timestamp, swhid)
 
             if is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
