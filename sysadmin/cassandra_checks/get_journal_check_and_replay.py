@@ -7,6 +7,7 @@
 import click
 from yaml import safe_load
 
+from itertools import tee
 from os import makedirs
 from os.path import join
 from swh.journal.client import get_journal_client
@@ -333,6 +334,10 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # objects)
             truncated_obj_model = truncate_model_fn(obj_model)
 
+            if isinstance(cs_obj, GeneratorType):
+                cs_obj, cs_obj2 = tee(cs_obj, 2)
+            else:
+                cs_obj, cs_obj2 = cs_obj, cs_obj
             if isinstance(cs_obj, (list, GeneratorType)):
                 for _cs_obj in cs_obj:
                     if _cs_obj is None:
@@ -341,6 +346,9 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                     if is_equal(_cs_obj, truncated_obj_model):
                         cs_obj = _cs_obj
                         break
+                # Let's make the generator readable in case we need to flush
+                # representations on disk
+                cs_obj = cs_obj2
 
             # Some objects have no swhid...
             swhid = swhid_str(obj_model)
@@ -360,6 +368,11 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # let's look it up on postgresql
             pg_obj = pg_get()
 
+            if isinstance(pg_obj, GeneratorType):
+                pg_obj, pg_obj2 = tee(pg_obj, 2)
+            else:
+                pg_obj, pg_obj2 = pg_obj, pg_obj
+
             if isinstance(pg_obj, (list, GeneratorType)):
                 for _pg_obj in pg_obj:
                     if _pg_obj is None:
@@ -368,6 +381,9 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                     if is_equal(_pg_obj, obj_model):
                         pg_obj = _pg_obj
                         break
+                # Let's make the generator readable in case we need to flush
+                # representations on disk
+                pg_obj = pg_obj2
 
             if is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
