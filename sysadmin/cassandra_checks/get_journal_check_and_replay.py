@@ -148,6 +148,24 @@ def compare_revision(obj_ref: Revision, obj_model_ref: Revision) -> bool:
     return attr.evolve(obj_ref, metadata=None) == attr.evolve(obj_model_ref, metadata=None)
 
 
+def compare_raw_extrinsic_metadata(obj_ref: RawExtrinsicMetadata, obj_model_ref: RawExtrinsicMetadata) -> bool:
+    """RawExtrinsicMetadata model comparison.
+
+    RawExtrinsicMetadata: RawExtrinsicMetadata objects, authority and fetcher contains an
+    old metadata field. It is not serialized the same way when empty. (Empty dict in
+    journal representation, None in storage representation)
+
+    """
+
+    authority_ref = attr.evolve(obj_ref.authority, metadata=None)
+    fetcher_ref = attr.evolve(obj_ref.fetcher, metadata=None)
+
+    authority_model_ref = attr.evolve(obj_model_ref.authority, metadata=None)
+    fetcher_model_ref = attr.evolve(obj_model_ref.fetcher, metadata=None)
+
+    return attr.evolve(obj_ref, authority=authority_ref, fetcher=fetcher_ref) == attr.evolve(obj_model_ref, authority=authority_model_ref, fetcher=fetcher_model_ref)
+
+
 def compare_object(obj_ref, obj_model_ref) -> bool:
     return obj_ref == obj_model_ref
 
@@ -236,6 +254,7 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
         ids = [obj_model.id]
         cs_get = partial(cs_storage.raw_extrinsic_metadata_get_by_ids, ids)
         pg_get = partial(pg_storage.raw_extrinsic_metadata_get_by_ids, ids)
+        is_equal_fn = compare_raw_extrinsic_metadata
     elif otype == "release":
         obj_model = Release.from_dict(obj)
         ids = [obj_model.id]
