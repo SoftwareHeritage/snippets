@@ -23,7 +23,7 @@ from swh.model.hashutil import hash_to_hex, hash_git_data
 from datetime import datetime
 import logging
 
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Iterator
 
 
 logger = logging.getLogger(__name__)
@@ -231,6 +231,23 @@ def identity(obj_model):
     return obj_model
 
 
+def content_get_all_hashes(content_get_fn: Callable, obj_model: Content) -> Iterator[Optional[Content]]:
+    """Retrieve in the backend the content from multiple calls (one by hash algo) with
+    each of its hash. If any content is missing, consider the content to be replayed.
+
+    """
+    found = []
+    # We'll iterate over all hashes and check for it in the backend
+    for hash_key, hash_id in obj_model.hashes().items():
+        found.extend(content for content in content_get_fn([hash_id], algo=hash_key))
+
+    # If any is missing, consider it not found
+    if None in found:
+        yield None
+    # Else yield all found objects
+    yield from found
+
+
 def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
     """Configure how to retrieve the object with type otype. Depending on the object
     type, this returns a tuple of the object model, a truncated model object function,
@@ -242,9 +259,8 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
 
     if otype == "content":
         obj_model = Content.from_dict(obj)
-        sha1s = [obj_model.sha1]
-        cs_get = partial(cs_storage.content_get, sha1s)
-        pg_get = partial(pg_storage.content_get, sha1s)
+        cs_get = partial(content_get_all_hashes, cs_storage.content_get, obj_model)
+        pg_get = partial(content_get_all_hashes, pg_storage.content_get, obj_model)
         is_equal_fn = compare_content
     elif otype == "directory":
         obj_model = Directory.from_dict(obj)
