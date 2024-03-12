@@ -313,6 +313,34 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
     return obj_model, truncate_obj_model_fn, is_equal_fn, cs_get, pg_get
 
 
+def is_iterable(obj: Any) -> bool:
+    """Is the object an iterable (list or generator)."""
+    return isinstance(obj, (list, GeneratorType))
+
+
+def search_for_obj_model(obj_model, obj_iterable):
+    """This looks up the obj_model in obj_iterable.
+
+    Returns:
+        a tuple of the object found if found or None and the duplicated original
+        iterable (so it can be reused for the disk flush routine)
+
+    """
+    if isinstance(obj_iterable, GeneratorType):
+        obj_iterable, obj_iterable2 = tee(obj_iterable, 2)
+    else:
+        obj_iterable, obj_iterable2 = obj_iterable, obj_iterable
+    for obj in obj_iterable:
+        if obj is None:
+            # some functions (e.g. Release_get, content_get,) ... may return None object
+            continue
+        if is_equal(obj, obj_model):
+            return obj, obj_iterable2
+    # Let's make it clear we did not find the object, and return the eventual unconsumed
+    # generator so we can flush it to disk later
+    return None, obj_iterable2
+
+
 def process(cs_storage, pg_storage, top_level_path, objects):
     """Process objects read from the journal.
 
@@ -364,21 +392,8 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # objects)
             truncated_obj_model = truncate_model_fn(obj_model)
 
-            if isinstance(cs_obj, GeneratorType):
-                cs_obj, cs_obj2 = tee(cs_obj, 2)
-            else:
-                cs_obj, cs_obj2 = cs_obj, cs_obj
-            if isinstance(cs_obj, (list, GeneratorType)):
-                for _cs_obj in cs_obj:
-                    if _cs_obj is None:
-                        # release_get may return None object
-                        continue
-                    if is_equal(_cs_obj, truncated_obj_model):
-                        cs_obj = _cs_obj
-                        break
-                # Let's make the generator readable in case we need to flush
-                # representations on disk
-                cs_obj = cs_obj2
+            if is_iterable(cs_obj):
+                cs_obj, cs_obj_iterable = search_for_obj_model(truncated_obj_model, cs_obj)
 
             # Some objects have no swhid...
             swhid = swhid_str(obj_model)
@@ -391,31 +406,22 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # report_debug_filepath = join(top_level_path, f"{otype}-debug)
             # append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
 
-            if is_equal(cs_obj, truncated_obj_model):
+            if cs_obj is not None and is_equal(cs_obj, truncated_obj_model):
                 # kafka and cassandra objects match
                 continue
+
+            # We'll need to flush the read representation to disk, so revert the
+            # reference to either the list or the generator it was
+            if cs_obj is None:
+                cs_obj = cs_obj_iterable
 
             # let's look it up on postgresql
             pg_obj = pg_get()
 
-            if isinstance(pg_obj, GeneratorType):
-                pg_obj, pg_obj2 = tee(pg_obj, 2)
-            else:
-                pg_obj, pg_obj2 = pg_obj, pg_obj
+            if is_iterable(pg_obj):
+                pg_obj, pg_obj_iterable = search_for_obj_model(obj_model, pg_obj)
 
-            if isinstance(pg_obj, (list, GeneratorType)):
-                for _pg_obj in pg_obj:
-                    if _pg_obj is None:
-                        # release_get may return None object
-                        continue
-                    if is_equal(_pg_obj, obj_model):
-                        pg_obj = _pg_obj
-                        break
-                # Let's make the generator readable in case we need to flush
-                # representations on disk
-                pg_obj = pg_obj2
-
-            if is_equal(pg_obj, obj_model):
+            if pg_obj is not None and is_equal(pg_obj, obj_model):
                 # kafka and postgresql objects match
                 errors_counter += 1
                 top_level_report_path = join(top_level_path, "to_replay")
@@ -429,8 +435,13 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
                 continue
 
+            # We'll need to flush the read representation to disk, so revert the
+            # reference to either the list or the generator it was
+            if pg_obj is None:
+                pg_obj = pg_obj_iterable
+
             # We did not found any object in cassandra and postgresql that matches what
-            # we read in the journal
+            # we read in the journal, we want to flush all that we've read to disk
 
             top_level_report_path = join(top_level_path, "journal_only")
             flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
