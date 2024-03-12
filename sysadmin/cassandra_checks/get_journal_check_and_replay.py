@@ -123,6 +123,33 @@ def swhid_key(obj):
     return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
 
 
+def compare_content(obj_ref: Content, obj_model_ref: Content) -> bool:
+    """Content model comparison without ctime. This is returned as None by the cassandra
+    backend [1].
+
+    This is set though from the Content.from_dict method if present (and it is present
+    in journal entries).
+
+    [1] https://gitlab.softwareheritage.org/swh/devel/swh-storage/-/blob/master/swh/storage/cassandra/storage.py?ref_type=heads#L415
+
+    [2] https://gitlab.softwareheritage.org/swh/devel/swh-model/-/blob/master/swh/model/model.py#L1451
+
+    .. code::
+
+       In [3]: content_d = {'sha1': b'\xd0\x1f=}\xdb\x15$\xb6\x15Z=\xa5\x80\x96\xc0\xe7\xdc\xe04A', 'sha1_git': b'\x00X\xe0\xdb\x8c\xcc:\x16X\xaa\xf8\xb24\x1e\x1a\x16\x03\x0c]\x1d', 'sha256': b'<+T\x90\xe6\x95c\xe5\x9av\xcdV\xfa\xb1Gp\xfc\xe3\x8a
+          ...: j\xeaZ$\xec\xa9\xf0M[\x99\xefr\xeb', 'blake2s256': b"iq`E0RI\xd9\x9eG\xbcJU\xbdB\xa5\xd0\xea\xe9]y\xf5\xfaX\xfcWN\x82\xb8CR'", 'length': 11266, 'status': 'visible', 'ctime': datetime.datetime(2018, 4, 5, 20, 44, 3, 832543, tzinfo=d
+          ...: atetime.timezone.utc)}
+
+       In [4]: Content.from_dict(content_d)
+       Out[4]: Content(sha1=hash_to_bytes('d01f3d7ddb1524b6155a3da58096c0e7dce03441'), sha1_git=hash_to_bytes('0058e0db8ccc3a1658aaf8b2341e1a16030c5d1d'), sha256=hash_to_bytes('3c2b5490e69563e59a76cd56fab14770fce38a6aea5a24eca9f04d5b99ef72eb'), blake2s256=hash_to_bytes('69716045305249d99e47bc4a55bd42a5d0eae95d79f5fa58fc574e82b8435227'), length=11266, status='visible', data=None, ctime=datetime.datetime(2018, 4, 5, 20, 44, 3, 832543, tzinfo=datetime.timezone.utc))
+
+       In [5]: Content.from_dict(content_d).ctime
+       Out[5]: datetime.datetime(2018, 4, 5, 20, 44, 3, 832543, tzinfo=datetime.timezone.utc)
+
+    """
+    return attr.evolve(obj_ref, ctime=None) == attr.evolve(obj_model_ref, ctime=None)
+
+
 def compare_directory(obj_ref: Directory, obj_model_ref: Directory) -> bool:
     """Directory model comparison.
 
@@ -216,6 +243,7 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
         sha1s = [obj_model.sha1]
         cs_get = partial(cs_storage.content_get, sha1s)
         pg_get = partial(pg_storage.content_get, sha1s)
+        is_equal_fn = compare_content
     elif otype == "directory":
         obj_model = Directory.from_dict(obj)
         id_ = obj_model.id
