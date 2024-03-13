@@ -8,7 +8,7 @@ import click
 from yaml import safe_load
 
 from itertools import tee
-from os import makedirs
+from os import makedirs, environ
 from os.path import join
 from swh.journal.client import get_journal_client
 from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
@@ -400,6 +400,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             obj_model, truncate_model_fn, is_equal, cs_get, pg_get = configure_obj_get(
                 otype, obj, cs_storage, pg_storage)
 
+            logger.debug("Retrieve object in cassandra")
             # Retrieve object in cassandra
             cs_obj = cs_get()
             # Due to some quirks in how cassandra stores the date for origin-visit and
@@ -409,6 +410,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             truncated_obj_model = truncate_model_fn(obj_model)
 
             if is_iterable(cs_obj):
+                logger.debug("List of Objects found, looking for unique object in list")
                 cs_obj, cs_obj_iterable = search_for_obj_model(truncated_obj_model, cs_obj)
 
             # Some objects have no swhid...
@@ -423,26 +425,33 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
 
             if cs_obj is not None and is_equal(cs_obj, truncated_obj_model):
+                logger.debug("Object found in cassandra, do nothing")
                 # kafka and cassandra objects match
                 continue
 
+            logger.debug("Object not found in cassandra, look it up in postgresql")
             # We'll need to flush the read representation to disk, so revert the
             # reference to either the list or the generator it was
             if cs_obj is None:
+                logger.debug("Object is an iterable, reset iterable for disk flush op")
                 cs_obj = cs_obj_iterable
 
+            logger.debug("Lookup object in postgresql")
             # let's look it up on postgresql
             pg_obj = pg_get()
 
             if is_iterable(pg_obj):
+                logger.debug("List of Objects found, looking for unique object in list")
                 pg_obj, pg_obj_iterable = search_for_obj_model(obj_model, pg_obj)
 
             if pg_obj is not None and is_equal(pg_obj, obj_model):
+                logger.debug("Object missing in cassandra and present in postgresql")
                 # kafka and postgresql objects match
                 errors_counter += 1
                 top_level_report_path = join(top_level_path, "to_replay")
                 # object not found or at least different in cassandra
                 # So we want to flush it on disk for later analysis
+                logger.debug("Flush representations to disk.")
                 flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
                 # save object representation in dedicated tree
                 append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
@@ -451,14 +460,17 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
                 continue
 
+            logger.debug("Object only present in journal")
             # We'll need to flush the read representation to disk, so revert the
             # reference to either the list or the generator it was
             if pg_obj is None:
+                logger.debug("Object is an iterable, reset iterable for disk flush op")
                 pg_obj = pg_obj_iterable
 
             # We did not found any object in cassandra and postgresql that matches what
             # we read in the journal, we want to flush all that we've read to disk
 
+            logger.debug("Flush representations found to disk")
             top_level_report_path = join(top_level_path, "journal_only")
             flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
             flush_objects_to_disk(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
@@ -468,6 +480,24 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
 
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
+
+
+def configure_logger(debug_flag):
+    """Configure logger according to environment variable or debug_flag."""
+    FORMAT = '[%(asctime)s] %(message)s'
+    logging.basicConfig(format=FORMAT)
+    if "LOG_LEVEL" in environ:
+        log_level_str = environ["LOG_LEVEL"].upper()
+    elif debug_flag:
+        log_level_str = "DEBUG"
+    else:
+        log_level_str = "INFO"
+
+    log_level = getattr(logging, log_level_str)
+    logger.setLevel(log_level)
+
+    cassandra_logger = logging.getLogger("cassandra.cluster")
+    cassandra_logger.setLevel(logging.ERROR)
 
 
 @click.command()
@@ -484,13 +514,17 @@ def process(cs_storage, pg_storage, top_level_path, objects):
         "environment variable if set."
     ),
 )
-def main(config_file):
-
-    FORMAT = '[%(asctime)s] %(message)s'
-    logging.basicConfig(format=FORMAT)
-    logger.setLevel(logging.INFO)
-    cassandra_logger = logging.getLogger("cassandra.cluster")
-    cassandra_logger.setLevel(logging.ERROR)
+@click.option(
+    "--debug",
+    "-d",
+    "debug_flag",
+    is_flag=True,
+    default=False,
+    help="Flag for debug purposes"
+)
+def main(config_file, debug_flag):
+    # Let's configure the logger
+    configure_logger(debug_flag)
 
     # Read the configuration out of the swh configuration file
     config = read_config(config_file)
