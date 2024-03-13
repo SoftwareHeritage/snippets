@@ -181,8 +181,8 @@ def compare_revision(obj_ref: Revision, obj_model_ref: Revision) -> bool:
 def compare_raw_extrinsic_metadata(obj_ref: RawExtrinsicMetadata, obj_model_ref: RawExtrinsicMetadata) -> bool:
     """RawExtrinsicMetadata model comparison.
 
-    RawExtrinsicMetadata: RawExtrinsicMetadata objects, authority and fetcher contains an
-    old metadata field. It is not serialized the same way when empty. (Empty dict in
+    RawExtrinsicMetadata: RawExtrinsicMetadata objects, authority and fetcher contains
+    an old metadata field. It is not serialized the same way when empty. (Empty dict in
     journal representation, None in storage representation)
 
     """
@@ -193,25 +193,13 @@ def compare_raw_extrinsic_metadata(obj_ref: RawExtrinsicMetadata, obj_model_ref:
     authority_model_ref = attr.evolve(obj_model_ref.authority, metadata=None)
     fetcher_model_ref = attr.evolve(obj_model_ref.fetcher, metadata=None)
 
-    return attr.evolve(obj_ref, authority=authority_ref, fetcher=fetcher_ref) == attr.evolve(obj_model_ref, authority=authority_model_ref, fetcher=fetcher_model_ref)
+
+    return attr.evolve(obj_ref, authority=authority_ref, fetcher=fetcher_ref) == \
+        attr.evolve(obj_model_ref, authority=authority_model_ref, fetcher=fetcher_model_ref)
 
 
 def compare_object(obj_ref, obj_model_ref) -> bool:
     return obj_ref == obj_model_ref
-
-
-EQUAL_FN = {
-    "directory": compare_directory,
-    "revision": compare_revision
-}
-
-
-def is_equal(obj_ref, obj_model_ref):
-    """Objects model comparison.
-
-    """
-    equal_fn = EQUAL_FN.get(obj_ref.object_type, compare_object)
-    return equal_fn(obj_ref, obj_model_ref)
 
 
 def cassandra_truncate_obj_model(obj_model):
@@ -334,7 +322,7 @@ def is_iterable(obj: Any) -> bool:
     return isinstance(obj, (list, GeneratorType))
 
 
-def search_for_obj_model(obj_model, obj_iterable):
+def search_for_obj_model(is_equal_fn, obj_model, obj_iterable):
     """This looks up the obj_model in obj_iterable.
 
     Returns:
@@ -350,7 +338,7 @@ def search_for_obj_model(obj_model, obj_iterable):
         if obj is None:
             # some functions (e.g. Release_get, content_get,) ... may return None object
             continue
-        if is_equal(obj, obj_model):
+        if is_equal_fn(obj, obj_model):
             return obj, obj_iterable2
     # Let's make it clear we did not find the object, and return the eventual unconsumed
     # generator so we can flush it to disk later
@@ -397,7 +385,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
         logger.info(f"Processing {len(objs)} <{otype}> objects.")
         errors_counter = 0
         for obj in objs:
-            obj_model, truncate_model_fn, is_equal, cs_get, pg_get = configure_obj_get(
+            obj_model, truncate_model_fn, is_equal_fn, cs_get, pg_get = configure_obj_get(
                 otype, obj, cs_storage, pg_storage)
 
             logger.debug("Retrieve object in cassandra")
@@ -411,7 +399,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
 
             if is_iterable(cs_obj):
                 logger.debug("List of Objects found, looking for unique object in list")
-                cs_obj, cs_obj_iterable = search_for_obj_model(truncated_obj_model, cs_obj)
+                cs_obj, cs_obj_iterable = search_for_obj_model(is_equal_fn, truncated_obj_model, cs_obj)
 
             # Some objects have no swhid...
             swhid = swhid_str(obj_model)
@@ -424,7 +412,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # report_debug_filepath = join(top_level_path, f"{otype}-debug)
             # append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
 
-            if cs_obj is not None and is_equal(cs_obj, truncated_obj_model):
+            if cs_obj is not None and is_equal_fn(cs_obj, truncated_obj_model):
                 logger.debug("Object found in cassandra, do nothing")
                 # kafka and cassandra objects match
                 continue
@@ -444,7 +432,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
                 logger.debug("List of Objects found, looking for unique object in list")
                 pg_obj, pg_obj_iterable = search_for_obj_model(obj_model, pg_obj)
 
-            if pg_obj is not None and is_equal(pg_obj, obj_model):
+            if pg_obj is not None and is_equal_fn(pg_obj, obj_model):
                 logger.debug("Object missing in cassandra and present in postgresql")
                 # kafka and postgresql objects match
                 errors_counter += 1
