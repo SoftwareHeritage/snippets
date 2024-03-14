@@ -273,16 +273,13 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
     elif otype == "directory":
         try:
             obj_model = Directory.from_dict(obj)
-        except ValueError as e:
-            if "duplicated entry name" in e:
-                _, obj_model = Directory.from_possibly_duplicated_entries(
-                    id=obj["id"],
-                    entries=tuple(
-                        DirectoryEntry.from_dict(entry) for entry in obj["entries"]
-                    ),
-                )
-            else:
-                raise e
+        except ValueError:
+            _, obj_model = Directory.from_possibly_duplicated_entries(
+                id=obj["id"],
+                entries=tuple(
+                    DirectoryEntry.from_dict(entry) for entry in obj["entries"]
+                ),
+            )
         ids = [obj_model.id]
         cs_get = partial(journal_client_directory_get, cs_storage, ids)
         pg_get = partial(journal_client_directory_get, pg_storage, ids)
