@@ -11,19 +11,24 @@ from itertools import tee
 from os import makedirs, environ
 from os.path import join
 from swh.journal.client import get_journal_client
-from swh.model.model import Directory, Release, Revision, Origin, Content, OriginVisit, OriginVisitStatus, SkippedContent, RawExtrinsicMetadata, ExtID, Snapshot
+from swh.model.model import (
+    Directory, Release, Revision, Origin, Content,
+    OriginVisit, OriginVisitStatus, SkippedContent,
+    RawExtrinsicMetadata, ExtID, Snapshot, DirectoryEntry
+)
 from swh.storage import get_storage
 from swh.storage.algos import directory as dir_algos, snapshot as snp_algos, origin as ori_algos
 from functools import partial
 import attr
 from types import GeneratorType
 from swh.journal.serializers import pprint_key
+from swh.storage.interface import StorageInterface
 from swh.storage.utils import round_to_milliseconds
 from swh.model.hashutil import hash_to_hex, hash_git_data
 from datetime import datetime
 import logging
 
-from typing import Any, Callable, Dict, Optional, Iterator
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 
 logger = logging.getLogger(__name__)
@@ -236,6 +241,21 @@ def content_get_all_hashes(content_get_fn: Callable, obj_model: Content) -> Iter
     yield from found
 
 
+def journal_client_directory_get(storage: StorageInterface, ids: List[bytes]) -> List[Optional[Tuple[bool, Directory]]]:
+    """Specific journal client directory_get function to retrieve directory with ids
+    from the storage.
+
+    As we are reading the full journal, we may hit "invalid" directories (with
+    duplicated entries) which did not pass the model checks (because it did not exist
+    yet). Those are not supported by the Directory model and raise. We still want to
+    check their existence (in the right model format) in the backend.
+
+    """
+    directory_get_fn = dir_algos.directory_get_many_with_possibly_duplicated_entries
+    for _, obj_model in directory_get_fn(storage, ids):
+        yield obj_model
+
+
 def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
     """Configure how to retrieve the object with type otype. Depending on the object
     type, this returns a tuple of the object model, a truncated model object function,
@@ -251,10 +271,21 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
         pg_get = partial(content_get_all_hashes, pg_storage.content_get, obj_model)
         is_equal_fn = compare_content
     elif otype == "directory":
-        obj_model = Directory.from_dict(obj)
-        id_ = obj_model.id
-        cs_get = partial(dir_algos.directory_get, cs_storage, id_)
-        pg_get = partial(dir_algos.directory_get, pg_storage, id_)
+        try:
+            obj_model = Directory.from_dict(obj)
+        except ValueError as e:
+            if "duplicated entry name" in e:
+                _, obj_model = Directory.from_possibly_duplicated_entries(
+                    id=obj["id"],
+                    entries=tuple(
+                        DirectoryEntry.from_dict(entry) for entry in obj["entries"]
+                    ),
+                )
+            else:
+                raise e
+        ids = [obj_model.id]
+        cs_get = partial(journal_client_directory_get, cs_storage, ids)
+        pg_get = partial(journal_client_directory_get, pg_storage, ids)
         is_equal_fn = compare_directory
     elif otype == "extid":
         obj_model = ExtID.from_dict(obj)
