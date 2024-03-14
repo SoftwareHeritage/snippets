@@ -430,7 +430,7 @@ def process(cs_storage, pg_storage, top_level_path, objects):
 
             if is_iterable(pg_obj):
                 logger.debug("List of Objects found, looking for unique object in list")
-                pg_obj, pg_obj_iterable = search_for_obj_model(obj_model, pg_obj)
+                pg_obj, pg_obj_iterable = search_for_obj_model(is_equal_fn, obj_model, pg_obj)
 
             if pg_obj is not None and is_equal_fn(pg_obj, obj_model):
                 logger.debug("Object missing in cassandra and present in postgresql")
