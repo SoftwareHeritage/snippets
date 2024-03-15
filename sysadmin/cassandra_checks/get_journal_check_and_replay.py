@@ -377,7 +377,7 @@ def search_for_obj_model(is_equal_fn, obj_model, obj_iterable):
     return None, obj_iterable2
 
 
-def process(cs_storage, pg_storage, top_level_path, objects):
+def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
     """Process objects read from the journal.
 
     This reads journal objects and for each of them, check whether they are present in
@@ -438,11 +438,15 @@ def process(cs_storage, pg_storage, top_level_path, objects):
             # so we compute a unique key without the swhid (when need, e.g origin_visit, origin_visit_status,...)
             unique_key = swhid_key(obj_model)
             # For debug purposes only: check object representation written on disk
-            # top_level_debug = join(top_level_path, "debug", "cassandra")
-            # append_representation_on_disk_as_tree(top_level_debug, "journal_representation", obj_model, otype, unique_key)
-            # append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
-            # report_debug_filepath = join(top_level_path, f"{otype}-debug)
-            # append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
+            if debug:
+                top_level_debug = join(top_level_path, "debug", "cassandra")
+                append_representation_on_disk_as_tree(top_level_debug, "journal_representation", obj_model, otype, unique_key)
+                append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
+                report_debug_filepath = join(top_level_path, f"{otype}-debug")
+                append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
+                if is_iterable(cs_obj_iterable):
+                    # Allow reading iterable multiple times (if needed)
+                    cs_obj, cs_obj_iterable = tee(cs_obj_iterable, 2)
 
             if cs_obj is not None and is_equal_fn(cs_obj, truncated_obj_model):
                 logger.debug("Object found in cassandra, do nothing")
@@ -559,7 +563,9 @@ def main(config_file, debug_flag):
         cs_storage = get_storage("cassandra", **config["cassandra"])
         pg_storage = get_storage("postgresql", **config["postgresql"])
         top_level_path = config["top_level_path"]
-        process_fn = partial(process, cs_storage, pg_storage, top_level_path)
+        process_fn = partial(
+            process, cs_storage, pg_storage, top_level_path, debug=debug_flag
+        )
         # Run the client forever
         jn_storage.process(process_fn)
     except KeyboardInterrupt:
