@@ -252,8 +252,9 @@ def journal_client_directory_get(storage: StorageInterface, ids: List[bytes]) ->
 
     """
     directory_get_fn = dir_algos.directory_get_many_with_possibly_duplicated_entries
-    for _, obj_model in directory_get_fn(storage, ids):
-        yield obj_model
+    for directory in directory_get_fn(storage, ids):
+        # directory variable's type: Optional[Tuple[bool, Directory]]
+        yield directory[1] if directory else None
 
 
 def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
@@ -272,8 +273,11 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
         is_equal_fn = compare_content
     elif otype == "directory":
         try:
+            # Convert the dict object into a valid Directory model object
             obj_model = Directory.from_dict(obj)
         except ValueError:
+            # But some old directory objects have duplicated entries and failed to be
+            # converted so fallback to this method when needed
             _, obj_model = Directory.from_possibly_duplicated_entries(
                 id=obj["id"],
                 entries=tuple(
