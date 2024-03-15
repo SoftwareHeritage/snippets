@@ -93,21 +93,6 @@ def append_representation_on_disk_as_tree(top_level_path, representation_type, o
         f.write(repr(obj))
 
 
-def flush_objects_to_disk(top_level_path, representation_type, obj_or_list, otype, unique_key):
-    """Flush the backend <representation-type> representation of the objects we found in
-    backends but failed to compare with the journal object.
-
-    Because some functions in the storage interface returns list of elements or 1
-    element.
-
-    """
-    if isinstance(obj_or_list, (list, GeneratorType)):
-        for _obj in obj_or_list:
-            append_representation_on_disk_as_tree(top_level_path, representation_type, _obj, otype, unique_key)
-    else:
-        append_representation_on_disk_as_tree(top_level_path, representation_type, obj_or_list, otype, unique_key)
-
-
 def swhid_str(obj):
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
@@ -354,7 +339,7 @@ def is_iterable(obj: Any) -> bool:
     return isinstance(obj, (list, GeneratorType))
 
 
-def search_for_obj_model(is_equal_fn, obj_model, obj_iterable):
+def search_for_obj_model(is_equal_fn, obj_model, obj_iterable) -> Tuple[Optional[Any], Iterator]:
     """This looks up the obj_model in obj_iterable.
 
     Returns:
@@ -476,7 +461,7 @@ def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
                 # object not found or at least different in cassandra
                 # So we want to flush it on disk for later analysis
                 logger.debug("Flush representations to disk.")
-                flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
+                append_representation_on_disk_as_tree(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
                 # save object representation in dedicated tree
                 append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
                 append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
@@ -496,8 +481,8 @@ def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
 
             logger.debug("Flush representations found to disk")
             top_level_report_path = join(top_level_path, "journal_only")
-            flush_objects_to_disk(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
-            flush_objects_to_disk(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
+            append_representation_on_disk_as_tree(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
+            append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
             # save object representation in dedicated tree
             append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
             report_filepath = join(top_level_path, f"{otype}-swhid-in-journal-only")
