@@ -10,21 +10,19 @@ import logging
 import os
 import pickle
 import sys
-from typing import (Callable, Collection, Dict, Iterator, List, Optional,
-                    Tuple, Union)
+from typing import Callable, Collection, Dict, Iterator, List, Optional, Tuple, Union
 
 from igraph import Graph as _Graph
 from igraph import Vertex, plot, summary
 from requests import Session
+
 from swh.model.model import Revision, TargetType
 from swh.model.swhids import ExtendedObjectType as ObjectType
 from swh.model.swhids import ExtendedSWHID as SWHID
 from swh.storage import get_storage
-from swh.storage.algos.origin import (iter_origin_visit_statuses,
-                                      iter_origin_visits)
+from swh.storage.algos.origin import iter_origin_visit_statuses, iter_origin_visits
 from swh.storage.algos.snapshot import snapshot_get_all_branches
 from swh.storage.interface import StorageInterface
-from swh.storage.postgresql.storage import Storage as PgStorage
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +110,9 @@ def init_graph(swhids: List[SWHID], pickle_filename: str) -> Graph:
 
 
 def populate_subtrees(
-    graph: Graph, storage: StorageInterface, graph_baseurl: Optional[str] = None,
+    graph: Graph,
+    storage: StorageInterface,
+    graph_baseurl: Optional[str] = None,
 ):
     """Populate the graph data structure with the subtrees of all the swhids already
     contained in the graph.
@@ -161,7 +161,10 @@ def populate_subtrees(
 
 
 def outbound_edges_from_swh_graph(
-    graph: Graph, swhid: SWHID, graph_baseurl: str, session: Optional[Session] = None,
+    graph: Graph,
+    swhid: SWHID,
+    graph_baseurl: str,
+    session: Optional[Session] = None,
 ):
     """Get the subtree of objects referenced by a given one, from swh.graph (based at `graph_baseurl`).
 
@@ -170,10 +173,10 @@ def outbound_edges_from_swh_graph(
     if not session:
         session = Session()
 
-    edges_url = f"{graph_baseurl.rstrip('/')}/graph/visit/edges/{swhid}/"
+    edges_url = f"{graph_baseurl.rstrip('/')}/graph/visit/edges/{swhid}"
 
     response = session.get(edges_url, stream=True)
-    if response.status_code == 404:
+    if response.status_code in (400, 404):
         logger.debug("Object %s not found in swh.graph", swhid)
         return False
 
@@ -239,14 +242,17 @@ def outbound_edges_from_swh_graph(
     add_edges()
 
     logger.info(
-        "Found %s new nodes from %s in swh.graph", new_nodes, swhid,
+        "Found %s new nodes from %s in swh.graph",
+        new_nodes,
+        swhid,
     )
 
     return swhid.object_type != ObjectType.ORIGIN
 
 
 def content_outbound_edges_from_storage(
-    storage: StorageInterface, swhid: SWHID,
+    storage: StorageInterface,
+    swhid: SWHID,
 ):
     return
 
@@ -264,7 +270,8 @@ def directory_outbound_edges_from_storage(
 
 
 def revision_outbound_edges_from_storage(
-    storage: StorageInterface, swhid: SWHID,
+    storage: StorageInterface,
+    swhid: SWHID,
 ) -> Iterator[Tuple[SWHID, SWHID]]:
     for rev_d in storage.revision_log([swhid.object_id], limit=100):
         rev = Revision.from_dict(rev_d)
@@ -308,7 +315,8 @@ def snapshot_outbound_edges_from_storage(
 
 
 def origin_outbound_edges_from_storage(
-    storage: StorageInterface, swhid: SWHID,
+    storage: StorageInterface,
+    swhid: SWHID,
 ) -> Iterator[Tuple[SWHID, SWHID]]:
     [origin] = storage.origin_get_by_sha1([swhid.object_id])
     if not origin:
@@ -326,7 +334,8 @@ def origin_outbound_edges_from_storage(
 
 
 outbound_edges_from_storage_map: Dict[
-    ObjectType, Callable[[StorageInterface, SWHID], Iterator[Tuple[SWHID, SWHID]]],
+    ObjectType,
+    Callable[[StorageInterface, SWHID], Iterator[Tuple[SWHID, SWHID]]],
 ] = {
     ObjectType.CONTENT: content_outbound_edges_from_storage,
     ObjectType.DIRECTORY: directory_outbound_edges_from_storage,
@@ -465,37 +474,9 @@ def find_one_inbound_edge(
         if found:
             return found, "swh.graph"
 
-    if swhid.object_type == ObjectType.SNAPSHOT:
-        found = get_one_inbound_edge_storage_visit(storage, swhid, known_predecessors)
-        if found:
-            return found, "swh.storage:snapshot_in_visit"
-
-    found = get_one_inbound_edge_storage_snapshot(storage, swhid, known_predecessors)
+    found = get_one_inbound_edge_storage(storage, swhid, known_predecessors)
     if found:
-        return found, "swh.storage:object_in_snapshot"
-
-    if swhid.object_type != ObjectType.SNAPSHOT:
-        found = get_one_inbound_edge_storage_release(storage, swhid, known_predecessors)
-        if found:
-            return found, "swh.storage:object_in_release"
-
-    if swhid.object_type == ObjectType.REVISION:
-        found = get_one_inbound_edge_storage_revision(
-            storage, swhid, known_predecessors
-        )
-        if found:
-            return found, "swh.storage:revision_has_parent"
-
-    if swhid.object_type == ObjectType.DIRECTORY:
-        found = get_one_inbound_edge_storage_dir_in_rev(
-            storage, swhid, known_predecessors
-        )
-        if found:
-            return found, "swh.storage:directory_in_revision"
-
-    found = get_one_inbound_edge_storage_directory(storage, swhid, known_predecessors)
-    if found:
-        return found, "swh.storage:object_in_directory"
+        return found, "swh.storage:find_recent_references"
 
     return None
 
@@ -509,12 +490,15 @@ def get_one_inbound_edge_swh_graph(
     if not session:
         session = Session()
 
-    nodes_url = f"{graph_baseurl.rstrip('/')}/graph/neighbors/{swhid}/"
-    params = {"direction": "backward", "max_edges": str(len(known_predecessors) + 1)}
+    nodes_url = f"{graph_baseurl.rstrip('/')}/graph/neighbors/{swhid}"
+    params = {
+        "direction": "backward",
+        "max_matching_nodes": str(len(known_predecessors) + 1),
+    }
 
     response = session.get(nodes_url, params=params, stream=True)
 
-    if response.status_code == 404:
+    if response.status_code in (404, 400):
         return None
 
     response.raise_for_status()
@@ -532,190 +516,23 @@ def get_one_inbound_edge_swh_graph(
     return found
 
 
-def get_one_inbound_edge_storage_visit(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
+def get_one_inbound_edge_storage(
+    storage: StorageInterface,
+    swhid: SWHID,
+    known_predecessors: Collection[SWHID],
 ) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                """
-              select distinct(digest(origin.url, 'sha1'))
-              from origin
-              inner join origin_visit_status on origin.id = origin_visit_status.origin
-              where snapshot = %s
-              limit %s
-            """,
-                (swhid.object_id, len(known_predecessors) + 1),
-            )
-            results = {
-                SWHID(object_id=line[0], object_type=ObjectType.ORIGIN)
-                for line in cur.fetchall()
-            }
+    limit = len(known_predecessors) + 1
+    references = storage.object_find_recent_references(swhid, limit=limit)
 
-    outside = results - set(known_predecessors)
-    return next(iter(outside)) if outside else None
-
-
-def get_one_inbound_edge_storage_snapshot(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
-) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                """
-              select distinct(snapshot.id)
-              from snapshot
-              inner join snapshot_branches on snapshot.object_id = snapshot_branches.snapshot_id
-              inner join snapshot_branch on snapshot_branches.branch_id = snapshot_branch.object_id
-              where snapshot_branch.target = %s and snapshot_branch.target_type = %s
-              limit %s
-            """,
-                (
-                    swhid.object_id,
-                    swhid.object_type.name.lower(),
-                    len(known_predecessors) + 1,
-                ),
-            )
-            results = {
-                SWHID(object_id=line[0], object_type=ObjectType.SNAPSHOT)
-                for line in cur.fetchall()
-            }
-
-    outside = results - set(known_predecessors)
-    return next(iter(outside)) if outside else None
-
-
-def get_one_inbound_edge_storage_release(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
-) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                """
-              select distinct(release.id)
-              from release
-              where release.target = %s and release.target_type = %s
-              limit %s
-            """,
-                (
-                    swhid.object_id,
-                    swhid.object_type.name.lower(),
-                    len(known_predecessors) + 1,
-                ),
-            )
-            results = {
-                SWHID(object_id=line[0], object_type=ObjectType.RELEASE)
-                for line in cur.fetchall()
-            }
-
-    outside = results - set(known_predecessors)
-    return next(iter(outside)) if outside else None
-
-
-def get_one_inbound_edge_storage_revision(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
-) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                """
-              select distinct(revision.id)
-              from revision
-              inner join revision_history using (id)
-              where revision_history.parent_id = %s
-              limit %s
-            """,
-                (swhid.object_id, len(known_predecessors) + 1),
-            )
-            results = {
-                SWHID(object_id=line[0], object_type=ObjectType.REVISION)
-                for line in cur.fetchall()
-            }
-
-    outside = results - set(known_predecessors)
-    return next(iter(outside)) if outside else None
-
-
-def get_one_inbound_edge_storage_dir_in_rev(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
-) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                """
-              select distinct(revision.id)
-              from revision
-              where directory = %s
-              limit %s
-            """,
-                (swhid.object_id, len(known_predecessors) + 1),
-            )
-            results = {
-                SWHID(object_id=line[0], object_type=ObjectType.REVISION)
-                for line in cur.fetchall()
-            }
-
-    outside = results - set(known_predecessors)
-    return next(iter(outside)) if outside else None
-
-
-def get_one_inbound_edge_storage_directory(
-    storage: StorageInterface, swhid: SWHID, known_predecessors: Collection[SWHID]
-) -> Optional[SWHID]:
-    assert isinstance(storage, PgStorage), "Need to use a `postgresql` storage instance"
-
-    if swhid.object_type == ObjectType.DIRECTORY:
-        entries_table = "directory_entry_dir"
-        entries_column = "dir_entries"
-        min_limit = 1000
-    elif swhid.object_type == ObjectType.CONTENT:
-        entries_table = "directory_entry_file"
-        entries_column = "file_entries"
-        min_limit = 10000
-    else:
-        return False
-
-    with storage.db() as db:
-        with db.transaction() as cur:
-            cur.execute(
-                f"""
-              select id
-              from {entries_table}
-              where target = %s
-            """,
-                (swhid.object_id,),
-            )
-            entry_ids = {line[0] for line in cur.fetchall()}
-
-    if not entry_ids:
+    if not references:
         return None
 
-    # needed to force an index scan
-    full_limit = len(known_predecessors) + 1
-    base_limit = max(min_limit, full_limit)
+    while len(set(references)) != len(references) and len(references) == limit:
+        limit = 2 * limit
+        references = storage.object_find_recent_references(swhid, limit=limit)
 
-    for entry_id in entry_ids:
-        with storage.db() as db:
-            with db.transaction() as cur:
-                cur.execute(
-                    f"""
-                  select distinct(id)
-                  from directory
-                  where ARRAY[%s]::bigint[] <@ {entries_column}
-                  limit %s
-                """,
-                    (entry_id, base_limit),
-                )
-                for line in cur:
-                    found = SWHID(object_id=line[0], object_type=ObjectType.DIRECTORY)
-                    if found not in known_predecessors:
-                        return found
-    return None
+    outside = set(references) - set(known_predecessors)
+    return next(iter(outside)) if outside else None
 
 
 def plot_graph(graph: Graph):
@@ -753,12 +570,16 @@ if __name__ == "__main__":
 
         swhids = []
         for arg in sys.argv[1:]:
-            if arg.startswith('swh:1:'):
+            if arg.startswith("swh:1:"):
                 swhid = SWHID.from_string(arg)
             else:
                 sha1 = hashlib.sha1(arg.encode()).hexdigest()
                 swhid = SWHID.from_string(f"swh:1:ori:{sha1}")
-                logger.info("Assuming %s is an origin URL; computed origin swhid: %s", arg, swhid)
+                logger.info(
+                    "Assuming %s is an origin URL; computed origin swhid: %s",
+                    arg,
+                    swhid,
+                )
 
             swhids.append(swhid)
 
@@ -768,7 +589,9 @@ if __name__ == "__main__":
         graph = init_graph(swhids, pickle_filename=f"{swhid}.pickle")
 
         populate_subtrees(
-            graph, storage, graph_baseurl,
+            graph,
+            storage,
+            graph_baseurl,
         )
 
         record_inbound_edges_outside_graph(graph, storage, graph_baseurl)
