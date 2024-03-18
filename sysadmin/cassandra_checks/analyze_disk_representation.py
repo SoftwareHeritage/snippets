@@ -11,8 +11,9 @@ from yaml import safe_load
 
 # For eval_read function
 import datetime  # noqa
-from swh.model.model import *  # noqa
 from swh.model.swhids import *  # noqa
+from swh.model.model import *  # noqa
+# Beware the ObjectType import in both module ^
 
 from typing import Any, Dict, Optional
 
