@@ -362,7 +362,7 @@ def search_for_obj_model(is_equal_fn, obj_model, obj_iterable) -> Tuple[Optional
     return None, obj_iterable2
 
 
-def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
+def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, debug=False):
     """Process objects read from the journal.
 
     This reads journal objects and for each of them, check whether they are present in
@@ -375,6 +375,11 @@ def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
         cs_storage: Configuration dict for cassandra storage communication
         pg_storage: Configuration dict for postgresql storage communication
         top_level_path: Top level directory to write swhid error reporting
+        objects: List of objects read from the journal
+        suffix_timestamp: A suffix timestamp used to append to the manifest file where
+            we list the problematic objects.append($0)
+        debug: Bool to add extra behavior for troubleshoot purposes (should be False in
+            production, the default)
 
     Pseudo code:
 
@@ -385,19 +390,18 @@ def process(cs_storage, pg_storage, top_level_path, objects, debug=False):
             else (it does not exist):
              read object in postgresql
              it exists, we found it:
-               write <swhid> to `<object-type>-to-replay-$(date).lst`
+               write <swhid> to `<object-type>-to-replay-<suffix_timestamp>.lst`
                mkdir -p `to-replay/<object-type>/<swhid>/`
                echo $(kafka-object-as-string) > `to-replay/<object-type>/<swhid>/journal`
                echo $(postgresql-object-as-string) > `to-replay/<object-type>/<swhid>/postgresql`
                stop
              else (present in journal only)
-               write <swhid> to `<object-type>-journal-only-$(date).lst`
+               write <swhid> to `<object-type>-journal-only-<suffix_timestamp>.lst`
                mkdir -p `journal-only/<object-type>/<swhid>/`
                echo $(kafka-object-as-string) > `journal-only/<object-type>/<swhid>/journal`
 
     """
 
-    suffix_timestamp = str_now()
     for otype, objs in objects.items():
         logger.info(f"Processing {len(objs)} <{otype}> objects.")
         errors_counter = 0
@@ -549,7 +553,9 @@ def main(config_file, debug_flag):
         pg_storage = get_storage("postgresql", **config["postgresql"])
         top_level_path = config["top_level_path"]
         process_fn = partial(
-            process, cs_storage, pg_storage, top_level_path, debug=debug_flag
+            process, cs_storage, pg_storage, top_level_path,
+            suffix_timestamp=str_now(),
+            debug=debug_flag
         )
         # Run the client forever
         jn_storage.process(process_fn)
