@@ -23,7 +23,19 @@ def eval_read(path):
     if not os.path.exists(path):
         return None
     with open(path, "r") as f:
-        return eval(f.read())
+        data = f.read()
+        try:
+            res = eval(data)
+        except SyntaxError:
+            print(f"### WARNING: path <{path}> holds some syntax error. \n"
+                  "### WARNING: It's probably an old bug in the initial run "
+                  "(e.g. lazyness issue ended up with 'itertool._tee' entry in files)")
+            print(f"### WARNING: data: {data}")
+            # Could not read the representation, because of previous issue in data (e.g.
+            # itertool.tee)
+            res = None
+
+    return res
 
 
 def from_path_to_rep(dir_path):
@@ -37,14 +49,25 @@ def from_path_to_rep(dir_path):
     return jn_rep, cass_rep, pg_rep
 
 
+def printable_rep(obj_rep):
+    """Prepare a printable representation of obj_rep."""
+    if hasattr(obj_rep, "to_dict"):
+        # assumed a model object
+        res = obj_rep.to_dict()
+    else:
+        # could be None, a list or a dict, print as is
+        res = obj_rep
+    return res
+
+
 def print_reps(jn_rep, cass_rep, pg_rep):
     from pprint import pprint  # noqa
     print("Journal representation:")
-    pprint(jn_rep)
+    pprint(printable_rep(jn_rep))
     print("Cassandra representation:")
-    pprint(cass_rep.to_dict() if cass_rep else None)
+    pprint(printable_rep(cass_rep))
     print("Postgresql representation:")
-    pprint(pg_rep.to_dict() if pg_rep else None)
+    pprint(printable_rep(pg_rep))
 
 
 def read_config(config_file: Optional[Any] = None) -> Dict:
