@@ -418,7 +418,8 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             # objects)
             truncated_obj_model = truncate_model_fn(obj_model)
 
-            if is_iterable(cs_obj):
+            iterable = is_iterable(cs_obj)
+            if iterable:
                 logger.debug("List of Objects found, looking for unique object in list")
                 cs_obj, cs_obj_iterable = search_for_obj_model(is_equal_fn, truncated_obj_model, cs_obj)
 
@@ -433,7 +434,7 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
                 append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
                 report_debug_filepath = join(top_level_path, f"{otype}-debug")
                 append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
-                if is_iterable(cs_obj_iterable):
+                if iterable:
                     # Allow reading iterable multiple times (if needed)
                     cs_obj, cs_obj_iterable = tee(cs_obj_iterable, 2)
 
@@ -445,7 +446,7 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             logger.debug("Object not found in cassandra, look it up in postgresql")
             # We'll need to flush the read representation to disk, so revert the
             # reference to either the list or the generator it was
-            if cs_obj is None:
+            if cs_obj is None and iterable:
                 logger.debug("Object is an iterable, reset iterable for disk flush op")
                 cs_obj = cs_obj_iterable
 
@@ -453,7 +454,8 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             # let's look it up on postgresql
             pg_obj = pg_get()
 
-            if is_iterable(pg_obj):
+            iterable = is_iterable(pg_obj)
+            if iterable:
                 logger.debug("List of Objects found, looking for unique object in list")
                 pg_obj, pg_obj_iterable = search_for_obj_model(is_equal_fn, obj_model, pg_obj)
 
@@ -476,7 +478,7 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             logger.debug("Object only present in journal")
             # We'll need to flush the read representation to disk, so revert the
             # reference to either the list or the generator it was
-            if pg_obj is None:
+            if pg_obj is None and iterable:
                 logger.debug("Object is an iterable, reset iterable for disk flush op")
                 pg_obj = pg_obj_iterable
 
