@@ -438,6 +438,17 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
                     # Allow reading iterable multiple times (if needed)
                     cs_obj, cs_obj_iterable = tee(cs_obj_iterable, 2)
 
+            # Due to some quirks in how cassandra stores the date for origin-visit and
+            # origin-visit-status (round to milliseconds), we eventually adapt the
+            # obj_model to compare journal object and cassandra object (for those
+            # objects)
+            truncated_obj_model = truncate_model_fn(obj_model)
+
+            iterable = is_iterable(cs_obj)
+            if iterable:
+                logger.debug("List of Objects found, looking for unique object in list")
+                cs_obj, cs_obj_iterable = search_for_obj_model(is_equal_fn, truncated_obj_model, cs_obj)
+
             if cs_obj is not None and is_equal_fn(cs_obj, truncated_obj_model):
                 logger.debug("Object found in cassandra, do nothing")
                 # kafka and cassandra objects match
@@ -497,7 +508,7 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
         logger.info(f"\tObjects missing in cassandra: {errors_counter}.")
 
 
-def configure_logger(debug_flag):
+def configure_logger(logger, debug_flag):
     """Configure logger according to environment variable or debug_flag."""
     FORMAT = '[%(asctime)s] %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -539,7 +550,7 @@ def configure_logger(debug_flag):
 )
 def main(config_file, debug_flag):
     # Let's configure the logger
-    configure_logger(debug_flag)
+    configure_logger(logger, debug_flag)
 
     # Read the configuration out of the swh configuration file
     config = read_config(config_file)
