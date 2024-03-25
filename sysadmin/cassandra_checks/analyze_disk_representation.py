@@ -38,11 +38,24 @@ def eval_read(path):
     return res
 
 
-def from_path_to_rep(dir_path):
+def file_rep_paths(dir_path):
+    """"Compute representation filepaths on disk independently from their existence."""
     dir_path_str = str(dir_path)
     cass_rep_path = join(dir_path_str, "cassandra_representation")
     jn_rep_path = join(dir_path_str, "journal_representation")
     pg_rep_path = join(dir_path_str, "postgresql_representation")
+
+    return cass_rep_path, jn_rep_path, pg_rep_path
+
+
+def is_representation_directory(dir_path):
+    """Is the directory a folder holding representation file on disk?"""
+    return any(map(os.path.exists, file_rep_paths(dir_path)))
+
+
+def from_path_to_rep(dir_path):
+    """Compute the object representation from the dir_path."""
+    cass_rep_path, jn_rep_path, pg_rep_path = file_rep_paths(dir_path)
     jn_rep = eval_read(jn_rep_path)
     cass_rep = eval_read(cass_rep_path)
     pg_rep = eval_read(pg_rep_path)
@@ -118,8 +131,11 @@ def read_config(config_file: Optional[Any] = None) -> Dict:
     ),
 )
 def main(config_file, dir_path):
-    # dir_path = "/volume/production-check-cassandra/journal_only/origin_visit/b605c6f290ec146d537b193a03a7ea55571f177a"
-    print_reps(*from_path_to_rep(dir_path))
+    if is_representation_directory(dir_path):
+        print_reps(*from_path_to_rep(dir_path))
+    else:
+        # TODO
+        pass
 
 
 if __name__ == "__main__":
