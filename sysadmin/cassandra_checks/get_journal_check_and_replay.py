@@ -90,7 +90,7 @@ def append_representation_on_disk_as_tree(top_level_path, representation_type, o
     with open(journal_path, 'a') as f:
         if isinstance(obj, GeneratorType):
             obj = list(obj)
-        f.write(repr(obj))
+        f.write(f"{repr(obj)}\n")
 
 
 def swhid_str(obj):
