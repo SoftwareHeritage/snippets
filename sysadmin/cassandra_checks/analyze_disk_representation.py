@@ -18,6 +18,7 @@ import datetime  # noqa
 from swh.model.swhids import *  # noqa
 from swh.model.model import *  # noqa
 # Beware the ObjectType import in both module ^
+from swh.core.utils import grouper
 
 from get_journal_check_and_replay import (
     configure_obj_get, is_iterable, search_for_obj_model, configure_logger, read_config
@@ -97,6 +98,49 @@ def print_reps(jn_rep, cass_rep, pg_rep):
     pprint(printable_rep(pg_rep))
 
 
+def filter_path_to_delete(dir_path, cs_storage, pg_storage):
+    """Yield swhid path to delete when the swhid is found in cassandra."""
+    dir_path = Path(dir_path)
+    otype = dir_path.name
+    logger.info("Scan folder <%s> for swhid like entries", dir_path)
+    for _, swhids, _ in os.walk(dir_path, topdown=False):
+        for swhid in swhids:
+            swhid_path = dir_path / Path(swhid)
+
+            jn_rep, _, _ = from_path_to_rep(swhid_path, with_warning=False)
+
+            logger.debug("Check swhid <%s> folder", swhid)
+            if jn_rep is None:
+                logger.info("Journal representation of <%s> is None, skipping...", swhid)
+                continue
+
+            obj_mdl, truncate_objmdl_fn, is_equal_fn, cs_get, _ = configure_obj_get(
+                otype, jn_rep, cs_storage, pg_storage
+            )
+
+            cs_obj = cs_get()
+            if not cs_obj:
+                logger.debug("obj <%s> is indeed missing, do nothing.", swhid)
+                # It's indeed missing, do nothing
+                continue
+
+            truncated_obj_model = truncate_objmdl_fn(obj_mdl)
+            iterable = is_iterable(cs_obj)
+
+            if iterable:
+                logger.debug("swhid <%s> object found is an iterable", swhid)
+                # List of Objects found, looking for unique object in list
+                cs_obj, _ = search_for_obj_model(
+                    is_equal_fn, truncated_obj_model, cs_obj
+                )
+
+            if cs_obj is not None and is_equal_fn(cs_obj, truncated_obj_model):
+                logger.debug("obj <%s> was found in cassandra, mark for removal", swhid)
+                # It's actually present in cassandra, it's a false negative, we need to drop the representation
+                yield swhid_path
+                continue
+
+
 @click.command()
 @click.option(
     "--config-file",
@@ -109,6 +153,14 @@ def print_reps(jn_rep, cass_rep, pg_rep):
     help=(
         "Configuration file. This has a higher priority than SWH_CONFIG_FILENAME "
         "environment variable if set."
+    ),
+)
+@click.option(
+    "--batch-removal",
+    "-b",
+    default=100,
+    help=(
+        "Batch size of the number of objects to remove"
     ),
 )
 @click.option(
@@ -136,7 +188,7 @@ def print_reps(jn_rep, cass_rep, pg_rep):
         "Path of objects to analyze"
     ),
 )
-def main(config_file, dry_run, debug, dir_path):
+def main(config_file, dry_run, debug, dir_path, batch_removal):
     configure_logger(logger, debug)
 
     if is_representation_directory(dir_path):
@@ -147,51 +199,19 @@ def main(config_file, dry_run, debug, dir_path):
         cs_storage = get_storage("cassandra", **config["cassandra"])
         pg_storage = get_storage("postgresql", **config["postgresql"])
 
-        to_delete = []
-        dir_path = Path(dir_path)
-        otype = dir_path.name
-        logger.info("Scan folder <%s> for swhid like entries", dir_path)
-        for _, swhids, _ in os.walk(dir_path, topdown=False):
-            for swhid in swhids:
-                swhid_path = dir_path / Path(swhid)
-
-                jn_rep, _, _ = from_path_to_rep(swhid_path, with_warning=False)
-
-                logger.debug("Check swhid <%s> folder", swhid)
-                if jn_rep is None:
-                    logger.info("Journal representation of <%s> is None, skipping...", swhid)
-                    continue
-
-                obj_model, truncate_obj_model_fn, is_equal_fn, cs_get, _ = configure_obj_get(otype, jn_rep, cs_storage, pg_storage)
-
-                cs_obj = cs_get()
-                if not cs_obj:
-                    logger.debug("obj <%s> is indeed missing, do nothing.", swhid)
-                    # It's indeed missing, do nothing
-                    continue
-
-                truncated_obj_model = truncate_obj_model_fn(obj_model)
-                iterable = is_iterable(cs_obj)
-
-                if iterable:
-                    logger.debug("swhid <%s> object found is an iterable", swhid)
-                    # List of Objects found, looking for unique object in list
-                    cs_obj, _ = search_for_obj_model(is_equal_fn, truncated_obj_model, cs_obj)
-
-                if cs_obj is not None and is_equal_fn(cs_obj, truncated_obj_model):
-                    logger.debug("obj <%s> was found in cassandra, mark for removal", swhid)
-                    # It's actually present in cassandra, it's a false negative, we need to drop the representation
-                    to_delete.append(swhid_path)
-                    continue
-
-        logger.debug("%sRemove from disk: %s", "**DRY_RUN** - " if dry_run else "", to_delete)
-        if to_delete:
-            logger.info("%s%s to remove from disk: %s", "**DRY_RUN** - " if dry_run else "", len(to_delete))
-
-        for swhid_path in to_delete:
-            logger.info("rm -v %s", swhid_path)
-            if not dry_run:
-                shutil.rmtree(swhid_path)
+        group_swhids_to_delete = grouper(
+            filter_path_to_delete(dir_path, cs_storage, pg_storage),
+            n=batch_removal
+        )
+        for swhids_to_delete in group_swhids_to_delete:
+            for swhid_path in swhids_to_delete:
+                logger.info(
+                    "%srm -rv %s",
+                    "**DRY_RUN** - " if dry_run else "",
+                    swhid_path
+                )
+                if not dry_run:
+                    shutil.rmtree(swhid_path)
 
 
 if __name__ == "__main__":
