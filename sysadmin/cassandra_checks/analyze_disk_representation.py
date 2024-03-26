@@ -102,7 +102,10 @@ def filter_path_to_delete(dir_path, cs_storage, pg_storage):
     """Yield swhid path to delete when the swhid is found in cassandra."""
     dir_path = Path(dir_path)
     otype = dir_path.name
-    logger.info("Scan folder <%s> for swhid like entries", dir_path)
+    logger.info(
+        "Scan folder <%s> for swhid already present in cassandra to remove",
+        dir_path
+    )
     for _, swhids, _ in os.walk(dir_path, topdown=False):
         for swhid in swhids:
             swhid_path = dir_path / Path(swhid)
@@ -138,7 +141,6 @@ def filter_path_to_delete(dir_path, cs_storage, pg_storage):
                 logger.debug("obj <%s> was found in cassandra, mark for removal", swhid)
                 # It's actually present in cassandra, it's a false negative, we need to drop the representation
                 yield swhid_path
-                continue
 
 
 @click.command()
@@ -203,13 +205,16 @@ def main(config_file, dry_run, debug, dir_path, batch_removal):
             filter_path_to_delete(dir_path, cs_storage, pg_storage),
             n=batch_removal
         )
-        for swhids_to_delete in group_swhids_to_delete:
-            for swhid_path in swhids_to_delete:
-                logger.info(
-                    "%srm -rv %s",
-                    "**DRY_RUN** - " if dry_run else "",
-                    swhid_path
-                )
+        count = 0
+        for swhid_paths_to_delete in group_swhids_to_delete:
+            for swhid_path in swhid_paths_to_delete:
+                count += 1
+                if count % batch_removal == 0:
+                    logger.info(
+                        "%srm -rv %s...",
+                        "**DRY_RUN** - " if dry_run else "",
+                        swhid_path
+                    )
                 if not dry_run:
                     shutil.rmtree(swhid_path)
 
