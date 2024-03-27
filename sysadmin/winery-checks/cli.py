@@ -21,8 +21,10 @@ import time
 from typing import Any, Dict, Optional
 from threading import Thread
 from journal_client import OffsetBoundedJournalClient
+from os import makedirs
 
 _stop = False
+
 
 def read_config(config_file: Optional[Any] = None) -> Dict:
     """Read configuration from config_file if provided, from the SWH_CONFIG_FILENAME if
@@ -42,6 +44,7 @@ def read_config(config_file: Optional[Any] = None) -> Dict:
         config = safe_load(data)
 
     return config
+
 
 @click.command()
 @click.option(
@@ -67,9 +70,24 @@ def read_config(config_file: Optional[Any] = None) -> Dict:
 @click.option(
     "--max-offset",
     "-o",
+    type=int,
     help="The offset where to stop, if none",
 )
-def journal_client(config_file, partition, max_offset):
+@click.option(
+    "--workdir",
+    "-w",
+    default=".",
+    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    help="The directory where to generate the output",
+)
+@click.option(
+    "--generate-file",
+    "-g",
+    is_flag=True,
+    default=False,
+    help=("Generate a file of the partition containing the ids to check"),
+)
+def journal_client(config_file, partition, max_offset, workdir, generate_file: bool):
     """Listens for new messages from the SWH Journal, and count them"""
     import functools
 
@@ -81,27 +99,31 @@ def journal_client(config_file, partition, max_offset):
     journal_cfg["object_types"] = ["content"]
     journal_cfg["prefix"] = "swh.journal.objects"
 
-    print(f"{journal_cfg=}")
-
-    objstorage = factory.get_objstorage(**config["objstorage"])
+    # print(f"{journal_cfg=}")
 
     stats = Statistics()
     stats.set_max_offset(int(max_offset))
     stats.set_partition(partition)
-    stats.start()
+
+    if generate_file:
+        headers={"partition": partition, "workdir": workdir}
+        worker_fn = functools.partial(write_to_file, headers=headers, statistics=stats)
+    else:
+        objstorage = factory.get_objstorage(**config["objstorage"])
+        worker_fn = functools.partial(
+            process_journal_messages, objstorage=objstorage, statistics=stats
+        )
 
     client = OffsetBoundedJournalClient(**journal_cfg)
     client.set_statistics(stats)
     client.assign(partition, max_offset)
 
-    worker_fn = functools.partial(process_journal_messages, objstorage=objstorage, statistics=stats)
-
-    nb_messages = 0
+    stats.start()
     try:
         nb_messages = client.process(worker_fn)
         print(f"Processed {nb_messages} messages.")
     except KeyboardInterrupt:
-      pass
+        pass
     else:
         print("Done.")
     finally:
@@ -109,8 +131,34 @@ def journal_client(config_file, partition, max_offset):
         stats.stop()
 
 
+def write_to_file(messages: Dict[str, Dict[bytes, bytes]], *, headers, statistics) -> None:
+    partition = headers["partition"]
+    workdir = headers["workdir"]
+    file_dir = f"{workdir}"
+    file_path =  f"{file_dir}/id_to_check_{partition}.lst"
+
+    makedirs(file_dir, exist_ok=True)
+
+    pos = 0
+    with open(file_path, 'a') as f:
+
+      for message in messages.get("content"):
+          statistics.start_object()
+          content = model.Content.from_dict(message)
+
+          content_hashes = objid_from_dict(content.hashes())
+
+          swhid = content.swhid()
+
+          f.write(f"{partition};{statistics.get_offset() + pos};{swhid};{content_hashes}\n")
+          pos += 1
+
+
 def process_journal_messages(
-    messages: Dict[str, Dict[bytes, bytes]], *, objstorage: ObjStorageInterface, statistics
+    messages: Dict[str, Dict[bytes, bytes]],
+    *,
+    objstorage: ObjStorageInterface,
+    statistics,
 ) -> None:
     """Count the number of different values of an object's property.
     It allow for example to count the persons inside the
@@ -118,109 +166,122 @@ def process_journal_messages(
     """
 
     for message in messages.get("content"):
-      statistics.start_object()
-      # kakfa_content = kafka_to_value(message)
-      content = model.Content.from_dict(message)
+        statistics.start_object()
+        content = model.Content.from_dict(message)
 
-      content_hashes = objid_from_dict(content.hashes())
-      # print(f"{content_hashes=}")
-      try:
-          # print("get object")
-          content_bytes = objstorage.get(content_hashes)
-      except ObjNotFoundError:
-        print(f"{content_hashes} not found")
-        statistics.add_not_found()
-      else:
-        # print("comparing hash")
-        recomputed_hashes = objid_from_dict(
-            Content.from_data(content_bytes).hashes()
-        )
-        if content_hashes != recomputed_hashes:
-          statistics.add_incorrect_hash()
-          print("Incorrect hash recomputed={recomputed_hashes} expected={content_hashes}")
+        content_hashes = objid_from_dict(content.hashes())
+        # print(f"{content_hashes=}")
+        try:
+            # print("get object")
+            content_bytes = objstorage.get(content_hashes)
+        except ObjNotFoundError:
+            print(f"{content_hashes} not found")
+            statistics.add_not_found()
+        else:
+            # print("comparing hash")
+            recomputed_hashes = objid_from_dict(
+                Content.from_data(content_bytes).hashes()
+            )
+            if content_hashes != recomputed_hashes:
+                statistics.add_incorrect_hash()
+                print(
+                    "Incorrect hash recomputed={recomputed_hashes} expected={content_hashes}"
+                )
 
 
 class Statistics(Thread):
-  DELAY=1
+    DELAY = 30
 
-  def set_max_offset(self, max_offset):
-    self._max_offset = max_offset
+    def set_max_offset(self, max_offset):
+        self._max_offset = max_offset
 
-  def start(self):
-    print("statistics: start")
-    self._continue = True
-    self._start_time = datetime.now()
-    self._total_objects = 0
-    self._objects_range = 0
-    self._last_check = self._start_time
-    self._last_object_count = 0
+    def start(self):
+        print("statistics: start")
+        self._continue = True
+        self._start_time = datetime.now()
+        self._total_objects = 0
+        self._objects_range = 0
+        self._last_check = self._start_time
+        self._last_object_count = 0
 
-    self._not_found = 0
-    self._incorrect_hash = 0
-    self._offset = -1
+        self._not_found = 0
+        self._incorrect_hash = 0
+        self._offset = -1
 
-    super().start()
+        super().start()
 
-  def run(self):
-    while True:
-      current_time = datetime.now()
-      duration = current_time - self._last_check
-      duration_s = duration.total_seconds()
-      self._last_check = current_time
+    def run(self):
+        while True:
+            current_time = datetime.now()
+            duration = current_time - self._last_check
+            duration_s = duration.total_seconds()
+            self._last_check = current_time
 
-      object_checked = self._total_objects
-      object_checked_diff = self._total_objects - self._last_object_count
-      self._last_object_count = object_checked
+            object_checked = self._total_objects
+            object_checked_diff = self._total_objects - self._last_object_count
+            self._last_object_count = object_checked
 
-      estimated_offset = self._offset + self._objects_range
+            estimated_offset = self._offset + self._objects_range
 
-      if self._offset > 0:
-        total_duration_s = (current_time - self._start_time).total_seconds()
-        speed = object_checked / total_duration_s
-        offset_to_check = self._max_offset - estimated_offset
-        s_to_complete = offset_to_check / speed
-        duration_to_complete = timedelta(seconds=s_to_complete)
-      else:
-        duration_to_complete = "N/A"
-        offset_to_check = "N/A"
+            if self._offset > 0:
+                total_duration_s = (current_time - self._start_time).total_seconds()
+                speed = object_checked / total_duration_s
+                offset_to_check = self._max_offset - estimated_offset
+                s_to_complete = offset_to_check / speed
+                duration_to_complete = timedelta(seconds=s_to_complete)
+            else:
+                duration_to_complete = "N/A"
+                offset_to_check = "N/A"
 
-      print(f"partition={self._partition} object_checked={object_checked}\t" +
-          f"not_found={self._not_found}\tincorrect_hash={self._incorrect_hash}" +
-          f"\tto_check={offset_to_check} time_to_completion={duration_to_complete}"
-          f"\t({object_checked_diff / duration_s:.2f}/s)")
-      time.sleep(self.DELAY)
-      if not self._continue:
-        self.print_last_stats()
-        break
+            print(
+                f"partition={self._partition} object_checked={object_checked}\t"
+                + f"not_found={self._not_found}\tincorrect_hash={self._incorrect_hash}"
+                + f"\tto_check={offset_to_check} time_to_completion={duration_to_complete}"
+                f"\t({object_checked_diff / duration_s:.2f}/s)"
+            )
+            for i in range(self.DELAY):
+              time.sleep(1)
+              if not self._continue:
+                break
 
-  def stop(self):
-    self._continue = False
+            if not self._continue:
+              self.print_last_stats()
+              break
 
-  def print_last_stats(self):
-    end = datetime.now()
-    duration = end - self._start_time
-    duration_s = duration.total_seconds()
-    object_per_sec = self._total_objects / duration_s
-    print(f"partition={self._partition} total duration: {duration} {self._total_objects} checked\t" +
-      f"not_found={self._not_found}\tincorrect_hash={self._incorrect_hash}" +
-      f"\t({object_per_sec:.2f}/s)")
+    def stop(self):
+        self._continue = False
 
-  def start_object(self):
-    self._total_objects += 1
-    self._objects_range += 1
+    def print_last_stats(self):
+        end = datetime.now()
+        duration = end - self._start_time
+        duration_s = duration.total_seconds()
+        object_per_sec = self._total_objects / duration_s
+        print(
+            f"partition={self._partition} total duration: {duration} {self._total_objects} checked\t"
+            + f"not_found={self._not_found}\tincorrect_hash={self._incorrect_hash}"
+            + f"\t({object_per_sec:.2f}/s)"
+        )
 
-  def add_not_found():
-    self._not_found += 1
+    def start_object(self):
+        self._total_objects += 1
+        self._objects_range += 1
 
-  def add_incorrect_hash():
-    self._incorrect_hash += 1
+    def add_not_found(self):
+        self._not_found += 1
 
-  def set_offset(self, offset: int):
-    self._offset = offset
-    self._objects_range = 0
+    def add_incorrect_hash(self):
+        self._incorrect_hash += 1
 
-  def set_partition(self, partition: int):
-    self._partition = partition
+    def set_offset(self, offset: int):
+        self._offset = offset
+        self._objects_range = 0
+
+    def get_offset(self):
+      return self._offset
+
+    def set_partition(self, partition: int):
+        self._partition = partition
+
 
 if __name__ == "__main__":
     journal_client()
