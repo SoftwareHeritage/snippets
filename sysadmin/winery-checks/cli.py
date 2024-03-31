@@ -25,8 +25,6 @@ from threading import Thread
 from journal_client import OffsetBoundedJournalClient
 from os import makedirs
 
-error_file = "error.out"
-
 def read_config(config_file: Optional[Any] = None) -> Dict:
     """Read configuration from config_file if provided, from the SWH_CONFIG_FILENAME if
     set or fallback to the DEFAULT_CONFIG.
@@ -97,7 +95,7 @@ def read_config(config_file: Optional[Any] = None) -> Dict:
 )
 @click.option(
     "--output-file",
-    "-of",
+    "-w",
     default="error.out",
     type=click.Path(dir_okay=False, file_okay=True),
     help="the file where to write the errors",
@@ -110,13 +108,9 @@ def main(config_file, partition, max_offset, workdir, generate_file: bool, check
         print("--check-file and --generate-file options are exclusive")
         exit(1)
 
-    error_file = output_file
+    error_fn = functools.partial(log_error, error_file=output_file)
 
     config = read_config(config_file)
-    journal_cfg = config["journal"]
-
-    journal_cfg["object_types"] = ["content"]
-    journal_cfg["prefix"] = "swh.journal.objects"
 
     stats = Statistics()
     stats.set_max_offset(int(max_offset))
@@ -124,11 +118,11 @@ def main(config_file, partition, max_offset, workdir, generate_file: bool, check
 
     if generate_file:
         headers = {"partition": partition, "workdir": workdir}
-        worker_fn = functools.partial(write_to_file, headers=headers, statistics=stats)
+        worker_fn = functools.partial(write_to_file, headers=headers, statistics=stats, error_fn=error_fn)
     else:
         objstorage = factory.get_objstorage(**config["objstorage"])
         worker_fn = functools.partial(
-            process_journal_messages, objstorage=objstorage, statistics=stats
+            process_journal_messages, objstorage=objstorage, statistics=stats, error_fn=error_fn
         )
 
     stats.start()
@@ -140,8 +134,12 @@ def main(config_file, partition, max_offset, workdir, generate_file: bool, check
                 for line in f:
                     # print(line)
                     fields = line.split(";")
-                    process_line(stats, objstorage, fields)
+                    process_line(stats, error_fn, objstorage, fields)
         else:
+            journal_cfg = config["journal"]
+            journal_cfg["object_types"] = ["content"]
+            journal_cfg["prefix"] = "swh.journal.objects"
+
             client = OffsetBoundedJournalClient(**journal_cfg)
             client.set_statistics(stats)
             client.assign(partition, max_offset)
@@ -157,6 +155,13 @@ def main(config_file, partition, max_offset, workdir, generate_file: bool, check
                 client.close()
     finally:
         stats.stop()
+
+def serialize_hashes(hashes) -> str:
+    """Serialize the content hashes and base64 encode it"""
+
+    return str(base64.b64encode(pickle.dumps(
+                objid_from_dict(hashes)
+            )), 'utf-8')
 
 def write_to_file(
     messages: Dict[str, Dict[bytes, bytes]], *, headers, statistics
@@ -175,9 +180,7 @@ def write_to_file(
             statistics.start_object()
             content = model.Content.from_dict(message)
 
-            content_hashes = str(base64.b64encode(pickle.dumps(
-                objid_from_dict(content.hashes())
-            )), 'utf-8')
+            content_hashes = serialize_key(content.hashes())
 
             swhid = content.swhid()
 
@@ -186,14 +189,13 @@ def write_to_file(
             )
             pos += 1
 
-def validate_object(objstorage, stats, swhid, key):
-
+def validate_object(objstorage, error_fn, stats, swhid, key):
     try:
         # print("get object")
         content_bytes = objstorage.get(key)
 
     except ObjNotFoundError:
-        log_error(swhid, "not_found")
+        error_fn(swhid=swhid, error="not_found", hashes=key)
         stats.add_not_found()
     else:
         # print(f"{key=}")
@@ -204,7 +206,7 @@ def validate_object(objstorage, stats, swhid, key):
         )
         if key != recomputed_hashes:
             statistics.add_incorrect_hash(swhid, key, recomputed_hash)
-            log_error(swhid, "incorrect_hash")
+            error_fn(swhid=swhid, error="incorrect_hash", hashes=key)
             print(
                 "Incorrect hash recomputed={recomputed_hashes} expected={key}"
             )
@@ -214,6 +216,7 @@ def process_journal_messages(
     *,
     objstorage: ObjStorageInterface,
     statistics,
+    error_fn,
 ) -> None:
     """Count the number of different values of an object's property.
     It allow for example to count the persons inside the
@@ -226,10 +229,10 @@ def process_journal_messages(
 
         content_hashes = objid_from_dict(content.hashes())
 
-        validate_object(objstorage, statistics, content.swhid(), content_hashes)
+        validate_object(objstorage, error_fn, statistics, content.swhid(), content_hashes)
 
 
-def process_line(stats, objstorage, fields):
+def process_line(stats, error_fn, objstorage, fields):
     """prepare the line content to be handled by the validate_object methode
        The real signifiant part is the key deserialization here
     """
@@ -243,11 +246,11 @@ def process_line(stats, objstorage, fields):
     key = pickle.loads(base64.b64decode(encoded_key))
     # print(key)
 
-    validate_object(objstorage, stats, swhid, key)
+    validate_object(objstorage, error_fn, stats, swhid, key)
 
-def log_error(swhid: str, error: str):
+def log_error(error_file, swhid: str, error: str, hashes):
     with open(error_file, "a") as f:
-        f.write(f"{swhid};{error}\n")
+        f.write(f"{swhid};{error};{serialize_hashes(hashes)}\n")
 
 class Statistics(Thread):
     DELAY = 2
