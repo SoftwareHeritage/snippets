@@ -233,7 +233,7 @@ def process_journal_messages(
 
 
 def process_line(stats, error_fn, objstorage, fields):
-    """prepare the line content to be handled by the validate_object methode
+    """prepare the line content to be handled by the validate_object method
        The real signifiant part is the key deserialization here
     """
     partition = fields[0]
@@ -241,6 +241,7 @@ def process_line(stats, error_fn, objstorage, fields):
     swhid = fields[2]
     encoded_key = fields[3]
 
+    stats.set_partition(partition)
     stats.start_object()
 
     key = pickle.loads(base64.b64decode(encoded_key))
@@ -253,7 +254,7 @@ def log_error(error_file, swhid: str, error: str, hashes):
         f.write(f"{swhid};{error};{serialize_hashes(hashes)}\n")
 
 class Statistics(Thread):
-    DELAY = 2
+    DELAY = 5
 
     def set_max_offset(self, max_offset):
         self._max_offset = max_offset
