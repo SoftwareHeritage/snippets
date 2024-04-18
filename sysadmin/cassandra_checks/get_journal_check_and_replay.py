@@ -401,6 +401,9 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
                echo $(kafka-object-as-string) > `journal-only/<object-type>/<swhid>/journal`
 
     """
+    report_path_debug = join(top_level_path, "debug", "cassandra")
+    report_path_to_replay = join(top_level_path, "to_replay")
+    report_path_journal_only = join(top_level_path, "journal_only")
 
     for otype, objs in objects.items():
         logger.info(f"Processing {len(objs)} <{otype}> objects.")
@@ -429,9 +432,8 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             unique_key = swhid_key(obj_model)
             # For debug purposes only: check object representation written on disk
             if debug:
-                top_level_debug = join(top_level_path, "debug", "cassandra")
-                append_representation_on_disk_as_tree(top_level_debug, "journal_representation", obj_model, otype, unique_key)
-                append_representation_on_disk_as_tree(top_level_debug, "cassandra_representation", cs_obj, otype, unique_key)
+                append_representation_on_disk_as_tree(report_path_debug, "journal_representation", obj_model, otype, unique_key)
+                append_representation_on_disk_as_tree(report_path_debug, "cassandra_representation", cs_obj, otype, unique_key)
                 report_debug_filepath = join(top_level_path, f"{otype}-debug")
                 append_swhid(report_debug_filepath, suffix_timestamp, swhid, unique_key)
                 if iterable:
@@ -474,14 +476,13 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
                 logger.debug("Object missing in cassandra and present in postgresql")
                 # kafka and postgresql objects match
                 errors_counter += 1
-                top_level_report_path = join(top_level_path, "to_replay")
                 # object not found or at least different in cassandra
                 # So we want to flush it on disk for later analysis
                 logger.debug("Flush representations to disk.")
-                append_representation_on_disk_as_tree(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
+                append_representation_on_disk_as_tree(report_path_to_replay, "cassandra_representation", cs_obj, otype, unique_key)
                 # save object representation in dedicated tree
-                append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
-                append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
+                append_representation_on_disk_as_tree(report_path_to_replay, "journal_representation", obj, otype, unique_key)
+                append_representation_on_disk_as_tree(report_path_to_replay, "postgresql_representation", pg_obj, otype, unique_key)
                 report_filepath = join(top_level_path, f"{otype}-swhid-toreplay")
                 append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
                 continue
@@ -497,11 +498,10 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
             # we read in the journal, we want to flush all that we've read to disk
 
             logger.debug("Flush representations found to disk")
-            top_level_report_path = join(top_level_path, "journal_only")
-            append_representation_on_disk_as_tree(top_level_report_path, "cassandra_representation", cs_obj, otype, unique_key)
-            append_representation_on_disk_as_tree(top_level_report_path, "postgresql_representation", pg_obj, otype, unique_key)
+            append_representation_on_disk_as_tree(report_path_journal_only, "cassandra_representation", cs_obj, otype, unique_key)
+            append_representation_on_disk_as_tree(report_path_journal_only, "postgresql_representation", pg_obj, otype, unique_key)
             # save object representation in dedicated tree
-            append_representation_on_disk_as_tree(top_level_report_path, "journal_representation", obj, otype, unique_key)
+            append_representation_on_disk_as_tree(report_path_journal_only, "journal_representation", obj, otype, unique_key)
             report_filepath = join(top_level_path, f"{otype}-swhid-in-journal-only")
             append_swhid(report_filepath, suffix_timestamp, swhid, unique_key)
 
