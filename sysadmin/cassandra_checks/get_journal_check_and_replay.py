@@ -93,7 +93,7 @@ def append_representation_on_disk_as_tree(top_level_path, representation_type, o
         f.write(f"{repr(obj)}\n")
 
 
-def swhid_str(obj):
+def swhid_str(obj) -> str:
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
     extid, origin_visit, origin_visit_status) as a dict.
@@ -104,7 +104,7 @@ def swhid_str(obj):
     return pprint_key(obj.unique_key())
 
 
-def swhid_key(obj):
+def swhid_key(obj) -> str:
     """Build a swhid like string representation for model object with SWHID (e.g. most
     swh dag objects). Otherwise, just write a unique representation of the object (e.g.
     extid, origin_visit, origin_visit_status) which is filesystem compliant.
@@ -113,6 +113,13 @@ def swhid_key(obj):
     if hasattr(obj, 'swhid'):
         return str(obj.swhid())
     return hash_to_hex(hash_git_data(str(obj.unique_key()).encode('utf-8'), "blob"))
+
+
+def unique_key_from_dict(otype: str, obj: Dict) -> str:
+    """Build a unique key from an object dict with type otype
+
+    """
+    return f"{otype}-{hash_to_hex(obj['id'])}"
 
 
 def compare_content(obj_ref: Content, obj_model_ref: Content) -> bool:
@@ -247,6 +254,11 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
     type, this returns a tuple of the object model, a truncated model object function,
     an equality function, a cassandra getter function and a storage getter function.
 
+    This function does its best to convert journal dict objects into model objects. It
+    could happen some old objects (anterior to model objects check) fail to be
+    instantiated into model object. In that case, this function will raise. It's up to
+    the caller to manage such case.
+
     """
     truncate_obj_model_fn = identity
     is_equal_fn = compare_object
@@ -261,8 +273,8 @@ def configure_obj_get(otype: str, obj: Dict, cs_storage, pg_storage):
             # Convert the dict object into a valid Directory model object
             obj_model = Directory.from_dict(obj)
         except ValueError:
-            # But some old directory objects have duplicated entries and failed to be
-            # converted so fallback to this method when needed
+            # But some old directory objects have duplicated entries and failed to
+            # be converted so fallback to this method when needed
             _, obj_model = Directory.from_possibly_duplicated_entries(
                 id=obj["id"],
                 entries=tuple(
@@ -404,14 +416,25 @@ def process(cs_storage, pg_storage, top_level_path, objects, suffix_timestamp, d
     report_path_debug = join(top_level_path, "debug", "cassandra")
     report_path_to_replay = join(top_level_path, "to_replay")
     report_path_journal_only = join(top_level_path, "journal_only")
+    report_path_error = join(top_level_path, "journal_error")
 
     for otype, objs in objects.items():
         logger.info(f"Processing {len(objs)} <{otype}> objects.")
         errors_counter = 0
         for obj in objs:
-            obj_model, truncate_model_fn, is_equal_fn, cs_get, pg_get = configure_obj_get(
-                otype, obj, cs_storage, pg_storage)
+            try:
+                obj_model, truncate_model_fn, is_equal_fn, cs_get, pg_get = \
+                    configure_obj_get(otype, obj, cs_storage, pg_storage)
+            except ValueError:
+                logger.error(f"Cannot convert dict object with type <{otype}> into a "
+                             "model object, serialize on disk then skipping...")
+                unique_key = unique_key_from_dict(otype, obj)
+                append_representation_on_disk_as_tree(
+                    report_path_error, "journal_representation", obj, otype, unique_key
+                )
+                continue
 
+            # No issue encountered, we can retrieve and compare the objects
             logger.debug("Retrieve object in cassandra")
             # Retrieve object in cassandra
             cs_obj = cs_get()
