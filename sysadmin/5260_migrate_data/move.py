@@ -166,7 +166,7 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
         try:
             obj = src.get(obj_id)
         except ObjNotFoundError:
-            logger.info("Content <%s> not present in src objstorage", obj_id)
+            log_with_status(logger.debug, f"Content <{obj_id}> not present in src objstorage", log_period, total_moved, i)
             # The content chosen to be moved is not present in the src storage
             # (could be because it's in another objstorage)
             continue
@@ -175,7 +175,7 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
         hashes = content.hashes()
         actual_hash = hash_to_hex(hashes['sha1'])
         if obj_id != actual_hash:
-            logger.error("Mismatched hash <%s>, found <%s>", obj_id, actual_hash)
+            log_with_status(logger.error, f"Mismatched hash <{obj_id}>, found <{actual_hash}>", log_period, total_moved, i)
             continue
         # Try to write
         if dry_run:
@@ -192,7 +192,7 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
                 else:
                     break
             else:
-                logger.error("Failed to write object <%s> in destination objstorage", obj_id)
+                log_with_status(logger.error, f"Failed to write object <{obj_id}> in destination objstorage", log_period, total_moved, i)
                 continue
 
         if copied and cleanup:
@@ -206,7 +206,7 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
                     cleaned = True
                     moved.add(obj_id)
                 else:
-                    logger.error("Mismatched copy <%s> (src) != <%s> (dst)", content, content_copied)
+                    log_with_status(logger.error, f"Mismatched copy <{content}> (src] != <{content_copied}> (dst)", log_period, total_moved, i)
                     continue
 
         if cleaned:
@@ -216,10 +216,16 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
         if copied and cleaned:
             total_moved += 1
 
-        if i != 0 and i % log_period == 0:
-            logger.info("Moved %s contents", total_moved)
+        log_with_status(None, None, log_period, total_moved, i)
 
-    logger.info("Totally moved %s contents", total_moved)
+    logger.info("Totally moved %s contents out of %s content ids read", total_moved, i)
+
+
+def log_with_status(logger_fn, msg, log_period, total_moved, i):
+    if logger_fn and msg:
+        logger_fn(msg)
+    if i != 0 and i % log_period == 0:
+        logger.info("Moved contents: %s / %s", total_moved, i)
 
 
 if __name__ == "__main__":
