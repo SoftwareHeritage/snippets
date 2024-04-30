@@ -53,13 +53,13 @@ def configure_logger(logger, debug_flag):
     logger.setLevel(log_level)
 
 
-def init_moved_objects(manifest_moved_filepath: str) -> Set:
-    """Initialize objects already moved."""
-    if os.path.exists(manifest_moved_filepath):
-        with open(manifest_moved_filepath, 'r') as f:
-            moved = set(line.rstrip() for line in f.readlines())
-    else:
-        moved = set()
+def init_moved_objects(already_moved_filepaths: str) -> Set:
+    """Initialize objects already moved from a list of filepaths."""
+    moved = set()
+    for manifest_moved_filepath in already_moved_filepaths:
+        if os.path.exists(manifest_moved_filepath):
+            with open(manifest_moved_filepath, 'r') as f:
+                moved.update(line.rstrip() for line in f.readlines())
     return moved
 
 
@@ -118,9 +118,25 @@ def init_moved_objects(manifest_moved_filepath: str) -> Set:
         "Manifest files holding the content id for content actually moved"
     ),
 )
-def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath):
+@click.option(
+    "--already-moved",
+    "-a",
+    "already_moved_filepaths",
+    multiple=True,
+    required=False,
+    type=click.Path(
+        exists=True,
+        dir_okay=False,
+        file_okay=True,
+    ),
+    default=list(),
+    help=(
+        "Manifest files of ids already moved"
+    ),
+)
+def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, already_moved_filepaths):
     configure_logger(logger, debug)
-    moved = init_moved_objects(manifest_moved_filepath)
+    moved = init_moved_objects(already_moved_filepaths)
     # Objstorage we will read content to be moved to
     src = get_objstorage(
         cls="pathslicing", compression="gzip", slicing="0:1/1:5", root=basedir,
