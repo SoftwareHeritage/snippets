@@ -200,7 +200,18 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
                 logger.info("** DRY-RUN** Clean up <%s> from the source objstorage", obj_id)
             else:
                 # Ensure we are able to read the new copied content
-                content_copied = Content.from_data(dst.get(obj_id))
+                count_read = 0
+                while True:
+                    count_read += 1
+                    try:
+                        content_from_dst = dst.get(obj_id)
+                    except Exception as e:
+                        logger.error("Attempt %s: Read <%s>/♾: from destination objstorage", count_read, obj_id)
+                        logger.exception(e)
+                    else:
+                        break
+
+                content_copied = Content.from_data(content_from_dst)
                 if content_copied == content:
                     src.delete(obj_id)
                     cleaned = True
