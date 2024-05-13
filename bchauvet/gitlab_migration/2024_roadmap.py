@@ -14,7 +14,7 @@ nb_issues = 0
 
 output = open(f"./docs/2024.csv", "w")
 
-output.write(f"project|issue|priority|status|url|\n")
+output.write(f"project|issue|priority|status|spent(days)|url|\n")
 
 projects = swh_group.projects.list(iterator=True)
 
@@ -25,6 +25,8 @@ for gproject in projects:
     issues = project.issues.list(iterator=True, type='ISSUE')
 
     for issue in issues:
+
+        #issue = project.issues.get(issue_entry.iid)
         if issue.type == 'ISSUE':
             priority = ''
             status = 'created'
@@ -42,8 +44,11 @@ for gproject in projects:
 
                 
             if r24 == 'y':
-                output.write(f"{project.name}|{issue.title}|{priority}|{status}|{issue.web_url}\n")
-                print(issue.title, ' : ', issue.labels)
+                spent = issue.time_stats()['total_time_spent'] / 60 / 60 / 8
+                #output.write(f"{project.name}|{issue.title}|{priority}|{status}|{str.replace( str(spent), '.', ',')}|{issue.web_url}\n")
+                output.write(f"{project.name}|{issue.title}|{priority}|{status}|{spent}|{issue.web_url}\n")
+                # print(issue.title, ' : ', issue.labels)
+                # print(issue.title, ' : ',spent)
 
 
 
