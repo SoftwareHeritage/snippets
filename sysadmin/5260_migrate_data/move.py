@@ -243,8 +243,15 @@ def main(
 
                 content_copied = Content.from_data(content_from_dst)
                 if content_copied == content:
-                    src.delete(obj_id)
-                    cleaned = True
+                    try:
+                        src.delete(obj_id)
+                        cleaned = True
+                    except:
+                        logger.warning(
+                            "Object <%s> already cleaned from destination objstorage",
+                            obj_id,
+                        )
+                        continue
                     moved.add(obj_id)
                 else:
                     log_with_status(
