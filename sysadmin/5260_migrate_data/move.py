@@ -40,7 +40,7 @@ RETRY_ADD_NUMBER = 3
 
 def configure_logger(logger, debug_flag):
     """Configure logger according to environment variable or debug_flag."""
-    FORMAT = '[%(asctime)s] %(message)s'
+    FORMAT = "[%(asctime)s] %(message)s"
     logging.basicConfig(format=FORMAT)
     if "LOG_LEVEL" in os.environ:
         log_level_str = os.environ["LOG_LEVEL"].upper()
@@ -58,36 +58,30 @@ def init_moved_objects(already_moved_filepaths: str) -> Set:
     moved = set()
     for manifest_moved_filepath in already_moved_filepaths:
         if os.path.exists(manifest_moved_filepath):
-            with open(manifest_moved_filepath, 'r') as f:
+            with open(manifest_moved_filepath, "r") as f:
                 moved.update(line.rstrip() for line in f.readlines())
     return moved
 
 
 @click.command()
 @click.option(
-    "--debug",
-    is_flag=True,
-    default=False,
-    help="Debug mode (be more verbose)"
+    "--debug", is_flag=True, default=False, help="Debug mode (be more verbose)"
 )
 @click.option(
-    "--dry-run/--no-dry-run",
-    is_flag=True,
-    default=False,
-    help="Dry-run mode"
+    "--dry-run/--no-dry-run", is_flag=True, default=False, help="Dry-run mode"
 )
 @click.option(
     "--cleanup",
     is_flag=True,
     default=False,
-    help="Do the clean up (does nothing in dry-run)"
+    help="Do the clean up (does nothing in dry-run)",
 )
 @click.option(
     "--log-period",
     "-p",
     required=False,
     default=1000,
-    help="Add log progression each <log-period> content"
+    help="Add log progression each <log-period> content",
 )
 @click.option(
     "--basedir",
@@ -99,9 +93,7 @@ def init_moved_objects(already_moved_filepaths: str) -> Set:
         file_okay=False,
     ),
     default="/srv/softwareheritage/objects/",
-    help=(
-        "Base directory of objects to move"
-    ),
+    help=("Base directory of objects to move"),
 )
 @click.option(
     "--manifest-moved",
@@ -114,9 +106,7 @@ def init_moved_objects(already_moved_filepaths: str) -> Set:
         file_okay=True,
     ),
     default="/var/tmp/content-moved",
-    help=(
-        "Manifest files holding the content id for content actually moved"
-    ),
+    help=("Manifest files holding the content id for content actually moved"),
 )
 @click.option(
     "--already-moved",
@@ -130,21 +120,32 @@ def init_moved_objects(already_moved_filepaths: str) -> Set:
         file_okay=True,
     ),
     default=list(),
-    help=(
-        "Manifest files of ids already moved"
-    ),
+    help=("Manifest files of ids already moved"),
 )
-def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, already_moved_filepaths):
+def main(
+    debug,
+    dry_run,
+    cleanup,
+    basedir,
+    log_period,
+    manifest_moved_filepath,
+    already_moved_filepaths,
+):
     configure_logger(logger, debug)
     moved = init_moved_objects(already_moved_filepaths)
     # Objstorage we will read content to be moved to
     src = get_objstorage(
-        cls="pathslicing", compression="gzip", slicing="0:1/1:5", root=basedir,
+        cls="pathslicing",
+        compression="gzip",
+        slicing="0:1/1:5",
+        root=basedir,
         # Allow removal when not in dry run mode
-        allow_delete=not dry_run
+        allow_delete=not dry_run,
     )
     # the destination objstorage
-    dst = get_objstorage(cls="remote", url="http://objstorage-db1-rw.internal.staging.swh.network")
+    dst = get_objstorage(
+        cls="remote", url="http://objstorage-db1-rw.internal.staging.swh.network"
+    )
 
     total_moved = 0
     for i, line in enumerate(sys.stdin):
@@ -166,38 +167,63 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
         try:
             obj = src.get(obj_id)
         except ObjNotFoundError:
-            log_with_status(logger.debug, f"Content <{obj_id}> not present in src objstorage", log_period, total_moved, i)
+            log_with_status(
+                logger.debug,
+                f"Content <{obj_id}> not present in src objstorage",
+                log_period,
+                total_moved,
+                i,
+            )
             # The content chosen to be moved is not present in the src storage
             # (could be because it's in another objstorage)
             continue
 
         content = Content.from_data(obj)
         hashes = content.hashes()
-        actual_hash = hash_to_hex(hashes['sha1'])
+        actual_hash = hash_to_hex(hashes["sha1"])
         if obj_id != actual_hash:
-            log_with_status(logger.error, f"Mismatched hash <{obj_id}>, found <{actual_hash}>", log_period, total_moved, i)
+            log_with_status(
+                logger.error,
+                f"Mismatched hash <{obj_id}>, found <{actual_hash}>",
+                log_period,
+                total_moved,
+                i,
+            )
             continue
         # Try to write
         if dry_run:
             logger.info("** DRY-RUN** Write <%s> in destination objstorage.", obj_id)
 
         if not dry_run:
-            for j in range(1, RETRY_ADD_NUMBER+1):
+            for j in range(1, RETRY_ADD_NUMBER + 1):
                 try:
                     dst.add(content.data, obj_id=hashes)
                     copied = True
                 except Exception as e:
-                    logger.error("Attempt %s/%s: Write <%s> in destination objstorage", j, RETRY_ADD_NUMBER, obj_id)
+                    logger.error(
+                        "Attempt %s/%s: Write <%s> in destination objstorage",
+                        j,
+                        RETRY_ADD_NUMBER,
+                        obj_id,
+                    )
                     logger.exception(e)
                 else:
                     break
             else:
-                log_with_status(logger.error, f"Failed to write object <{obj_id}> in destination objstorage", log_period, total_moved, i)
+                log_with_status(
+                    logger.error,
+                    f"Failed to write object <{obj_id}> in destination objstorage",
+                    log_period,
+                    total_moved,
+                    i,
+                )
                 continue
 
         if copied and cleanup:
             if dry_run:
-                logger.info("** DRY-RUN** Clean up <%s> from the source objstorage", obj_id)
+                logger.info(
+                    "** DRY-RUN** Clean up <%s> from the source objstorage", obj_id
+                )
             else:
                 # Ensure we are able to read the new copied content
                 count_read = 0
@@ -206,7 +232,11 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
                     try:
                         content_from_dst = dst.get(obj_id)
                     except Exception as e:
-                        logger.error("Attempt %s: Read <%s>/♾: from destination objstorage", count_read, obj_id)
+                        logger.error(
+                            "Attempt %s: Read <%s>/♾: from destination objstorage",
+                            count_read,
+                            obj_id,
+                        )
                         logger.exception(e)
                     else:
                         break
@@ -217,11 +247,17 @@ def main(debug, dry_run, cleanup, basedir, log_period, manifest_moved_filepath, 
                     cleaned = True
                     moved.add(obj_id)
                 else:
-                    log_with_status(logger.error, f"Mismatched copy <{content}> (src] != <{content_copied}> (dst)", log_period, total_moved, i)
+                    log_with_status(
+                        logger.error,
+                        f"Mismatched copy <{content}> (src] != <{content_copied}> (dst)",
+                        log_period,
+                        total_moved,
+                        i,
+                    )
                     continue
 
         if cleaned:
-            with open(manifest_moved_filepath, 'a') as f:
+            with open(manifest_moved_filepath, "a") as f:
                 f.write(f"{obj_id}\n")
 
         if copied and cleaned:
