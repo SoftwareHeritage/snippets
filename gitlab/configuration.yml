@@ -13,12 +13,14 @@ groups:
       bchauvet: Owner
       douardda: Maintainer
       guillaume: Maintainer
+      hjonin: Maintainer
       lcruse: Maintainer
       lunar: Maintainer
       marla.dasilva: Maintainer
       mathfichen: Maintainer
       moranegg: Maintainer
       olasd: Maintainer
+      rboyer: Maintainer
       rdicosmo: Owner
       sgranger: Maintainer
       vlorentz: Maintainer
@@ -33,10 +35,12 @@ groups:
       bchauvet: Maintainer
       douardda: Maintainer
       guillaume: Maintainer
+      hjonin: Maintainer
       jenkins: Maintainer
       lunar: Maintainer
       moranegg: Maintainer
       olasd: Maintainer
+      rboyer: Maintainer
       rdicosmo: Maintainer
       swh-sentry-integration: Maintainer
       vlorentz: Maintainer
@@ -78,7 +82,6 @@ groups:
     users:
       Alphare: Owner
       marmoute: Owner
-      franckbret: Owner
     remove_extra_memberships: true
   infra-private:
     users:
