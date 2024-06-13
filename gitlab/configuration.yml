@@ -61,6 +61,7 @@ groups:
     users:
       phabricator-migration: Owner
       zom: Maintainer
+      AdeleDesmazieres: Maintainer
     remove_extra_memberships: true
   teams/leadership:
     users:
