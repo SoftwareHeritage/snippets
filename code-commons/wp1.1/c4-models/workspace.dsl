@@ -4,8 +4,12 @@ workspace "Code Commons" "Description" {
         github = softwareSystem "Github"
 
         hpc = softwareSystem "HPC" {
+            !adrs "doc/adr/hpc"
+
             frontend = container "Frontend Nodes" {
                 cloner = component "cloner" "git" {
+                  !adrs "doc/adr/hpc/cloner"
+
                   tags job
                 }
             }
