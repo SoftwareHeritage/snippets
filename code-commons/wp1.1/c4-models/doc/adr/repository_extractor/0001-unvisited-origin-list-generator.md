@@ -36,7 +36,7 @@ Given the different needed filters and the perimeter are not yet known, the simp
 start with a sql extract.
 
 ```
-select url, date_trunc('week', first_seen) from listed_origins lo where lister_id = (select id from listers where name='github') and enabled=true and not exists (select 1 from origin_visit_stats ovs where ovs.visit_type = lo.visit_type and ovs.url = lo.url and last_visit is not null);
+\copy (select url, date_trunc('week', first_seen) from listed_origins lo where lister_id = (select id from listers where name='github') and enabled=true and not exists (select 1 from origin_visit_stats ovs where ovs.visit_type = lo.visit_type and ovs.url = lo.url and last_visit is not null) ) to '/tmp/test.csv' with (format csv, header true)
 ```
 
 
