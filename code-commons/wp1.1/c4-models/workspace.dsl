@@ -100,6 +100,7 @@ workspace "Code Commons" "Description" {
 
         swh -> hpc "sends a repository list and downloads deduplicated repository contents"
         swh -> ssh_server "sends a repository list" "scp"
+        swh -> ssh_server "sends the known objects index"
         swh -> frontend "downloads computed datasets" "rsync"
         repo_extractor -> swh_scheduler "extracts unvisited origins" "sql" "overlapped"
         repo_extractor -> swh_storage "reserves origin visit" "rpc"
@@ -123,15 +124,17 @@ workspace "Code Commons" "Description" {
         deduplicator -> kafka "read raw data"
         deduplicator -> index "checks object existence and update index"
         index -> hpc_storage "reads and writes index data"
+        loader -> repo_status "updates the status of a repository"
+        deduplicator -> repo_status "updates repository status"
         deduplicator -> hpc_storage "writes swh and anonymized datasets" "" "overlapped"
-
+        
         // HPC Storage
         index -> object_index "reads and writes"
         loader -> repo_clone "reads a repository content"
-        loader -> repo_status "updates the status of a repository"
         data_syncer -> hpc_storage "synchronizes content and delete imported datasets"
         frontend -> hpc_storage "stores repositoriy list and clones, reads datasets"
         ssh_server -> repo_list "stores repositories list"
+        ssh_server -> index "stores known objects index"
         kafka -> kafka_logs "reads and write log files"
 
     }
@@ -173,22 +176,42 @@ workspace "Code Commons" "Description" {
         }
 
         dynamic frontend {
-            title "Repository cloning process"
-            swh -> ssh_server "provides the repository list"
+            title "Step 0.1 - Provide the repository list"
+            swh -> ssh_server "sends the repository list"
             ssh_server -> repo_list "stores repository list"
+            autolayout lr
+        }
+
+        dynamic frontend {
+            title "Step 0.2 - Provide the known objects index"
+            swh -> ssh_server "sends the known objects index"
+            ssh_server -> index "stores known objects index"
+            autolayout lr
+        }
+
+        dynamic frontend {
+            title "Step 1 - Repository cloning process"
             cloner -> repo_list "retrieves repository list" 
             cloner -> github "clones repository [iterative]"
             cloner -> repo_clone "writes repository content [iterative]"
             cloner -> repo_status "adds repository (status: CLONED)"
-            autolayout lr
+            autolayout 
         }
 
         dynamic compute {
-            title "Repository data processing"
-            loader -> repo_clone "Reads repository content"
+            title "Step 2.1 - Repository data processing"
+            loader -> repo_clone "Reads CLONED repository content"
             loader -> kafka "writes repository content"
-            loader -> repo_status "updates repository status (status: LOADED)"
-            autolayout lr
+            loader -> repo_status "updates repository status (LOADED)"
+            autolayout
+        }
+
+        dynamic compute {
+            title "Step 2.2 - Data deduplication"
+            deduplicator -> kafka "read LOADED repository data"
+            deduplicator -> index "checks duplicate objects and writes unreferenced objects"
+            deduplicator -> repo_status "updates repository status (DEDUPLICATED)"
+            autolayout
         }
 
 
