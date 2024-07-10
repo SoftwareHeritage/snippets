@@ -12,6 +12,10 @@ workspace "Code Commons" "Description" {
 
                   tags job
                 }
+                ssh_server = component "ssh" {
+                    tags service
+
+                }
             }
             compute = container "Compute Nodes" {
                 kafka = component "kafka" {
@@ -43,6 +47,11 @@ workspace "Code Commons" "Description" {
                 kafka_logs = component "undeduplicated objects" {
                     tags file
                     technology "Kafka logs"
+                }
+
+                repo_status = component "Repository status" {
+                    tags file
+                    technology "TBD"
                 }
 
                 object_index = component "SWHid index" {
@@ -90,7 +99,7 @@ workspace "Code Commons" "Description" {
         }
 
         swh -> hpc "sends a repository list and downloads deduplicated repository contents"
-        swh -> frontend "sends a repository list" "scp"
+        swh -> ssh_server "sends a repository list" "scp"
         swh -> frontend "downloads computed datasets" "rsync"
         repo_extractor -> swh_scheduler "extracts unvisited origins" "sql" "overlapped"
         repo_extractor -> swh_storage "reserves origin visit" "rpc"
@@ -106,6 +115,7 @@ workspace "Code Commons" "Description" {
         cloner -> hpc_storage "reads repository list and stores repository contents"
         cloner -> repo_list "reads repo list"
         cloner -> repo_clone "writes repo content"
+        cloner -> repo_status "adds repositories status info"
 
         // Compute
         compute -> hpc_storage "reads repositories and writes computed data"
@@ -120,6 +130,7 @@ workspace "Code Commons" "Description" {
         loader -> repo_clone "reads a repository content"
         data_syncer -> hpc_storage "synchronizes content and delete imported datasets"
         frontend -> hpc_storage "stores repositoriy list and clones, reads datasets"
+        ssh_server -> repo_list "stores repositories list"
         kafka -> kafka_logs "reads and write log files"
 
     }
@@ -158,6 +169,17 @@ workspace "Code Commons" "Description" {
         component hpc_storage "Storage" {
             include *
             autolayout
+        }
+
+        dynamic frontend {
+            title "Massive repositories ingestion process"
+            swh -> ssh_server "provides the repository list"
+            ssh_server -> repo_list "stores repository list"
+            cloner -> repo_list "retrieves repository list" 
+            cloner -> github "clones repository [iterative]"
+            cloner -> repo_clone "writes repository content [iterative]"
+            cloner -> repo_status "adds repository (status: CLONED)"
+            autolayout lr
         }
 
         styles {
