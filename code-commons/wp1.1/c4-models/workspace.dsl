@@ -128,6 +128,7 @@ workspace "Code Commons" "Description" {
         // HPC Storage
         index -> object_index "reads and writes"
         loader -> repo_clone "reads a repository content"
+        loader -> repo_status "updates the status of a repository"
         data_syncer -> hpc_storage "synchronizes content and delete imported datasets"
         frontend -> hpc_storage "stores repositoriy list and clones, reads datasets"
         ssh_server -> repo_list "stores repositories list"
@@ -172,7 +173,7 @@ workspace "Code Commons" "Description" {
         }
 
         dynamic frontend {
-            title "Massive repositories ingestion process"
+            title "Repository cloning process"
             swh -> ssh_server "provides the repository list"
             ssh_server -> repo_list "stores repository list"
             cloner -> repo_list "retrieves repository list" 
@@ -181,6 +182,15 @@ workspace "Code Commons" "Description" {
             cloner -> repo_status "adds repository (status: CLONED)"
             autolayout lr
         }
+
+        dynamic compute {
+            title "Repository data processing"
+            loader -> repo_clone "Reads repository content"
+            loader -> kafka "writes repository content"
+            loader -> repo_status "updates repository status (status: LOADED)"
+            autolayout lr
+        }
+
 
         styles {
             element "Person" {
