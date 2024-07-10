@@ -29,7 +29,8 @@ workspace "Code Commons" "Description" {
                 deduplicator = component "deduplicator" "" "python" {
                   tags job
                 }
-                index = component "index" "" "TBD" {
+                compute_index = component "index" "" "TBD" {
+                  !adrs "doc/adr/hpc/index"
                   tags service
                 }
             }
@@ -122,19 +123,20 @@ workspace "Code Commons" "Description" {
         compute -> hpc_storage "reads repositories and writes computed data"
         loader -> kafka "writes repository content" "" "overlapped"
         deduplicator -> kafka "read raw data"
-        deduplicator -> index "checks object existence and update index"
-        index -> hpc_storage "reads and writes index data"
+        deduplicator -> compute_index "checks object existence and update index"
+        compute_index -> hpc_storage "reads and writes index data"
         loader -> repo_status "updates the status of a repository"
         deduplicator -> repo_status "updates repository status"
         deduplicator -> hpc_storage "writes swh and anonymized datasets" "" "overlapped"
-        
+
         // HPC Storage
-        index -> object_index "reads and writes"
+        compute_index -> object_index "reads and writes"
         loader -> repo_clone "reads a repository content"
         data_syncer -> hpc_storage "synchronizes content and delete imported datasets"
         frontend -> hpc_storage "stores repositoriy list and clones, reads datasets"
         ssh_server -> repo_list "stores repositories list"
-        ssh_server -> index "stores known objects index"
+        // TODO: Change this, the ssh / frontend can't access the compute services directly
+        ssh_server -> compute_index "stores known objects index"
         kafka -> kafka_logs "reads and write log files"
 
     }
@@ -185,17 +187,17 @@ workspace "Code Commons" "Description" {
         dynamic frontend {
             title "Step 0.2 - Provide the known objects index"
             swh -> ssh_server "sends the known objects index"
-            ssh_server -> index "stores known objects index"
+            ssh_server -> compute_index "stores known objects index"
             autolayout lr
         }
 
         dynamic frontend {
             title "Step 1 - Repository cloning process"
-            cloner -> repo_list "retrieves repository list" 
+            cloner -> repo_list "retrieves repository list"
             cloner -> github "clones repository [iterative]"
             cloner -> repo_clone "writes repository content [iterative]"
             cloner -> repo_status "adds repository (status: CLONED)"
-            autolayout 
+            autolayout
         }
 
         dynamic compute {
@@ -209,7 +211,7 @@ workspace "Code Commons" "Description" {
         dynamic compute {
             title "Step 2.2 - Data deduplication"
             deduplicator -> kafka "read LOADED repository data"
-            deduplicator -> index "checks duplicate objects and writes unreferenced objects"
+            deduplicator -> compute_index "checks duplicate objects and writes unreferenced objects"
             deduplicator -> repo_status "updates repository status (DEDUPLICATED)"
             autolayout
         }
