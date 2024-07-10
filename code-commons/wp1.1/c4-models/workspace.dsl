@@ -16,6 +16,9 @@ workspace "Code Commons" "Description" {
                     tags service
 
                 }
+                frontend_job_queue = component "Job queue" "" "Redis" {
+                  tags service, queue
+                }
             }
             compute = container "Compute Nodes" {
                 kafka = component "kafka" {
@@ -32,6 +35,9 @@ workspace "Code Commons" "Description" {
                 compute_index = component "index" "" "TBD" {
                   !adrs "doc/adr/hpc/index"
                   tags service
+                }
+                compute_job_queue = component "Job queue" "" "Redis" {
+                  tags service, queue
                 }
             }
             hpc_storage = container "Storage" {
@@ -118,9 +124,11 @@ workspace "Code Commons" "Description" {
         cloner -> repo_list "reads repo list"
         cloner -> repo_clone "writes repo content"
         cloner -> repo_status "adds repositories status info"
+        cloner -> frontend_job_queue "adds tasks"
 
         // Compute
         compute -> hpc_storage "reads repositories and writes computed data"
+        loader -> compute_job_queue "gets a repository to load"
         loader -> kafka "writes repository content" "" "overlapped"
         deduplicator -> kafka "read raw data"
         deduplicator -> compute_index "checks object existence and update index"
@@ -138,7 +146,6 @@ workspace "Code Commons" "Description" {
         // TODO: Change this, the ssh / frontend can't access the compute services directly
         ssh_server -> compute_index "stores known objects index"
         kafka -> kafka_logs "reads and write log files"
-
     }
 
     views {
@@ -197,12 +204,14 @@ workspace "Code Commons" "Description" {
             cloner -> github "clones repository [iterative]"
             cloner -> repo_clone "writes repository content [iterative]"
             cloner -> repo_status "adds repository (status: CLONED)"
+            cloner -> frontend_job_queue "adds tasks"
             autolayout
         }
 
         dynamic compute {
             title "Step 2.1 - Repository data processing"
-            loader -> repo_clone "Reads CLONED repository content"
+            loader -> compute_job_queue "gets a task"
+            loader -> repo_clone "reads CLONED repository content"
             loader -> kafka "writes repository content"
             loader -> repo_status "updates repository status (LOADED)"
             autolayout
@@ -251,6 +260,10 @@ workspace "Code Commons" "Description" {
             element "job" {
               background lightblue
               shape Ellipse
+            }
+            element "queue" {
+              background lightblue
+              shape pipe
             }
             element "service" {
               background orange
