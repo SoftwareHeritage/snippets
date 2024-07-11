@@ -3,6 +3,16 @@ workspace "Code Commons" "Description" {
     model {
         github = softwareSystem "Github"
 
+        operator = person "Operator"
+
+        s3 = softwareSystem "Amazon S3" {
+
+            swh_dataset = container "SWH dataset" {
+                tags file
+            }
+
+        }
+
         hpc = softwareSystem "HPC" {
             !adrs "doc/adr/hpc"
 
@@ -18,6 +28,9 @@ workspace "Code Commons" "Description" {
                 }
                 frontend_job_queue = component "Job queue" "" "Redis" {
                   tags service, queue
+                }
+                frontend_index = component "Index" "" "TBD" {
+                    tags service
                 }
             }
             compute = container "Compute Nodes" {
@@ -65,6 +78,16 @@ workspace "Code Commons" "Description" {
                   tags file
                   technology "TBD"
                 }
+
+                raw_dataset = component "raw dataset" {
+                    tags file
+                    technology "msgpack"
+                }
+
+                anonymized_dataset = component "anonymized dataset" {
+                    tags file
+                    technology "orc"
+                }
             }
         }
 
@@ -105,6 +128,8 @@ workspace "Code Commons" "Description" {
             }
         }
 
+        operator -> hpc "launchs jobs, inits datastores"
+
         swh -> hpc "sends a repository list and downloads deduplicated repository contents"
         swh -> ssh_server "sends a repository list" "scp"
         swh -> ssh_server "sends the known objects index"
@@ -125,17 +150,21 @@ workspace "Code Commons" "Description" {
         cloner -> repo_clone "writes repo content"
         cloner -> repo_status "adds repositories status info"
         cloner -> frontend_job_queue "adds tasks"
+        frontend -> S3 "gets existing datasets"
+        operator -> frontend_index "inits the known objects" "TBD"
 
         // Compute
         compute -> hpc_storage "reads repositories and writes computed data"
         loader -> compute_job_queue "gets a repository to load"
         loader -> kafka "writes repository content" "" "overlapped"
-        deduplicator -> kafka "read raw data"
-        deduplicator -> compute_index "checks object existence and update index"
         compute_index -> hpc_storage "reads and writes index data"
         loader -> repo_status "updates the status of a repository"
+        deduplicator -> kafka "read raw data"
+        deduplicator -> compute_index "checks object existence and update index"
         deduplicator -> repo_status "updates repository status"
         deduplicator -> hpc_storage "writes swh and anonymized datasets" "" "overlapped"
+        deduplicator -> anonymized_dataset "writes objects"
+        deduplicator -> raw_dataset "write objects"
 
         // HPC Storage
         compute_index -> object_index "reads and writes"
@@ -143,8 +172,7 @@ workspace "Code Commons" "Description" {
         data_syncer -> hpc_storage "synchronizes content and delete imported datasets"
         frontend -> hpc_storage "stores repositoriy list and clones, reads datasets"
         ssh_server -> repo_list "stores repositories list"
-        // TODO: Change this, the ssh / frontend can't access the compute services directly
-        ssh_server -> compute_index "stores known objects index"
+        frontend_index -> object_index "stores data"
         kafka -> kafka_logs "reads and write log files"
     }
 
@@ -194,7 +222,7 @@ workspace "Code Commons" "Description" {
         dynamic frontend {
             title "Step 0.2 - Provide the known objects index"
             swh -> ssh_server "sends the known objects index"
-            ssh_server -> compute_index "stores known objects index"
+            operator -> frontend_index "stores known objects index"
             autolayout lr
         }
 
