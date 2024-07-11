@@ -152,6 +152,10 @@ workspace "Code Commons" "Description" {
         cloner -> frontend_job_queue "adds tasks"
         frontend -> S3 "gets existing datasets"
         operator -> frontend_index "inits the known objects" "TBD"
+        operator -> ssh_server "connects to"
+        ssh_server -> s3 "downloads datasets"
+        ssh_server -> anonymized_dataset "reads/writes"
+        ssh_server -> frontend_index "reads/writes"
 
         // Compute
         compute -> hpc_storage "reads repositories and writes computed data"
@@ -220,10 +224,20 @@ workspace "Code Commons" "Description" {
         }
 
         dynamic frontend {
-            title "Step 0.2 - Provide the known objects index"
-            swh -> ssh_server "sends the known objects index"
-            operator -> frontend_index "stores known objects index"
+            title "Step 0.2 - Download the known objects dataset"
+            operator -> ssh_server "launches dataset download"
+            ssh_server -> s3 "downloads the dataset"
+            ssh_server -> anonymized_dataset "stores"
             autolayout lr
+        }
+
+        dynamic frontend {
+            title "Step 0.3 - Build the known objects index"
+            operator -> ssh_server "inits the known objects loading"
+            ssh_server -> anonymized_dataset "loads swhids"
+            ssh_server -> frontend_index "stores swhids"
+            frontend_index -> object_index "writes known objects index"
+            autolayout lr 
         }
 
         dynamic frontend {
@@ -247,9 +261,10 @@ workspace "Code Commons" "Description" {
 
         dynamic compute {
             title "Step 2.2 - Data deduplication"
-            deduplicator -> kafka "read LOADED repository data"
+            deduplicator -> kafka "read objects"
             deduplicator -> compute_index "checks duplicate objects and writes unreferenced objects"
-            deduplicator -> repo_status "updates repository status (DEDUPLICATED)"
+            deduplicator -> raw_dataset "writes swh dataset"
+            deduplicator -> anonymized_dataset "writes anonymized dataset"
             autolayout
         }
 
