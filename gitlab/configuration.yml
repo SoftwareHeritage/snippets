@@ -97,6 +97,7 @@ groups:
   research:
     users:
       zack: Owner
+      rdicosmo: Owner
   swh:
     users:
       phabricator-migration: Owner
