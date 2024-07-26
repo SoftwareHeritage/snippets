@@ -21,5 +21,5 @@ for origin in resp:
     print(f"{quote(origin['url'], safe='')}")
     nb_origins += 1
 
-print(f"{nb_origins} origins")
+# print(f"{nb_origins} origins")
 
