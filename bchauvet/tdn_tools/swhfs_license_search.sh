@@ -3,7 +3,7 @@
 # swh-fs directory path:
 SWHFS_HOME=~/swhfs
 
-python3 search_licences.py tcyrus > origins.csv
+python3 list_origins.py tcyrus > origins.csv
 
 origins_file=origins.csv
 
