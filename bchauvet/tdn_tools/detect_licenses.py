@@ -308,36 +308,58 @@ allowed_licences = [
 "ZPL-2.1"
 ]
 
-
 license_file_re = re.compile(rf"^(|.*[-_. ])({'|'.join(license_file_names)})(|[-_. ].*)$", re.IGNORECASE)
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-token = config.get('SWH', 'auth_token')
 shwfs_home = config.get('SWH', 'swhfs_home')
 
-cli = WebAPIClient(bearer_token=token)
+class OriginInfo:
+    def __init__(self, url, visit, licenses):
+        self.url = url
+        self.visit = visit
+        self.licenses = licenses
+    
+    def to_csv_line_first_license_only(self):
+        url = self.url
+        visit = self.visit
+        filename = "-"
+        license = "-"
+        if len(self.licenses) > 0:
+            filename = self.licenses[0].filename
+            license = self.licenses[0].license
+        return (f"{url};{visit};{filename};{license}\n")
 
+
+class LicenseInfo:
+    def __init__(self, filename, license):
+        self.filename = filename
+        self.license = license
+
+# Returns the list of visited origin urls matching the swh api search query
+def get_origins(query):
+    origins = []
+    token = config.get('SWH', 'auth_token')
+    cli = WebAPIClient(bearer_token=token)
+    resp = cli.origin_search(query, limit=1000)
+    for origin_entry in resp:
+        origins.append(origin_entry['url'])
+    return origins
+
+# Search for files in 
 def process_origin(origin):
-
-    print(origin)
-
+    result = OriginInfo(origin, "True", [])
     encoded_origin = quote(origin, safe='')
     root_path = get_root_path(encoded_origin)
-    license_files = get_license_files(root_path)
-    for file in license_files:
-        command = f"cat {root_path}/{file}"
-        cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash")
-        file_content = cmd_result.decode().rstrip()
-        found_licence = "??"
-        for license in allowed_licences:
-            if license in file_content:
-                found_licence = license
-                break
-        
-        print(f"{file} : {found_licence}")
-
+    license_files = []
+    try:
+        license_files = get_license_files(root_path)
+        for file in license_files:
+            license_info = get_license_info(root_path,file)
+            result.licenses.append(license_info)
+    except:
+        result.visit = "False"
+    return result
 
 # Returns the root directory path for the HEAD revision in the most recent snapshot 
 def get_root_path(origin):
@@ -351,28 +373,46 @@ def get_root_path(origin):
 # Returns a list of licence filenames matching the licence filenames pattern
 def get_license_files(path):
     license_files = []
-    command = f"ls {path}"
+    command = f"ls -p {path} | grep -v /"
 
     try:
         cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash", stderr = subprocess.STDOUT)
-    except:
-        cmd_result=""
-        print("not found")
-    finally:
         for line in cmd_result.splitlines():
             file = line.decode().rstrip()
             if re.match(license_file_re, file):
                 license_files.append(file)
+    except:
+        raise
+    # finally:
+    #     for line in cmd_result.splitlines():
+    #         file = line.decode().rstrip()
+    #         if re.match(license_file_re, file):
+    #             license_files.append(file)
     
     return license_files
 
+# returns the license information found in a file
+def get_license_info(path, file):
+    result = LicenseInfo(file, "unknown")
+    command = f"cat {path}/{file}"
+    cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash")
+    file_content = cmd_result.decode().rstrip()
+    for license in allowed_licences:
+        if license in file_content:
+            result.license = license
+            break
+    return result
 
 # process_origin("https://github.com/tcyrus/keyboard-layout")
 
-# Query swh api to get the matching origins:
+
 query = sys.argv[1]
-resp = cli.origin_search(query, limit=1000)
 
-for origin_entry in resp:
-    process_origin(origin_entry['url'])
+output = open(f"results_{query}.csv", "w")
+output.write(f"origin;full_visit;file;licence\n")
 
+for origin in get_origins(query):
+    origin_info = process_origin(origin)
+    output.write(origin_info.to_csv_line_first_license_only())
+
+output.close
