@@ -3,7 +3,7 @@ from urllib.parse import quote
 from swh.web.client.client import WebAPIClient
 import re
 import sys
-import subprocess
+from pathlib import Path
 
 
 license_file_names = [
@@ -312,7 +312,7 @@ license_file_re = re.compile(rf"^(|.*[-_. ])({'|'.join(license_file_names)})(|[-
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-shwfs_home = config.get('SWH', 'swhfs_home')
+shwfs_home = Path.home() / config.get('SWH', 'swhfs_home')
 
 class OriginInfo:
     def __init__(self, url, visit, licenses):
@@ -349,10 +349,10 @@ def get_origins(query):
 # Search for files in 
 def process_origin(origin):
     result = OriginInfo(origin, "True", [])
-    encoded_origin = quote(origin, safe='')
-    root_path = get_root_path(encoded_origin)
+    encoded_origin = quote(origin, safe='')   
     license_files = []
     try:
+        root_path = get_root_path(encoded_origin)
         license_files = get_license_files(root_path)
         for file in license_files:
             license_info = get_license_info(root_path,file)
@@ -363,47 +363,43 @@ def process_origin(origin):
 
 # Returns the root directory path for the HEAD revision in the most recent snapshot 
 def get_root_path(origin):
-    path = f"{shwfs_home}/origin/{origin}"
-    command = f"ls {path} | tail -1"
-    cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash")
-    visit = cmd_result.decode().rstrip()
-    path += "/" + visit + "/snapshot/HEAD/root"
+    path = shwfs_home / "origin" / origin
+    visit = ""
+
+    for item in sorted(path.iterdir(), reverse=True):
+        if item.is_dir():
+            visit = item.name
+            break
+    
+    path = path / visit / "snapshot" / "HEAD" / "root"
+
     return path
 
 # Returns a list of licence filenames matching the licence filenames pattern
 def get_license_files(path):
     license_files = []
-    command = f"ls -p {path} | grep -v /"
-
-    try:
-        cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash", stderr = subprocess.STDOUT)
-        for line in cmd_result.splitlines():
-            file = line.decode().rstrip()
-            if re.match(license_file_re, file):
-                license_files.append(file)
-    except:
-        raise
-    # finally:
-    #     for line in cmd_result.splitlines():
-    #         file = line.decode().rstrip()
-    #         if re.match(license_file_re, file):
-    #             license_files.append(file)
-    
+    for item in path.iterdir():
+        if item.is_file():
+            filename = item.name
+            if re.match(license_file_re, filename):
+                license_files.append(filename)  
     return license_files
 
 # returns the license information found in a file
 def get_license_info(path, file):
-    result = LicenseInfo(file, "unknown")
-    command = f"cat {path}/{file}"
-    cmd_result = subprocess.check_output(command, shell="True", executable="/bin/bash")
-    file_content = cmd_result.decode().rstrip()
-    for license in allowed_licences:
-        if license in file_content:
-            result.license = license
-            break
-    return result
+    result = LicenseInfo(file, "")
 
-# process_origin("https://github.com/tcyrus/keyboard-layout")
+    path = path / file
+    cat = path.open()
+    for line in cat.readlines():
+        for license in allowed_licences:
+            if license in line.rstrip():
+                result.license = license
+                break
+        if result.license:
+            break
+
+    return result
 
 
 query = sys.argv[1]
@@ -412,6 +408,7 @@ output = open(f"results_{query}.csv", "w")
 output.write(f"origin;full_visit;file;licence\n")
 
 for origin in get_origins(query):
+    print(".", end="") 
     origin_info = process_origin(origin)
     output.write(origin_info.to_csv_line_first_license_only())
 
