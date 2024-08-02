@@ -4,6 +4,7 @@ from swh.web.client.client import WebAPIClient
 import re
 import sys
 from pathlib import Path
+from scancode.api import get_licenses
 
 
 license_file_names = [
@@ -29,285 +30,6 @@ license_file_names = [
 "guidelines",
 ]
 
-allowed_licences = [
-"GPL", # Adding the GPL
-"0BSD",
-"AAL",
-"Abstyles",
-"AdaCore-doc",
-"Adobe-2006",
-"Adobe-Glyph",
-"ADSL,AFL-1.1",
-"AFL-1.2",
-"AFL-2.0",
-"AFL-2.1",
-"AFL-3.0",
-"Afmparse",
-"AMDPLPA",
-"AML",
-"AMPAS",
-"ANTLR-PD",
-"Apache-1.0",
-"Apache-1.1",
-"Apache-2.0",
-"APAFML",
-"App-s2p",
-"Artistic-1.0",
-"Artistic-1.0-cl8",
-"Artistic-1.0-Perl",
-"Artistic-2.0,Baekmuk",
-"Bahyph",
-"Barr",
-"Beerware",
-"Bitstream-Charter",
-"Bitstream-Vera",
-"BlueOak-1.0.0",
-"Boehm-GC",
-"Borceux,Brian-Gladman-3-Clause",
-"BSD-1-Clause",
-"BSD-2-Clause",
-"BSD-2-Clause-Patent",
-"BSD-2-Clause-Views",
-"BSD-3-Clause",
-"BSD-3-Clause-Attribution",
-"BSD-3-Clause-Clear",
-"BSD-3-Clause-LBNL",
-"BSD-3-Clause-Modification,BSD-3-Clause-No-Nuclear-License-2014",
-"BSD-3-Clause-No-Nuclear-Warranty",
-"BSD-3-Clause-Open-MPI",
-"BSD-4-Clause",
-"BSD-4-Clause-Shortened",
-"BSD-4-Clause-UC",
-"BSD-4.3RENO",
-"BSD-4.3TAHOE",
-"BSD-Advertising-Acknowledgement",
-"BSD-Attribution-HPND-disclaimer",
-"BSD-Source-Code",
-"BSL-1.0",
-"bzip2-1.0.6",
-"Caldera,CC-BY-1.0",
-"CC-BY-2.0",
-"CC-BY-2.5",
-"CC-BY-2.5-AU",
-"CC-BY-3.0",
-"CC-BY-3.0-AT",
-"CC-BY-3.0-DE",
-"CC-BY-3.0-NL",
-"CC-BY-3.0-US",
-"CC-BY-4.0",
-"CDLA-Permissive-1.0",
-"CDLA-Permissive-2.0",
-"CECILL-B",
-"CERN-OHL-1.1,CERN-OHL-1.2",
-"CERN-OHL-P-2.0",
-"CFITSIO",
-"checkmk",
-"ClArtistic",
-"Clips",
-"CMU-Mach",
-"CNRI-Jython",
-"CNRI-Python",
-"CNRI-Python-GPL-Compatible",
-"COIL-1.0",
-"Community-Spec-1.0",
-"Condor-1.1",
-"Cornell-Lossless-JPEG,Crossword",
-"CrystalStacker",
-"Cube",
-"curl",
-"DL-DE-BY-2.0",
-"DOC",
-"Dotseqn",
-"DRL-1.0",
-"DSDP",
-"dtoa",
-"dvipdfm,ECL-1.0",
-"ECL-2.0",
-"EFL-1.0",
-"EFL-2.0",
-"eGenix",
-"Entessa",
-"EPICS",
-"etalab-2.0",
-"EUDatagrid",
-"Fair",
-"FreeBSD-DOC,FSFAP",
-"FSFULLR",
-"FSFULLRWD",
-"FTL",
-"GD",
-"Giftware",
-"Glulxe",
-"GLWTPL",
-"Graphics-Gems",
-"GStreamer-exception-2005",
-"HaskellReport",
-"HP-1986",
-"HPND",
-"HPND-Markus-Kuhn",
-"HPND-sell-variant",
-"HPND-sell-variant-MIT-disclaimer",
-"HTMLTIDY",
-"IBM-pibs",
-"ICU",
-"IJG",
-"IJG-short",
-"ImageMagick",
-"iMatix",
-"Info-ZIP",
-"Intel,Intel-ACPI",
-"ISC",
-"Jam",
-"JasPer-2.0",
-"JPNIC",
-"JSON",
-"Kazlib",
-"Knuth-CTAN",
-"Latex2e",
-"Latex2e-translated-notice,Leptonica",
-"Libpng",
-"libpng-2.0",
-"libtiff",
-"Linux-OpenIB",
-"LLVM-exception",
-"LOOP",
-"LPL-1.0",
-"LPL-1.02",
-"LPPL-1.3c,Martin-Birgmeier",
-"metamail",
-"Minpack",
-"MirOS",
-"MIT",
-"MIT-0",
-"MIT-advertising",
-"MIT-CMU",
-"MIT-enna",
-"MIT-feh",
-"MIT-Festival",
-"MIT-Modern-Variant",
-"MIT-open-group",
-"MIT-Wu",
-"MITNFA",
-"mpich2",
-"mplus",
-"MS-LPL,MS-PL",
-"MTLL",
-"MulanPSL-1.0",
-"MulanPSL-2.0",
-"Multics",
-"Mup",
-"NAIST-2003",
-"NASA-1.3",
-"Naumen",
-"NBPL-1.0,NCSA",
-"Net-SNMP",
-"NetCDF",
-"Newsletr",
-"NICTA-1.0",
-"NIST-PD-fallback",
-"NIST-Software",
-"NLOD-1.0",
-"NLOD-2.0,NRL",
-"NTP",
-"NTP-0",
-"O-UDA-1.0",
-"ODC-By-1.0",
-"OFFIS",
-"OFL-1.0",
-"OFL-1.0-no-RFN",
-"OFL-1.0-RFN",
-"OFL-1.1-no-RFN",
-"OFL-1.1-RFN",
-"OGC-1.0",
-"OGDL-Taiwan-1.0",
-"OGL-Canada-2.0",
-"OGL-UK-1.0",
-"OGL-UK-2.0,OGL-UK-3.0",
-"OGTSL",
-"OLDAP-1.1",
-"OLDAP-1.2",
-"OLDAP-1.3",
-"OLDAP-1.4",
-"OLDAP-2.0",
-"OLDAP-2.0.1,OLDAP-2.1",
-"OLDAP-2.2",
-"OLDAP-2.2.1",
-"OLDAP-2.2.2",
-"OLDAP-2.3",
-"OLDAP-2.4",
-"OLDAP-2.5",
-"OLDAP-2.6,OLDAP-2.7",
-"OLDAP-2.8",
-"OML",
-"OpenSSL",
-"OPUBL-1.0",
-"PHP-3.0",
-"PHP-3.01",
-"Plexus",
-"PostgreSQL",
-"PSF-2.0,psfrag",
-"psutils",
-"Python-2.0",
-"Python-2.0.1",
-"Qhull",
-"Rdisc",
-"RSA-MD",
-"Ruby",
-"Saxpath",
-"SCEA",
-"SchemeReport,Sendmail",
-"SGI-B-1.1",
-"SGI-B-2.0",
-"SGP4",
-"SHL-0.5",
-"SHL-0.51",
-"SHL-2.0",
-"SHL-2.1",
-"SMLNJ",
-"snprintf",
-"Spencer-86,Spencer-94",
-"Spencer-99",
-"SSH-OpenSSH",
-"SSH-short",
-"SunPro",
-"Swift-exception",
-"SWL",
-"TCL",
-"TCP-wrappers,TermReadKey",
-"TPDL",
-"TTWL",
-"TU-Berlin-1.0",
-"TU-Berlin-2.0",
-"UCAR",
-"Unicode-DFS-2015",
-"Unicode-DFS-2016,UnixCrypt",
-"UPL-1.0",
-"Vim",
-"VSL-1.0",
-"W3C",
-"W3C-19980720",
-"W3C-20150513",
-"w3m",
-"Widget-Workshop",
-"Wsuipa,X11",
-"X11-distribute-modifications-variant",
-"Xdebug-1.03",
-"Xerox",
-"Xfig",
-"XFree86-1.1",
-"xinetd",
-"xlock",
-"Xnet",
-"xpp,XSkat",
-"Zed",
-"Zend-2.0",
-"Zlib",
-"zlib-acknowledgement",
-"ZPL-1.1",
-"ZPL-2.0",
-"ZPL-2.1"
-]
-
 license_file_re = re.compile(rf"^(|.*[-_. ])({'|'.join(license_file_names)})(|[-_. ].*)$", re.IGNORECASE)
 
 config = configparser.ConfigParser()
@@ -320,15 +42,13 @@ class OriginInfo:
         self.visit = visit
         self.licenses = licenses
     
-    def to_csv_line_first_license_only(self):
+    def to_csv_line(self):
         url = self.url
         visit = self.visit
-        filename = "-"
-        license = "-"
-        if len(self.licenses) > 0:
-            filename = self.licenses[0].filename
-            license = self.licenses[0].license
-        return (f"{url};{visit};{filename};{license}\n")
+        licences = ""
+        for license in self.licenses:
+            licences = licences + f"{license.license}({license.filename}) - "
+        return (f"{url};{visit};{licences}\n")
 
 
 class LicenseInfo:
@@ -357,7 +77,8 @@ def process_origin(origin):
         for file in license_files:
             license_info = get_license_info(root_path,file)
             result.licenses.append(license_info)
-    except:
+    except Exception as e:
+        #print(e)
         result.visit = "False"
     return result
 
@@ -388,28 +109,21 @@ def get_license_files(path):
 # returns the license information found in a file
 def get_license_info(path, file):
     result = LicenseInfo(file, "")
-
     path = path / file
-    cat = path.open()
-    for line in cat.readlines():
-        for license in allowed_licences:
-            if license in line.rstrip():
-                result.license = license
-                break
-        if result.license:
-            break
-
+    licenses = get_licenses(str(path)) #, min_score=self.DEFAULT_MIN_SCORE, deadline=deadline)
+    result.license = licenses["detected_license_expression"]
     return result
 
 
 query = sys.argv[1]
 
+#result_name = query.replace("/", "")
 output = open(f"results_{query}.csv", "w")
-output.write(f"origin;full_visit;file;licence\n")
+output.write(f"origin;full_visit;licences\n")
 
 for origin in get_origins(query):
     print(".", end="") 
     origin_info = process_origin(origin)
-    output.write(origin_info.to_csv_line_first_license_only())
+    output.write(origin_info.to_csv_line())
 
 output.close
