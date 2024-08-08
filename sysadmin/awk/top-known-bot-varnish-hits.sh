@@ -11,6 +11,7 @@ typeset -r SINCE=$(awk '{print "📆 since", substr($4,2)}' <(head -1 "$VARNISHL
 #typeset -r SINCE=$(awk '{print "📆 since", substr($4,2)}' <(head -1 "$VARNISHLOG"))
 typeset -r BOTS="Svix-Webhooks
 	ClaudeBot
+	ChatGPT-User
 	Bytespider
 	facebookexternalhit
 	Amazonbot
@@ -56,8 +57,11 @@ END{
 	#PROCINFO["sorted_in"] = "@ind_str_asc"
 	# sort by hits
 	PROCINFO["sorted_in"] = "@val_num_desc"
+	"date" | getline date
+	close("date")
 	for (i in counters)
 		printf format, i, counters[i], counters[i]/NR*100
+	printf "\nReported on %s.\n", date
 }' "$VARNISHLOG"{,.1}
 #}' "$VARNISHLOG"
 
