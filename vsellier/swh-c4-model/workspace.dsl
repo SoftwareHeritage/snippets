@@ -54,7 +54,7 @@ workspace {
             tags search, db
           }
 
-          graph_rpc = container "swh-graph rpc" {
+          graph_rpc = container "graph rpc" {
             technology python
             tags "tdn"
           }
@@ -327,17 +327,20 @@ workspace {
           }
 
           archive_staging_rke2 = deploymentNode "archive-staging-rke2" {
-
+            tags ""
             deploymentNode "swh" {
+              tags "Kubernetes - ns"
+
               deploymentNode "storage_ingress" {
-                tags ingress
+                tags "Kubernetes - ing"
 
                 containerInstance "storage_rpc" "pg" {
                   description "ro-storage"
                 }
               }
               deploymentNode "archive-webapp-ingress" {
-                tags ingress
+                tags "Kubernetes - ing"
+
                 url "http://webapp-postgresql.internal.staging.swh.network"
 
                 containerInstance "webapp" "pg" {
@@ -348,17 +351,19 @@ workspace {
             }
 
             deploymentNode "swh-cassandra" {
+              tags "Kubernetes - ns"
+
               containerInstance "storage_rpc" "cassandra" {
               }
               deploymentNode "provenance-ingress" {
-                tags ingress
+                tags "Kubernetes - ing"
                 url "http://provenance-local"
 
                 containerInstance "provenance_rpc" "cassandra,pg"
               }
 
               deploymentNode "archive-webapp-ingress" {
-                tags ingress
+                tags "Kubernetes - ing"
                 url "http://webapp.staging.swh.network,http://webapp-cassandra.internal.staging.swh.network"
 
                 containerInstance "webapp" "cassandra" {
@@ -376,12 +381,14 @@ workspace {
           }
 
           deploymentNode "db1" {
+            tags "db"
             deploymentNode "postgres:5432" {
               containerInstance "storage_db" "pg"
               containerInstance "masking_proxy_db" "pg,cassandra"
             }
           }
           deploymentNode "cassandra cluster" {
+            tags db
             containerInstance "storage_db" "cassandra"
           }
 
@@ -409,8 +416,10 @@ workspace {
 
           archive_production_rke2 = deploymentNode "archive-production-rke2" {
             deploymentNode "swh" {
+              tags "Kubernetes - ns"
+
               deploymentNode "storage_ingress" {
-                tags ingress
+                tags "Kubernetes - ing"
 
                 containerInstance "storage_rpc" "pg" {
                   description "ro-storage"
@@ -420,7 +429,7 @@ workspace {
                 }
               }
               deploymentNode "webapp_ingress" {
-                tags ingress
+              tags "Kubernetes - ing"
                 containerInstance "webapp" "pg" {
                   description "archive webapp"
                 }
@@ -428,7 +437,7 @@ workspace {
             }
 
             deploymentNode "provenance-ingress" {
-              tags ingress
+              tags "Kubernetes - ing"
               url "http://provenance-local"
               description "http://provenance-local"
 
@@ -437,8 +446,10 @@ workspace {
           }
 
           deploymentNode "swh-cassandra" {
+            tags "Kubernetes - ns"
+
             deploymentNode "storage_ingress" {
-              tags ingress
+              tags "Kubernetes - ing"
 
               containerInstance "storage_rpc" "cassandra" {
                 description "ro-storage"
@@ -449,7 +460,7 @@ workspace {
             }
 
             deploymentNode "webapp_ingress" {
-              tags ingress
+              tags "Kubernetes - ing"
 
               containerInstance "webapp" "cassandra" {
                 description "archive webapp"
@@ -467,9 +478,14 @@ workspace {
 ####################################################################################################
     views {
 
+        theme "https://static.structurizr.com/themes/kubernetes-v0.3/theme.json"
+
+
         deployment * staging "staging_provenance" {
+            title "swh-provenance Staging deployment"
             include "element.tag==provenance"
             autolayout
+
         }
 
         deployment * production "production_provenance" {
@@ -478,12 +494,12 @@ workspace {
         }
 
 
-        deployment * staging {
+        deployment * staging "global_staging_view"{
             include "*"
             autolayout
         }
 
-        deployment * production  {
+        deployment * production "global_production_view" {
             include "*"
             autolayout
         }
