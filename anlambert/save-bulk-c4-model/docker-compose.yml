@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  structurizr-lite:
+    build:
+      context: docker
+      args:
+        - UID=${UID}
+        - GID=${GID}
+    ports:
+      - 8080:8080
+    volumes:
+      - $PWD:/usr/local/structurizr
