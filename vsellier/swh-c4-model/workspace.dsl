@@ -335,6 +335,7 @@ workspace {
                 tags "Kubernetes - ing"
 
                 containerInstance "storage_rpc" "pg" {
+                  tags "Kubernetes - dep"
                   description "ro-storage"
                 }
               }
@@ -344,22 +345,43 @@ workspace {
                 url "http://webapp-postgresql.internal.staging.swh.network"
 
                 containerInstance "webapp" "pg" {
+                  tags "Kubernetes - dep"
                   description "archive webapp"
                   tags provenance
                 }
               }
+
             }
 
             deploymentNode "swh-cassandra" {
               tags "Kubernetes - ns"
 
+              stg_graph_dep = deploymentNode "graph"{
+                tags "Kubernetes - deploy"
+                containerInstance graph_rpc "cassandra"
+                containerInstance graph_grpc "cassandra"
+              }
+
+              stg_persistent_node_vol = infrastructureNode "graph_persistent_vol" {
+                tags "Kubernetes - pv,db"
+              }
+              stg_inmemory_node_vol = infrastructureNode "graph_inmemory_vol" {
+                tags "Kubernetes - pv,db"
+              }
+              stg_graph_dep -> stg_persistent_node_vol "Uses" "fs" "graph"
+              stg_graph_dep -> stg_inmemory_node_vol "Uses"  "fs" "graph"
+              stg_inmemory_node_vol -> stg_persistent_node_vol "links"
+
               containerInstance "storage_rpc" "cassandra" {
+                  tags "Kubernetes - deploy"
               }
               deploymentNode "provenance-ingress" {
                 tags "Kubernetes - ing"
                 url "http://provenance-local"
 
-                containerInstance "provenance_rpc" "cassandra,pg"
+                containerInstance "provenance_rpc" "cassandra,pg" {
+                  tags "Kubernetes - deploy"
+                }
               }
 
               deploymentNode "archive-webapp-ingress" {
@@ -367,13 +389,18 @@ workspace {
                 url "http://webapp.staging.swh.network,http://webapp-cassandra.internal.staging.swh.network"
 
                 containerInstance "webapp" "cassandra" {
+                  tags "Kubernetes - deploy"
                   description "archive webapp"
                 }
               }
               containerInstance "webapp" "cassandra" {
+                tags "Kubernetes - deploy"
+
                 description "webhook webapp"
               }
               containerInstance "storage_rpc" "cassandra" {
+                tags "Kubernetes - deploy"
+
                 description "rw-db1"
               }
 
@@ -383,13 +410,13 @@ workspace {
           deploymentNode "db1" {
             tags "db"
             deploymentNode "postgres:5432" {
-              containerInstance "storage_db" "pg"
-              containerInstance "masking_proxy_db" "pg,cassandra"
+              containerInstance "storage_db" "pg" "db"
+              containerInstance "masking_proxy_db" "pg,cassandra" "db"
             }
           }
           deploymentNode "cassandra cluster" {
             tags db
-            containerInstance "storage_db" "cassandra"
+            containerInstance "storage_db" "cassandra" "db"
           }
 
           stg_varnish -> "archive_staging_rke2" ""
