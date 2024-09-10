@@ -63,6 +63,8 @@ groups:
       zom: Maintainer
       AdeleDesmazieres: Maintainer
     remove_extra_memberships: true
+    share_with_groups:
+      teams/staff: Owner
   teams/leadership:
     users:
       rdicosmo: Owner
