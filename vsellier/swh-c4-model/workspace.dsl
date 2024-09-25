@@ -5,7 +5,7 @@ workspace {
           tags scn, vault
         }
         depositUser = person "Deposit Partners" {
-          tags deposit
+          tags deposit,citation
         }
         scanner = person "Scanner" {
           tags scanner,provenance
@@ -27,6 +27,10 @@ workspace {
           tags tdn
         }
 
+        mirrors = softwareSystem "SWH mirrors" {
+          tags  external,mirrors
+        }
+
         inriaEmailRelay = softwareSystem "Email relay" {
           tags  external,deposit
         }
@@ -35,7 +39,7 @@ workspace {
           keycloak = container "keycloak" "" """provenance"
 
           alter = container "swh-alter" {
-            tags tdn
+            tags tdn,search
 
             alter_cli = component "cli" {
               technology "python"
@@ -49,10 +53,6 @@ workspace {
           }
 
           deposit = container "Deposit"
-
-          elasticsearch = container "Elasticsearch" {
-            tags search, db
-          }
 
           graph_rpc = container "graph rpc" {
             technology python
@@ -99,7 +99,7 @@ workspace {
 
 
           storage_rpc = container "storage-rpc" {
-            tags scn,tdn
+            tags scn,tdn,citation
 
             technology "python"
           }
@@ -136,40 +136,57 @@ workspace {
 
           }
 
-          search = container "swh-search" {
-            tags scn,tdn
 
-            search_journal_client = component "search-journal-client" {
+          group indexer {
+            indexer_storage_rpc = container "indexer-storage-rpc" "" {
               technology "python"
-
-              tags "journal-client,"
+              tags "citation"
             }
 
-            search_rpc = component "search-rpc" {
+            indexer_db = container "indexer-db" "" "" {
+              technology "postgresql"
+              tags "db"
+            }
+          }
+
+          group "swh-search" {
+            // tags scn,tdn
+
+            search_journal_client = container "search-journal-client" {
               technology "python"
+
+              tags "journal-client,tdn,search"
+            }
+
+            search_rpc = container "search-rpc" {
+              technology "python"
+              tags search
+            }
+
+            elasticsearch = container "Elasticsearch" {
+              tags search, db
             }
           }
 
           kafka = container "Kafka Journal" {
-            tags scn,queue
+            tags scn,queue,search
           }
 
-          objstorage = container "swh-objstorage" {
-            tags tdn
+          group "objstorage" {
 
-            objstorage_rpc = component "objstorage-rpc"
-            path_slicing = component "pathslicing" {
+            objstorage_rpc = container "objstorage-rpc"
+            path_slicing = container "pathslicing" {
               tags file
             }
-            winery_db = component "winery_db" {
+            winery = container "winery" {
               technology Postgresql
               tags "db"
             }
-            objstorage_bucket = component "S3/AWS buckets" {
+            objstorage_bucket = container "S3/AWS buckets" {
               technology "https"
               tags "db"
             }
-            objstorage_replayer = component "replayer" {
+            objstorage_replayer = container "replayer" {
               technology "python"
               tags "replayer"
             }
@@ -190,7 +207,7 @@ workspace {
           }
 
           webapp = container "Webapp" {
-            tags scn, vault, provenance
+            tags scn, vault, provenance, citation,search
           }
 
         }
@@ -199,6 +216,35 @@ workspace {
         user -> swh "Browses an origin\nAsks to retreive an origin content"
         user -> keycloak "Creates and manage an account"
         systemAdministrator -> keycloak "Manages user permission"
+
+        // Citation
+        depositUser -> webapp "Asks for a citation" "https" "citation"
+        webapp -> indexer_storage_rpc "converts metadata to bibtex" "django" "citation"
+        webapp -> storage_rpc "gets SWHid metatadata" "http" "citation"
+
+        // deposit
+        depositUser -> swh "Deposits code and get origin contents"
+        depositUser -> deposit "deposits code"
+        depositUser -> webapp "displays swhid details" "https/iframes"
+
+        // graph
+        graph_rpc -> graph_grpc "Requests" "grpc" "graph"
+        graph_rpc -> graph_grpc "Starts" "grpc" "graph"
+
+        // indexer
+        indexer_storage_rpc -> indexer_db "reads and writes graph" "sql"
+
+        // mirrors
+        mirrors -> kafka "follows objects stream" "kafka"
+        mirrors -> objstorage_bucket "gets object content" "https"
+
+        // Save Code Now
+        user -> webapp "ask for a save code now" "" "scn"
+        webapp -> scheduler_rpc "uses" "RPC" "scn"
+        scheduler -> rabbitmq "posts a message" "celery" "scn,vault"
+        loader -> rabbitmq "handles a task" "celery" "scn"
+        loader -> storage "store the repository" "rpc" "scn"
+        storage -> kafka "write the objects" "tcp" "scn"
 
         // storage
         storage_rpc -> storage_db "reads and writes graph" "sql or cql"
@@ -209,30 +255,6 @@ workspace {
         storage_rpc -> blocking_proxy "Checks blocked objects " "tdn"
         storage_rpc -> masking_proxy_db "CRUDs" "tdn"
         storage_rpc -> blocking_proxy_db "CRUDS" "tdn"
-
-        // Save Code Now
-        user -> webapp "ask for a save code now" "" "scn"
-        webapp -> scheduler_rpc "uses" "RPC" "scn"
-        scheduler -> rabbitmq "posts a message" "celery" "scn,vault"
-        loader -> rabbitmq "handles a task" "celery" "scn"
-        loader -> storage "store the repository" "rpc" "scn"
-        storage -> kafka "write the objects" "tcp" "scn"
-
-        // Vault
-        user -> webapp "asks for a repository cooking" "" "vault"
-        webapp -> inriaEmailRelay "notififies a user that a bundle is ready" "" "vault"
-        inriaEmailRelay -> user "sends emails" "" "vault"
-        user -> vaultAzureBucket "download a bundle" "" "vault"
-
-        webapp -> vault_rpc "Creates a vault cooking" "" "vault"
-        vault_rpc -> scheduler "Creates a cooking task" "" "vault"
-        vault_rpc -> objstorage_rpc "???" "rpc" "to_check,vault"
-        vault_rpc -> storage_rpc "???" "rpc" "to_check,vault"
-        vault_cookers -> rabbitmq "Gets a cooking task" "" "vault"
-        vault_cookers -> graph_rpc "Asks the swhid to cook" "rpc" "to_check,vault"
-        vault_cookers -> storage_rpc "???" "rpc" "to_check,vault"
-        vault_cookers -> vault_rpc "Sends the bundle" "" vault"
-        vault_rpc -> vaultAzureBucket "Stores the bundle" "" "vault"
 
         // scheduler
         scheduler_runner -> rabbitmq "posts tasks" "celery"
@@ -253,14 +275,21 @@ workspace {
 
         scheduler -> rabbitmq "posts messages"
 
-        // deposit
-        depositUser -> swh "Deposits code and get origin contents"
-        depositUser -> deposit "deposits code"
-        depositUser -> webapp "displays swhid details" "https/iframes"
+        // Vault
+        user -> webapp "asks for a repository cooking" "" "vault"
+        webapp -> inriaEmailRelay "notififies a user that a bundle is ready" "" "vault"
+        inriaEmailRelay -> user "sends emails" "" "vault"
+        user -> vaultAzureBucket "download a bundle" "" "vault"
 
-        // graph
-        graph_rpc -> graph_grpc "Requests" "grpc" "graph"
-        graph_rpc -> graph_grpc "Starts" "grpc" "graph"
+        webapp -> vault_rpc "Creates a vault cooking" "" "vault"
+        vault_rpc -> scheduler "Creates a cooking task" "" "vault"
+        vault_rpc -> objstorage_rpc "???" "rpc" "to_check,vault"
+        vault_rpc -> storage_rpc "???" "rpc" "to_check,vault"
+        vault_cookers -> rabbitmq "Gets a cooking task" "" "vault"
+        vault_cookers -> graph_rpc "Asks the swhid to cook" "rpc" "to_check,vault"
+        vault_cookers -> storage_rpc "???" "rpc" "to_check,vault"
+        vault_cookers -> vault_rpc "Sends the bundle" "" vault"
+        vault_rpc -> vaultAzureBucket "Stores the bundle" "" "vault"
 
         // search
         search_journal_client -> kafka "reads messages" "tcp" "tdn,search"
@@ -270,6 +299,8 @@ workspace {
         // objstorage
         objstorage_replayer -> objstorage_rpc "replays content"
         objstorage_replayer -> objstorage_bucket "replays content"
+        objstorage_rpc -> winery "get, upserts or deletes objects"
+        objstorage_rpc -> path_slicing "get, upserts or deletes objects"
 
         // provenance
         scanner -> webapp "Sends authenticated requests" "rpc" "provenance" {
@@ -299,7 +330,7 @@ workspace {
         alter_cli -> alter_recovery_bundle "restores from" "" "tdn"
         alter_cli -> kafka "removes objects" "tcp""tdn"
         alter_cli -> objstorage_rpc "removes contents" "rpc" "tdn"
-        alter_cli -> search_rpc "removes origins" "rpc" "tdn"
+        alter_cli -> search_rpc "removes origins" "rpc" "tdn,search"
 
         swh -> forge "gets repository list and contents"
 
@@ -320,6 +351,18 @@ workspace {
                 description "cache and reverse-proxy"
               }
               stg_hitch -> stg_varnish ""
+          }
+
+          deploymentNode "kafkaX" {
+            instances 1
+            containerInstance "kafka" "pg,cassandra" {
+            }
+          }
+
+          deploymentNode "search-esnodeX" {
+            instances 1
+            containerInstance "elasticsearch" "pg,cassandra" {
+            }
           }
 
           deploymentNode "kelvingrove" {
@@ -350,7 +393,6 @@ workspace {
                   tags provenance
                 }
               }
-
             }
 
             deploymentNode "swh-cassandra" {
@@ -393,6 +435,23 @@ workspace {
                   description "archive webapp"
                 }
               }
+              deploymentNode "search-rpc-ingress" {
+                tags "Kubernetes - ing"
+
+                containerInstance "search_rpc" "cassandra,pg" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
+              containerInstance "search_journal_client" "cassandra" {
+                tags "Kubernetes - deploy"
+                description "objects"
+              }
+              containerInstance "search_journal_client" "cassandra" {
+                tags "Kubernetes - deploy"
+                description "indexed"
+              }
+
               containerInstance "webapp" "cassandra" {
                 tags "Kubernetes - deploy"
 
@@ -403,7 +462,6 @@ workspace {
 
                 description "rw-db1"
               }
-
             }
           }
 
@@ -426,9 +484,11 @@ workspace {
           deploymentNode "moma" {
               prd_hitch = infrastructureNode "hitch" {
                 description "ssl termination"
+                tags objstorage_ro
               }
               prd_varnish = infrastructureNode "varnish" {
                 description "cache and reverse-proxy"
+                tags objstorage_ro
               }
               prd_hitch -> prd_varnish ""
           }
@@ -437,8 +497,19 @@ workspace {
             containerInstance "keycloak" "cassandra,pg" "provenance"
           }
 
+          deploymentNode "search-esnodeX" {
+            instances 3
+            containerInstance "elasticsearch" "pg,cassandra" {
+            }
+          }
+
           deploymentNode "granet" {
             containerInstance "graph_grpc" "cassandra,pg" "provenance"
+          }
+
+          deploymentNode "kafkaX" {
+            instances 4
+            containerInstance "kafka" "cassandra,pg"
           }
 
           archive_production_rke2 = deploymentNode "archive-production-rke2" {
@@ -461,44 +532,82 @@ workspace {
                   description "archive webapp"
                 }
               }
+
+              deploymentNode "provenance-ingress" {
+                tags "Kubernetes - ing"
+                url "http://provenance-local"
+                description "http://provenance-local"
+
+                containerInstance "provenance_rpc" "cassandra,pg"
+              }
             }
 
-            deploymentNode "provenance-ingress" {
-              tags "Kubernetes - ing"
-              url "http://provenance-local"
-              description "http://provenance-local"
+            deploymentNode "swh-cassandra" {
+              tags "Kubernetes - ns"
 
-              containerInstance "provenance_rpc" "cassandra,pg"
+              deploymentNode "search-rpc-ingress" {
+                tags "Kubernetes - ing"
+
+                containerInstance "search_rpc" "cassandra,pg" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
+              containerInstance "search_journal_client" "cassandra" {
+                tags "Kubernetes - deploy"
+                description "objects"
+              }
+              containerInstance "search_journal_client" "cassandra" {
+                tags "Kubernetes - deploy"
+                description "indexed"
+              }
+
+              deploymentNode "storage_ingress" {
+                tags "Kubernetes - ing"
+
+                containerInstance "storage_rpc" "cassandra" {
+                  description "ro-storage"
+                }
+                containerInstance "storage_rpc" "cassandra" {
+                  description "rw-storage"
+                }
+              }
+
+              deploymentNode "webapp_ingress" {
+                tags "Kubernetes - ing"
+
+                containerInstance "webapp" "cassandra" {
+                  description "archive webapp"
+                }
+              }
+
+              production_objstorage_ro_ingress = deploymentNode "objstorage_ro_ingress" {
+                tags "Kubernetes - ing"
+                url "https://objstorage.softwareheritage.org"
+                description "https://objstorage.softwareheritage.org"
+
+                containerInstance "objstorage_rpc" "cassandra" {
+                  tags "objstorage_ro"
+                  description "Objstorage read-only"
+                }
+              }
+               production_swh_secrets = infrastructureNode "secrets" {
+                 tags "Kubernetes - secret, objstorage_ro"
+               }
+
+              production_objstorage_ro_ingress -> production_swh_secrets "ingress-objstorage-ro-auth-secrets"
+
             }
+
+            production_ingress_controller = infrastructureNode "ingress-nginx" {
+              tags "Kubernetes - deploy, objstorage_ro"
+            }
+            production_ingress_controller -> production_objstorage_ro_ingress "https://objstorage.softwareheritage.org"
+
+            prd_varnish -> production_ingress_controller
           }
 
-          deploymentNode "swh-cassandra" {
-            tags "Kubernetes - ns"
-
-            deploymentNode "storage_ingress" {
-              tags "Kubernetes - ing"
-
-              containerInstance "storage_rpc" "cassandra" {
-                description "ro-storage"
-              }
-              containerInstance "storage_rpc" "cassandra" {
-                description "rw-storage"
-              }
-            }
-
-            deploymentNode "webapp_ingress" {
-              tags "Kubernetes - ing"
-
-              containerInstance "webapp" "cassandra" {
-                description "archive webapp"
-              }
-            }
-          }
-
-          prd_varnish -> "archive_production_rke2" ""
-
-        }
-
+      }
 
     }
 
@@ -532,6 +641,12 @@ workspace {
         }
 
 
+        deployment * production "production_objstorage_ro" {
+            include "element.tag==objstorage_ro"
+            autolayout lr
+        }
+
+
         systemContext swh {
             include *
             autolayout
@@ -547,6 +662,12 @@ workspace {
           autoLayout
         }
 
+        container swh "citation" {
+          include "element.tag==citation"
+          exclude "relationship.tag!=citation"
+          autoLayout
+        }
+
         component storage "storage_components" {
           include *
           autoLayout
@@ -557,8 +678,10 @@ workspace {
           autoLayout
         }
 
-        component search "search" {
-          include *
+        container swh "search" {
+          include "element.tag==search"
+          // include "->search_rpc->"
+          // exclude "relationship.tag!=search"
           autoLayout
         }
 
