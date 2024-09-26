@@ -38,6 +38,10 @@ workspace {
         swh = softwareSystem "Software Heritage" {
           keycloak = container "keycloak" "" """provenance"
 
+          gitlab = container "Gitlab" {
+            tags  external,add-forge-now
+          }
+
           alter = container "swh-alter" {
             tags tdn,search
 
@@ -207,7 +211,7 @@ workspace {
           }
 
           webapp = container "Webapp" {
-            tags scn, vault, provenance, citation,search
+            tags scn, vault, provenance, citation,search, add-forge-now
           }
 
         }
@@ -216,6 +220,13 @@ workspace {
         user -> swh "Browses an origin\nAsks to retreive an origin content"
         user -> keycloak "Creates and manage an account"
         systemAdministrator -> keycloak "Manages user permission"
+
+        // Add-Forge-Now
+        user -> webapp "Asks for a add forge now" "" "add-forge-now"
+        systemAdministrator -> webapp "Validate an add forge request" "" "add-forge-now"
+        webapp -> gitlab "triggers add-forge-now pipeline" "https" "add-forge-now"
+        gitlab -> scheduler "Registers lister / Schedules listing and visits" "cli" "add-forge-now"
+        gitlab -> scheduler "Check listed and visited origins" "cli"
 
         // Citation
         depositUser -> webapp "Asks for a citation" "https" "citation"
@@ -239,7 +250,7 @@ workspace {
         mirrors -> objstorage_bucket "gets object content" "https"
 
         // Save Code Now
-        user -> webapp "ask for a save code now" "" "scn"
+        user -> webapp "Asks for a save code now" "" "scn"
         webapp -> scheduler_rpc "uses" "RPC" "scn"
         scheduler -> rabbitmq "posts a message" "celery" "scn,vault"
         loader -> rabbitmq "handles a task" "celery" "scn"
@@ -614,128 +625,139 @@ workspace {
 ####################################################################################################
     views {
 
-        theme "https://static.structurizr.com/themes/kubernetes-v0.3/theme.json"
+      theme "https://static.structurizr.com/themes/kubernetes-v0.3/theme.json"
 
 
-        deployment * staging "staging_provenance" {
-            title "swh-provenance Staging deployment"
-            include "element.tag==provenance"
-            autolayout
-
-        }
-
-        deployment * production "production_provenance" {
-            include "element.tag==provenance"
-            autolayout
-        }
-
-
-        deployment * staging "global_staging_view"{
-            include "*"
-            autolayout
-        }
-
-        deployment * production "global_production_view" {
-            include "*"
-            autolayout
-        }
-
-
-        deployment * production "production_objstorage_ro" {
-            include "element.tag==objstorage_ro"
-            autolayout lr
-        }
-
-
-        systemContext swh {
-            include *
-            autolayout
-        }
-
-        container swh "global" {
-          include *
-          autolayout
-        }
-
-        container swh "storage" {
-          include "->storage_rpc->"
-          autoLayout
-        }
-
-        container swh "citation" {
-          include "element.tag==citation"
-          exclude "relationship.tag!=citation"
-          autoLayout
-        }
-
-        component storage "storage_components" {
-          include *
-          autoLayout
-        }
-
-        container swh "scheduler" {
-          include "->scheduler->"
-          autoLayout
-        }
-
-        container swh "search" {
-          include "element.tag==search"
-          // include "->search_rpc->"
-          // exclude "relationship.tag!=search"
-          autoLayout
-        }
-
-
-        component scheduler "scheduler_components" {
-          include *
-          autoLayout
-        }
-
-        // container swh "global" {
-        //   include *
-        //   autolayout lr
-        // }
-
-        container swh "Save_Code_Now" {
-          include "element.tag==scn"
-          exclude "relationship.tag!=scn"
-          autolayout
-        }
-
-        container swh "swh-alter" {
-          include "element.tag==tdn"
-          exclude "relationship.tag!=tdn"
-          autolayout
-        }
-
-        component alter "swh-alter_components" {
-          include *
-          exclude "relationship.tag!=tdn"
-          autolayout
-        }
-
-        container swh "swh-graph_components" {
-          include ->graph_rpc-> ->graph_grpc->
-          autolayout
-        }
-
-        container swh "vault" {
-          include "->vault->"
-          autolayout
-        }
-
-        component vault "vault_components" {
-          include *
-          exclude "relationship.tag!=vault"
-          autolayout
-        }
-
-        container swh "provenance" {
+      deployment * staging "staging_provenance" {
+          title "swh-provenance Staging deployment"
           include "element.tag==provenance"
-          exclude "relationship.tag!=provenance"
-          autolayout lr
-        }
+          autolayout
 
+      }
+
+      deployment * production "production_provenance" {
+          include "element.tag==provenance"
+          autolayout
+      }
+
+
+      deployment * staging "global_staging_view"{
+          include "*"
+          autolayout
+      }
+
+      deployment * production "global_production_view" {
+          include "*"
+          autolayout
+      }
+
+
+      deployment * production "production_objstorage_ro" {
+          include "element.tag==objstorage_ro"
+          autolayout lr
+      }
+
+
+      systemContext swh {
+          include *
+          autolayout
+      }
+
+      container swh "global" {
+        include *
+        autolayout
+      }
+
+      container swh "storage" {
+        include "->storage_rpc->"
+        autoLayout
+      }
+
+      container swh "citation" {
+        include "element.tag==citation"
+        exclude "relationship.tag!=citation"
+        autoLayout
+      }
+
+      component storage "storage_components" {
+        include *
+        autoLayout
+      }
+
+      container swh "scheduler" {
+        include "->scheduler->"
+        autoLayout
+      }
+
+      container swh "search" {
+        include "element.tag==search"
+        // include "->search_rpc->"
+        // exclude "relationship.tag!=search"
+        autoLayout
+      }
+
+
+      component scheduler "scheduler_components" {
+        include *
+        autoLayout
+      }
+
+      // container swh "global" {
+      //   include *
+      //   autolayout lr
+      // }
+
+      container swh "Save_Code_Now" {
+        include "element.tag==scn"
+        exclude "relationship.tag!=scn"
+        autolayout
+      }
+
+      container swh "swh-alter" {
+        include "element.tag==tdn"
+        exclude "relationship.tag!=tdn"
+        autolayout
+      }
+
+      component alter "swh-alter_components" {
+        include *
+        exclude "relationship.tag!=tdn"
+        autolayout
+      }
+
+      container swh "swh-graph_components" {
+        include ->graph_rpc-> ->graph_grpc->
+        autolayout
+      }
+
+      container swh "vault" {
+        include "->vault->"
+        autolayout
+      }
+
+      component vault "vault_components" {
+        include *
+        exclude "relationship.tag!=vault"
+        autolayout
+      }
+
+      container swh "provenance" {
+        include "element.tag==provenance"
+        exclude "relationship.tag!=provenance"
+        autolayout lr
+      }
+
+      dynamic swh "add-forge-now" {
+        title "Add forge now interactions"
+        systemAdministrator -> webapp "accepts a add forge now request"
+        webapp -> gitlab "Triggers a pipeline"
+        gitlab -> scheduler "Registers a lister"
+        gitlab -> scheduler "Checks the listed origins"
+        gitlab -> scheduler "Schedules the first visits"
+        gitlab -> scheduler "Checks the visited origins"
+        gitlab -> webapp "Updates request status if ok"
+        autolayout lr
+      }
 
       styles {
         element "Person" {
