@@ -13,7 +13,11 @@ typeset -r BOTS="Svix-Webhooks
 	ClaudeBot
 	ChatGPT-User
 	Bytespider
+	Turnitin
+	fossology
+	check_http
 	facebookexternalhit
+	meta-externalagent
 	Amazonbot
 	Googlebot
 	AhrefsBot
@@ -21,6 +25,7 @@ typeset -r BOTS="Svix-Webhooks
 	DataForSeoBot
 	ImagesiftBot
 	bingbot
+	SemanticScholarBot
 	PetalBot
 	SemrushBot
 	DuckDuckGo
@@ -48,9 +53,22 @@ BEGIN{
 	printf format, "", hline, ""
 }
 {
-	for (i in counters)
-		if($0 ~ i)
+	inline=0
+	for (i in counters){
+		if($0~i&&$9<400){
 			counters[i]+=1
+			inline=1
+		}
+	}
+	if(inline==0){
+		others+=1
+	}
+	if($9<400){
+		requests++
+	}
+	else{
+		errors[$9]++
+	}
 }
 END{
 	# sort by bots name
@@ -59,8 +77,20 @@ END{
 	PROCINFO["sorted_in"] = "@val_num_desc"
 	"date" | getline date
 	close("date")
-	for (i in counters)
+	for (i in counters){
 		printf format, i, counters[i], counters[i]/NR*100
+		}
+	printf format, "Others", others, others/NR*100
+	printf format, hline, hline, ""
+	format="%-28s %-14s %s\n"
+	printf format, "✅ Requests", requests, requests/NR*100
+	printf format, hline, hline, ""
+	printf format, "🚨 Errors", NR-requests, (NR-requests)/NR*100
+	printf format, hline, hline, ""
+	format="%-29s %-14s %s\n"
+	for (e in errors){
+		printf format, e, errors[e], errors[e]/NR*100
+	}
 	printf "\nReported on %s.\n", date
 }' "$VARNISHLOG"{,.1}
 #}' "$VARNISHLOG"
