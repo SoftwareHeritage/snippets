@@ -1,6 +1,8 @@
+boto3
 chardet
 click
 ndjson
+pyspark
 python-keycloak
 requests
 swh-model
