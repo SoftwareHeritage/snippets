@@ -1,40 +1,60 @@
-project|issue|priority|status|url|
-License identification|Design a data model for license information|medium|created|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/3
-License identification|Identify license information via extrinsic metadata|high|created|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/2
-License identification|Identifiy license information via file analysis|high|created|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/1
-SWH Scanner|Release a first version of the swh-scanner product|high|scheduled|https://gitlab.softwareheritage.org/product-management/swh-scanner/-/issues/10
-SWH Sec|Task 1.6 - Large scale archives retrieval (vault)|medium|created|https://gitlab.softwareheritage.org/product-management/swh-sec/-/issues/6
-Certified Deposit|Specify requirements for certified deposit|low|created|https://gitlab.softwareheritage.org/product-management/certified-deposit/-/issues/1
-Institutional Portal|Implement and deploy the institutional portal|medium|created|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/4
-Institutional Portal|Design software architecture for the institutional portal|medium|created|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/2
-Institutional Portal|Specify requirements for institutional portal|high|created|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/1
-Mirrors|Documentation for mirror operators|low|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/6
-Mirrors|Mirror tooling for scrubbing|medium|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/5
-Mirrors|Mirror tooling for mailmap|medium|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/4
-Mirrors|Mirror tooling for takedown|high|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/3
-Mirrors|SWH Mirror at Duisburg-Essen university|medium|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/2
-Mirrors|Mirror instance at GRNET|high|created|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/1
-SWH Website|Refactor the architecture of the SWH website|high|created|https://gitlab.softwareheritage.org/product-management/swh-website/-/issues/1
-SWH Archive Website|Setup a Software Citation UI feature|high|created|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/4
-SWH Archive Website|Design presentation of Metadata on Web UI|medium|created|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/2
-SWH Archive Website|Takedown notice management UI|high|created|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/1
-SWH Core Platform|Investigate on forge discovery automation|low|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/53
-SWH Core Platform|Precompute relevant characteristics of the graph|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/52
-SWH Core Platform|Improve ingestion efficiency|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/48
-SWH Core Platform|Design and implement a unified software datamodel|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/47
-SWH Core Platform|Deploy a unified software data model storage infrastructure|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/42
-SWH Core Platform|Enrich the archive with CVE metadata|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/34
-SWH Core Platform|Enable inclusion filters in listers|low|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/21
-SWH Core Platform|Recover the ingestion backlog|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/19
-SWH Core Platform|Implement rate-limiting in swh-vault|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/18
-SWH Core Platform|Cassandra in production as primary storage|high|in progress|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/17
-SWH Core Platform|Scale-out objstorage in production as primary objstorage|high|in progress|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/16
-SWH Core Platform|Extend scrubbing and fixing tools|high|in progress|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/15
-SWH Core Platform|Support archiving repositories containing SHA1 hash conflicts on blobs|high|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/14
-SWH Core Platform|Release a Bulk Save Code Now feature|high|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/11
-SWH Core Platform|Design and implement a provenance search API v1|medium|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/10
-SWH Core Platform|Provide a management-friendly monitoring of services|low|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/7
-SWH Core Platform|Graph export and graph compression in production|high|in progress|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/6
-SWH Core Platform|Setup swh webhook for vault cooking|low|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/4
-SWH Core Platform|Setup swh webhook for Deposit|low|created|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/3
-SWH Core Platform|Sysadmin tooling for Takedown notices|high|in progress|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/1
+project|issue|type|priority|status|spent(days)|url|
+License identification|Design a data model for license information|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/3
+License identification|Collect license information from external platforms (as extrinsic metadata)|roadmap 2024|high|created|0.0|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/2
+License identification|Mine license information from the archive (as intrinsic metadata)|roadmap 2024|high|created|0.0|https://gitlab.softwareheritage.org/product-management/license-identification/-/issues/1
+Documentation|Review existing documentation according to identified personas|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/documentation/-/issues/1
+Transversal Engineering Process|Dev tools|MRO||created|1.5|https://gitlab.softwareheritage.org/product-management/transversal-engineering-process/-/issues/4
+Transversal Engineering Process|Team tools|MRO||created|0.5|https://gitlab.softwareheritage.org/product-management/transversal-engineering-process/-/issues/3
+Transversal Engineering Process|Setup a next-version environment|off-roadmap||in progress|25.0|https://gitlab.softwareheritage.org/product-management/transversal-engineering-process/-/issues/2
+Transversal Engineering Process|Setup a sandboxed SWH stack|off-roadmap||in progress|15.0|https://gitlab.softwareheritage.org/product-management/transversal-engineering-process/-/issues/1
+SWH Scanner|Release a first version of the swh-scanner product|roadmap 2024|high|done|20.0|https://gitlab.softwareheritage.org/product-management/swh-scanner/-/issues/10
+SWH Sec|Task 1.6 - Large scale archives retrieval (vault)|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/swh-sec/-/issues/6
+Certified Deposit|Specify requirements for certified deposit|roadmap 2024|low|created|0.0|https://gitlab.softwareheritage.org/product-management/certified-deposit/-/issues/1
+Institutional Portal|Implement and deploy the institutional portal|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/4
+Institutional Portal|Design software architecture for the institutional portal|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/2
+Institutional Portal|Specify requirements for institutional portal|roadmap 2024|high|created|0.0|https://gitlab.softwareheritage.org/product-management/institutional-portal/-/issues/1
+Mirrors|Documentation for mirror operators|roadmap 2024|low|on hold|1.0|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/6
+Mirrors|Mirror tooling for scrubbing|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/5
+Mirrors|Mirror tooling for mailmap|roadmap 2024|high|in progress|12.5|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/4
+Mirrors|Mirror tooling for takedown|roadmap 2024|high|in progress|36.0|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/3
+Mirrors|SWH Mirror at Duisburg-Essen university|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/2
+Mirrors|Mirror instance at GRNET|roadmap 2024|high|in progress|0.5|https://gitlab.softwareheritage.org/product-management/mirrors/-/issues/1
+SWH.org Website|Refactor the architecture of the SWH website|roadmap 2024|high|done|34.5|https://gitlab.softwareheritage.org/product-management/swh-org-website/-/issues/1
+SWH Archive Website|swh-web maintenance|MRO||created|15.0|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/8
+SWH Archive Website|Setup a Software Citation UI feature|roadmap 2024|high|in progress|23.0|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/4
+SWH Archive Website|Design presentation of Metadata on Web UI|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/2
+SWH Archive Website|Takedown notice management UI|roadmap 2024|high|in progress|48.0|https://gitlab.softwareheritage.org/product-management/swh-archive-website/-/issues/1
+SWH Core Platform|Deposit features for FAIR projects|off-roadmap||proposed|2.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/103
+SWH Core Platform|CI infrastructure|MRO||created|5.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/101
+SWH Core Platform|Graph maintenance|MRO||created|7.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/100
+SWH Core Platform|Low level infrastructure|MRO||created|50.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/94
+SWH Core Platform|Archive maintenance|MRO||created|22.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/92
+SWH Core Platform|Rancher/Kube|MRO||created|15.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/85
+SWH Core Platform|Cassandra|MRO||created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/84
+SWH Core Platform|Provenance|MRO||created|3.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/82
+SWH Core Platform|Add forge now|MRO||created|5.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/78
+SWH Core Platform|swh-alter tools|MRO||created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/77
+SWH Core Platform|Ceph/Winery Object storage|MRO||created|10.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/76
+SWH Core Platform|Automate the production and publication of derived datasets|roadmap 2024|high|on hold|8.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/55
+SWH Core Platform|Map software versions to objects in the archive|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/54
+SWH Core Platform|Investigate on forge discovery automation|roadmap 2024|low|scheduled|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/53
+SWH Core Platform|Precompute relevant characteristics of the graph|roadmap 2024|medium|scheduled|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/52
+SWH Core Platform|Improve ingestion efficiency|roadmap 2024|medium|in progress|0.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/48
+SWH Core Platform|Design and implement a unified software datamodel|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/47
+SWH Core Platform|Deploy a unified software data model storage infrastructure|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/42
+SWH Core Platform|Enrich the archive with CVE metadata|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/34
+SWH Core Platform|Enable inclusion filters in listers|roadmap 2024|low|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/21
+SWH Core Platform|Recover the ingestion backlog|roadmap 2024|high|in progress|11.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/19
+SWH Core Platform|Implement rate-limiting in swh-vault|roadmap 2024|medium|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/18
+SWH Core Platform|Cassandra in production as primary storage|roadmap 2024|high|in progress|90.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/17
+SWH Core Platform|Scale-out objstorage in production as primary objstorage|roadmap 2024|high|done|30.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/16
+SWH Core Platform|Extend archive check and repair tools|roadmap 2024|high|in progress|21.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/15
+SWH Core Platform|Support archiving repositories containing SHA1 hash conflicts on blobs|roadmap 2024|high|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/14
+SWH Core Platform|Release a Bulk On-demand Archival feature|roadmap 2024|high|in progress|59.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/11
+SWH Core Platform|Design and implement a provenance search API v1|roadmap 2024|medium|in progress|61.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/10
+SWH Core Platform|Provide an API for Software Citation|roadmap 2024|high|done|32.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/8
+SWH Core Platform|Provide an exectuvie-friendly monitoring of services|roadmap 2024|low|created|0.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/7
+SWH Core Platform|Graph export and graph compression in production|roadmap 2024|high|in progress|94.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/6
+SWH Core Platform|Setup swh webhook for vault cooking|roadmap 2024|low|created|1.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/4
+SWH Core Platform|Setup swh webhook for Deposit|roadmap 2024|low|in progress|2.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/3
+SWH Core Platform|Sysadmin tooling for Takedown notices|roadmap 2024|high|done|51.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/issues/1
