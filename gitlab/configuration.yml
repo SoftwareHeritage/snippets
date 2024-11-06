@@ -86,6 +86,10 @@ groups:
       Alphare: Owner
       marmoute: Owner
     remove_extra_memberships: true
+  teams/codecommons:
+    name: CodeCommons
+    users:
+      bchauvet: Owner
   infra-private:
     users:
       phabricator-migration: Owner
