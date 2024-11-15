@@ -1,0 +1,12 @@
+project|type|issue|spent(days)|url|parent
+SWH Core Platform|TASK|Jenkins pipeline improvements|5.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/102|CI infrastructure
+SWH Core Platform|TASK|Monitoring maintenance|5.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/99|Low level infrastructure
+SWH Core Platform|TASK|PostgreSQL replication maintenance|2.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/97|Low level infrastructure
+SWH Core Platform|TASK|OS version upgrades on servers|10.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/96|Low level infrastructure
+SWH Core Platform|TASK|Hardware procurement 2024|13.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/95|Low level infrastructure
+SWH Core Platform|TASK|Fix issues with github lister|5.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/93|Archive maintenance
+SWH Core Platform|TASK|Performance/availability investigations|3.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/91|Ceph/Winery Object storage
+SWH Core Platform|TASK|Network issues follow-up|4.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/90|Ceph/Winery Object storage
+SWH Core Platform|TASK|Added machines purchased in 2023 to the Ceph cluster|3.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/89|Ceph/Winery Object storage
+SWH Core Platform|TASK|Fix Rancher etcd snapshots and migrate them to MinIO|15.0|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/87|Rancher/Kube
+SWH Core Platform|TASK|Ingest *.googlesource.com gitiles instances|2.5|https://gitlab.softwareheritage.org/product-management/core-platform/-/work_items/86|Add forge now
