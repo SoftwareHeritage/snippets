@@ -109,7 +109,7 @@ def groups(ctx, config_file):
         recorded_members = set()
 
         remove_extra_memberships = group_conf.get("remove_extra_memberships", False)
-        for member in group.members.list():
+        for member in group.members.list(get_all=True):
             username = member.username
             expected_access_level = expected_members.get(member.username)
             if expected_access_level and member.access_level != expected_access_level:
