@@ -23,6 +23,7 @@ groups:
       rboyer: Maintainer
       rdicosmo: Owner
       sgranger: Maintainer
+      varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
       zack: Owner
@@ -43,6 +44,7 @@ groups:
       rboyer: Maintainer
       rdicosmo: Maintainer
       swh-sentry-integration: Maintainer
+      varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
       zack: Maintainer
