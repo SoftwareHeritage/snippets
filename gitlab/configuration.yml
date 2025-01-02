@@ -23,6 +23,7 @@ groups:
       rboyer: Maintainer
       rdicosmo: Owner
       sgranger: Maintainer
+      taynaud: Owner
       varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
@@ -72,6 +73,7 @@ groups:
     users:
       rdicosmo: Owner
       zack: Owner
+      taynaud: Owner
     remove_extra_memberships: true
   teams/management:
     users:
@@ -80,6 +82,7 @@ groups:
       lcruse: Maintainer
       moranegg: Maintainer
       rdicosmo: Owner
+      taynaud: Owner
       vsellier: Maintainer
       zack: Owner
     remove_extra_memberships: true
