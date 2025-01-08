@@ -201,7 +201,7 @@ workspace {
           }
 
           vault = container "vault" {
-            vault_rpc = component "swh-vault rpc" {
+            vault_rpc = component "vault rpc" {
               technology python
             }
 
@@ -214,7 +214,36 @@ workspace {
             tags scn, vault, provenance, citation,search, add-forge-now
           }
 
+          group "winery" {
+            winery_db = container "winery database" "PostgreSQL" ""
+            winery_rpc = container "winery rpc" "python" {
+              description "objstorage RPC implementation"
+            }
+            winery_shard_cleaner = container "winery shard cleaner" "python"
+            winery_shard_packer = container "winery shard packer" "python"
+            winery_rbd = container "winery rbd image manager" "python"
+            winery_filesystem = container "Filesystem" "Filesystem" {
+              tags file
+            }
+            winery_os =  container "OS" "Linux" {
+              tags system
+            }
+          }
+
+          ceph = container "ceph storage" "ceph"
+
+          winery_rpc -> winery_db "Adds and gets contents"
+          winery_shard_packer -> winery_db "Reads shards content"
+          winery_shard_packer -> winery_filesystem "Writes shards content"
+          winery_shard_packer -> ceph "Stores shards"
+          winery_rbd -> winery_db "Reads shard statuse" "sql"
+          winery_rbd -> winery_os "Mounts ceph rbd image" "shell"
+          winery_os -> ceph "Exposes ceph rbd image" "fuse"
+          winery_shard_cleaner -> winery_db "Removes packed and mounted shards"
+          storage_rpc -> winery_rpc "Adds and gets contents" "http"
+          objstorage_replayer -> winery_rpc "Adds content"
         }
+
 
         // Global use cases
         user -> swh "Browses an origin\nAsks to retreive an origin content"
@@ -620,13 +649,98 @@ workspace {
 
       }
 
+
+      cea = deploymentEnvironment "cea_winery" {
+          bastion = deploymentNode "angrenost" {
+              CEA_VPN = infrastructureNode "VPN" {
+                description "ssl termination"
+              }
+          }
+          gloin001 = deploymentNode "gloin001" {
+              gloin001_haproxy = infrastructureNode "HaProxy" {
+                description "LoadBalancer"
+              }        
+              gloin001_patroni = infrastructureNode "Patroni" {
+                description "HA PG"
+              }
+              gloin001_postgresql = infrastructureNode "PostgreSQL" {
+                description "Winery database"
+                tag db
+              }
+              gloin001_winery_reader = containerInstance winery_rpc {
+                description "Read-only instance"
+              }
+              gloin001_winery_writer = containerInstance winery_rpc {
+                description "Read-write instance"
+              }
+              gloin001_winery_cleaner = infrastructureNode "Winery shard cleaner" { }
+              gloin001_winery_packer = infrastructureNode "Winery shard packer" { }
+              gloin001_winery_rdb = infrastructureNode "Winery rbd mounter" {}
+          }
+          gloin002 = deploymentNode "gloin002" {
+              gloin002_haproxy = infrastructureNode "HaProxy" {
+                description "LoadBalancer"
+              }                
+              gloin002_patroni = infrastructureNode "Patroni" {
+                description "HA PG"
+              }
+              gloin002_postgresql = infrastructureNode "PostgreSQL" {
+                description "Winery database"
+                tag db
+              }
+              gloin002_winery_reader = infrastructureNode "Winery Reader" { }
+              gloin002_winery_writer = infrastructureNode "Winery Writer" { }
+              gloin002_winery_rdb = infrastructureNode "Winery rbd mounter" {}
+          }
+          cea_ceph = deploymentNode "ceph" {
+            ceph_cluster = infrastructureNode "Ceph cluster"
+          }
+
+          CEA_VPN -> gloin001_haproxy "ReadOnly queries" "http"
+          CEA_VPN -> gloin002_haproxy "ReadWrite queries"
+          gloin001_patroni -> gloin002_patroni "Primary - Secondary management" "" ""
+          gloin002_patroni -> gloin001_patroni "Primary - Secondary PG management" "" ""
+          gloin001_patroni -> gloin001_postgresql "checks"
+          gloin002_patroni -> gloin002_postgresql "checks"
+          gloin001_postgresql -> gloin002_postgresql "Replicates"
+          gloin002_postgresql -> gloin001_postgresql "Replicates"
+          gloin001_haproxy -> gloin001_winery_reader "Reads contents" "http" 
+          gloin001_haproxy -> gloin002_winery_reader "Reads contents (backup)" "http" "backup,overlapped"
+          gloin002_haproxy -> gloin002_winery_writer "Reads/Writes contents" "http" "overlapped"
+          gloin002_haproxy -> gloin001_winery_writer "Reads/Writes contents (backup)" "http" "backup,overlapped"
+
+          gloin001_winery_reader -> gloin001_postgresql "Gets shards info / contents"
+          gloin002_winery_writer -> gloin002_postgresql "Writes contents"
+
+          gloin001_winery_cleaner -> gloin002_postgresql "Cleans packed shards" "" "overlapped"
+
+          gloin001_winery_packer -> gloin001_postgresql "Reads shard content"
+          gloin001_winery_packer -> gloin001_winery_packer "Locally builds winery shards"
+          gloin001_winery_packer -> cea_ceph "Writes rbd image" "" "overlapped"
+
+          gloin001_winery_rdb -> gloin001_postgresql "Gets shards ready list"
+          gloin001_winery_rdb -> cea_ceph "Mounts rbd image"
+          gloin001 -> cea_ceph "Reads rbd image content"
+
+          gloin002_winery_rdb -> gloin002_postgresql "Gets shards ready list"
+          gloin002_winery_rdb -> cea_ceph "Mounts rbd image"
+          gloin002 -> cea_ceph "Reads rbd image content"
+      }
     }
+
+
 
 ####################################################################################################
     views {
 
       theme "https://static.structurizr.com/themes/kubernetes-v0.3/theme.json"
 
+
+      deployment * cea_winery "CEA_Winery_" {
+        title "CEA - winery deployment"
+        include *
+        autolayout
+      }
 
       deployment * staging "staging_provenance" {
           title "swh-provenance Staging deployment"
@@ -747,6 +861,66 @@ workspace {
         autolayout lr
       }
 
+      container swh "winery" {
+        include "winery_db"
+        include "winery_shard_packer"
+        include "winery_shard_cleaner"
+        include "winery_rpc"
+        include "winery_rbd"
+        include "winery_filesystem"
+        include "winery_os"
+        include "ceph"
+        include "storage_rpc"
+        include "objstorage_replayer"
+        autolayout lr
+      }
+
+      dynamic swh "winery-shards-writing" {
+        title "Winery shard preparation steps"
+        
+        winery_rpc -> winery_db "Creates a new shard (status WRITING)"
+        winery_rpc -> winery_db "Adds contents to the shard"
+        winery_rpc -> winery_db "Adds id -> shard reference"
+        winery_rpc -> winery_db "Updates shard status to FULL"
+
+        autolayout lr
+      }
+
+      dynamic swh "winery-shards-packing" {
+        title "Winery shard preparation steps"
+        
+        winery_shard_packer -> winery_db "updates FULL shards to PACKING"
+        winery_shard_packer -> winery_db "Read shard contents"
+        winery_shard_packer -> winery_filesystem "Flush shard to the local filesystem" 
+        winery_shard_packer -> ceph "Save the shard into the rbd image"
+        winery_shard_packer -> winery_db "Updates shard status to PACKED"
+
+        autolayout  lr
+      }
+
+      dynamic swh "winery-shards-mounting" {
+        title "Winery shard preparation steps"
+        
+        winery_rbd -> winery_db "Waits for PACKED shards"
+        winery_rbd -> winery_os "Mounts the rbd image"
+        winery_rbd -> winery_db "Updates the shard mount status"
+
+        autolayout  lr
+      }
+
+      dynamic swh "winery-shards-cleaning" {
+        title "Winery shard preparation steps"
+        
+        winery_shard_cleaner -> winery_db "Waits for a PACKED and mounted shard"
+        winery_shard_cleaner -> winery_db "Updates status to CLEANING"
+        winery_shard_cleaner -> winery_db "Removes shard content"
+        winery_shard_cleaner -> winery_db "Update status to READONLY"
+
+        autolayout  lr
+      }
+
+
+
       dynamic swh "add-forge-now" {
         title "Add forge now interactions"
         systemAdministrator -> webapp "accepts a add forge now request"
@@ -786,8 +960,19 @@ workspace {
           shape Folder
           background lightgreen
         }
+        element "system" {
+          shape RoundedBox
+          background lightblue
+        }
+        
         relationship overlapped {
           position 75
+        }
+        relationship "Relationship" {
+          dashed false
+        }
+        relationship backup {
+          dashed true
         }
 
       }
