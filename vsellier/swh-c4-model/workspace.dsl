@@ -222,9 +222,6 @@ workspace {
             winery_shard_cleaner = container "winery shard cleaner" "python"
             winery_shard_packer = container "winery shard packer" "python"
             winery_rbd = container "winery rbd image manager" "python"
-            winery_filesystem = container "Filesystem" "Filesystem" {
-              tags file
-            }
             winery_os =  container "OS" "Linux" {
               tags system
             }
@@ -234,8 +231,7 @@ workspace {
 
           winery_rpc -> winery_db "Adds and gets contents"
           winery_shard_packer -> winery_db "Reads shards content"
-          winery_shard_packer -> winery_filesystem "Writes shards content"
-          winery_shard_packer -> ceph "Stores shards"
+          winery_shard_packer -> ceph "Stores shards content"
           winery_rbd -> winery_db "Reads shard statuse" "sql"
           winery_rbd -> winery_os "Mounts ceph rbd image" "shell"
           winery_os -> ceph "Exposes ceph rbd image" "fuse"
@@ -696,8 +692,8 @@ workspace {
             ceph_cluster = infrastructureNode "Ceph cluster"
           }
 
-          CEA_VPN -> gloin001_haproxy "ReadOnly queries" "http"
-          CEA_VPN -> gloin002_haproxy "ReadWrite queries"
+          CEA_VPN -> gloin001_haproxy "" "http"
+          CEA_VPN -> gloin002_haproxy ""
           gloin001_patroni -> gloin002_patroni "Primary - Secondary management" "" ""
           gloin002_patroni -> gloin001_patroni "Primary - Secondary PG management" "" ""
           gloin001_patroni -> gloin001_postgresql "checks"
@@ -867,7 +863,6 @@ workspace {
         include "winery_shard_cleaner"
         include "winery_rpc"
         include "winery_rbd"
-        include "winery_filesystem"
         include "winery_os"
         include "ceph"
         include "storage_rpc"
@@ -891,7 +886,6 @@ workspace {
         
         winery_shard_packer -> winery_db "updates FULL shards to PACKING"
         winery_shard_packer -> winery_db "Read shard contents"
-        winery_shard_packer -> winery_filesystem "Flush shard to the local filesystem" 
         winery_shard_packer -> ceph "Save the shard into the rbd image"
         winery_shard_packer -> winery_db "Updates shard status to PACKED"
 
