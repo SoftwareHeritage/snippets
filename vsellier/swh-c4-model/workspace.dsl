@@ -711,7 +711,6 @@ workspace {
           gloin001_winery_cleaner -> gloin002_postgresql "Cleans packed shards" "" "overlapped"
 
           gloin001_winery_packer -> gloin001_postgresql "Reads shard content"
-          gloin001_winery_packer -> gloin001_winery_packer "Locally builds winery shards"
           gloin001_winery_packer -> cea_ceph "Writes rbd image" "" "overlapped"
 
           gloin001_winery_rdb -> gloin001_postgresql "Gets shards ready list"
