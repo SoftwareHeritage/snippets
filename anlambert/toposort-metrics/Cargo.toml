@@ -1,0 +1,14 @@
+[package]
+name = "toposort-metrics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+clap = "4.5.26"
+dsi-progress-logger = "0.3.0"
+env_logger = "0.11.6"
+log = "0.4.25"
+postgres = "0.19.9"
+swh-graph = "6.3.1"
+swh_graph_topology = "6.3.0"
