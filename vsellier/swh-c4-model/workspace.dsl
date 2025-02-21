@@ -15,6 +15,8 @@ workspace {
           tags tdn
         }
 
+        fairCorePartners = person "FairCore Partners" {
+        }
         systemAdministrator = person "SWH Sysadmin" {
           tags tdn
         }
@@ -35,13 +37,24 @@ workspace {
           tags  external,deposit
         }
 
-        swh = softwareSystem "Software Heritage" {
+        swh = softwareSystem "SoftwareHeritage" {
+          !decisions docs/coarnotify/adrs
           keycloak = container "keycloak" "" """provenance"
 
           gitlab = container "Gitlab" {
             tags  external,add-forge-now
           }
 
+          group swh-coarnotify {
+            coarnotify_rpc = container "coarnotify-rpc" {
+              !docs docs/coarnotify
+              !decisions docs/coarnotify/adrs
+              technology django
+            }
+            coarnotify_db = container "coarnotify-db" {
+              technology PostgreSQL
+            }
+          }
           alter = container "swh-alter" {
             tags tdn,search
 
@@ -73,11 +86,6 @@ workspace {
             tags scn
           }
 
-          masking_proxy_db = container "masking-proxy-db" {
-            tags db
-            technology "Postgresql"
-          }
-
           provenance_rpc = container "swh-provenance-rpc" {
             technology python
             tags provenance
@@ -101,45 +109,47 @@ workspace {
             }
           }
 
+          group storage {
+            storage_rpc = container "storage-rpc" {
+              tags scn,tdn,citation
 
-          storage_rpc = container "storage-rpc" {
-            tags scn,tdn,citation
+              technology "python"
 
-            technology "python"
-          }
+              masking_proxy = component "masking-proxy" {
+                technology "python"
+                
+                description "Filters names and objects"
+              }
 
-          storage_db = container "storage-db" {
-            technology "postgresql or cassandra"
-          }
+              blocking_proxy = component "blocking-proxy" {
+                technology "python"
 
-
-          storage = container "swh-storage" {
-            tags scn,tdn
-
-
-            masking_proxy = component "masking-proxy" {
+                description "Checks blocked objects"
+              }
+            }
+            blocking_proxy_cli = container "blocking-proxy-cli" {
               technology "python"
             }
 
-            masking_proxy_cli = component "masking-proxy-cli" {
+            masking_proxy_cli = container "masking-proxy-cli" {
               technology "python"
             }
 
-            blocking_proxy = component "blocking-proxy" {
-              technology "python"
+            storage_db = container "storage-db" {
+              technology "postgresql or cassandra"
             }
 
-            blocking_proxy_cli = component "blocking-proxy-cli" {
-              technology "python"
+            blocking_proxy_db = container "blocking-proxy database" {
+              tags db
+              technology "Postgresql"
             }
 
-            blocking_proxy_db = component "blocking-proxy database" {
+            masking_proxy_db = container "masking-proxy-db" {
               tags db
               technology "Postgresql"
             }
 
           }
-
 
           group indexer {
             indexer_storage_rpc = container "indexer-storage-rpc" "" {
@@ -150,6 +160,10 @@ workspace {
             indexer_db = container "indexer-db" "" "" {
               technology "postgresql"
               tags "db"
+            }
+            indexer_metadata = container "metadata-indexer" "" "" {
+              technology "python"
+              tags "service"
             }
           }
 
@@ -258,6 +272,12 @@ workspace {
         webapp -> indexer_storage_rpc "converts metadata to bibtex" "django" "citation"
         webapp -> storage_rpc "gets SWHid metatadata" "http" "citation"
 
+        // Coar notify
+        fairCorePartners -> coarnotify_rpc "sends a notifications" "" "http"
+        coarnotify_rpc -> fairCorePartners "sends an acknoledgment and information" "" "http"
+        coarnotify_rpc -> coarnotify_db "Stores messages" "" "SQL"
+        coarnotify_rpc -> storage_rpc "Stores raw_extrinsic_metadata" "" "http"
+
         // deposit
         depositUser -> swh "Deposits code and get origin contents"
         depositUser -> deposit "deposits code"
@@ -279,18 +299,19 @@ workspace {
         webapp -> scheduler_rpc "uses" "RPC" "scn"
         scheduler -> rabbitmq "posts a message" "celery" "scn,vault"
         loader -> rabbitmq "handles a task" "celery" "scn"
-        loader -> storage "store the repository" "rpc" "scn"
-        storage -> kafka "write the objects" "tcp" "scn"
+        loader -> storage_rpc "store the repository" "rpc" "scn"
+        storage_rpc -> kafka "write the objects" "tcp" "scn"
 
         // storage
         storage_rpc -> storage_db "reads and writes graph" "sql or cql"
         storage_rpc -> kafka "pushes messages" "tcp" "tdn"
         storage_rpc -> kafka "removes messages" "tcp" "tdn"
         storage_rpc -> objstorage_rpc "adds contents" "" "tdn"
-        storage_rpc -> masking_proxy "Filters names and objects" "tdn"
-        storage_rpc -> blocking_proxy "Checks blocked objects " "tdn"
-        storage_rpc -> masking_proxy_db "CRUDs" "tdn"
+        # storage_rpc -> masking_proxy "Filters names and objects" "t dn"
+        # storage_rpc -> blocking_proxy "Checks blocked objects" "tdn"
+        # storage_rpc -> masking_proxy_db "CRUDs" "tdn"
         storage_rpc -> blocking_proxy_db "CRUDS" "tdn"
+        indexer_metadata -> kafka "reads raw_extrinsic_metadata" "kafka"
 
         // scheduler
         scheduler_runner -> rabbitmq "posts tasks" "celery"
@@ -359,6 +380,7 @@ workspace {
         systemAdministrator -> alter_cli "launchs a takedown of an origin" "cli" "tdn"
         systemAdministrator -> blocking_proxy_cli "Manages blocked objects" "cli" "tdn"
         systemAdministrator -> masking_proxy_cli "Manages masked objects" "cli" "tdn"
+        masking_proxy_cli -> masking_proxy_db "Manages masked objects" "python" "sql"
 
         alter_cli -> graph_rpc "gets the objects related to an origin" "rpc" "tdn"
         alter_cli -> storage_rpc "gets the recent objects related to an origin \n removes objects \n restores objects" "rpc" "tdn"
@@ -379,7 +401,8 @@ workspace {
           pg = deploymentGroup "Postgresql"
           cassandra = DeploymentGroup "Cassandra"
 
-          deploymentNode "rp0" {
+          rp0 = deploymentNode "rp0" {
+
               stg_hitch = infrastructureNode "hitch" {
                 description "ssl termination"
               }
@@ -407,6 +430,14 @@ workspace {
 
           archive_staging_rke2 = deploymentNode "archive-staging-rke2" {
             tags ""
+
+            deploymentNode "ingress-controler" {
+              tags "Kubernetes - svc"
+              nginx_stg = infrastructureNode "nginx" "cassandra" {
+                tags "Kubernetes - deploy"
+              }
+            }
+
             deploymentNode "swh" {
               tags "Kubernetes - ns"
 
@@ -450,7 +481,7 @@ workspace {
               stg_graph_dep -> stg_inmemory_node_vol "Uses"  "fs" "graph"
               stg_inmemory_node_vol -> stg_persistent_node_vol "links"
 
-              containerInstance "storage_rpc" "cassandra" {
+              storage_rpc_stg = containerInstance "storage_rpc" "cassandra" {
                   tags "Kubernetes - deploy"
               }
               deploymentNode "provenance-ingress" {
@@ -462,6 +493,23 @@ workspace {
                 }
               }
 
+              coarnotify_stg_ingress = deploymentNode "coarnotify-ingress" "cassandra" {
+                tags "Kubernetes - ing"
+                url "http://coar-inbox.internal.staging.swh.network"
+
+                containerInstance "coarnotify_rpc" "cassandra" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
+              deploymentNode "pgcluster" {
+                tags "Kubernetes - svc"
+
+                containerInstance "coarnotify_db" "cassandra" {
+                  tags db
+                }
+              }
+              
               deploymentNode "archive-webapp-ingress" {
                 tags "Kubernetes - ing"
                 url "http://webapp.staging.swh.network,http://webapp-cassandra.internal.staging.swh.network"
@@ -493,7 +541,7 @@ workspace {
 
                 description "webhook webapp"
               }
-              containerInstance "storage_rpc" "cassandra" {
+              containerInstance "objstorage_rpc" "cassandra-rw" {
                 tags "Kubernetes - deploy"
 
                 description "rw-db1"
@@ -513,11 +561,12 @@ workspace {
             containerInstance "storage_db" "cassandra" "db"
           }
 
-          stg_varnish -> "archive_staging_rke2" ""
+          stg_varnish -> nginx_stg ""
+          nginx_stg -> coarnotify_stg_ingress
         }
 
         production = deploymentEnvironment "Production" {
-          deploymentNode "moma" {
+          moma = deploymentNode "moma" {
               prd_hitch = infrastructureNode "hitch" {
                 description "ssl termination"
                 tags objstorage_ro
@@ -549,6 +598,7 @@ workspace {
           }
 
           archive_production_rke2 = deploymentNode "archive-production-rke2" {
+
             deploymentNode "swh" {
               tags "Kubernetes - ns"
 
@@ -604,7 +654,7 @@ workspace {
                 containerInstance "storage_rpc" "cassandra" {
                   description "ro-storage"
                 }
-                containerInstance "storage_rpc" "cassandra" {
+                storage_rpc_prd = containerInstance "storage_rpc" "cassandra" {
                   description "rw-storage"
                 }
               }
@@ -633,14 +683,36 @@ workspace {
 
               production_objstorage_ro_ingress -> production_swh_secrets "ingress-objstorage-ro-auth-secrets"
 
+              coarnotify_prd_ingress = deploymentNode "coarnotify-ingress" "cassandra" {
+                tags "Kubernetes - ing"
+                url "http://coar-inbox.internal.softwareheritage.org"
+
+                containerInstance "coarnotify_rpc" "cassandra" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
+              deploymentNode "pgcluster" {
+                tags "Kubernetes - svc"
+
+                containerInstance "coarnotify_db" "cassandra" {
+                  tags db
+                }
+              }
             }
 
-            production_ingress_controller = infrastructureNode "ingress-nginx" {
-              tags "Kubernetes - deploy, objstorage_ro"
-            }
-            production_ingress_controller -> production_objstorage_ro_ingress "https://objstorage.softwareheritage.org"
 
-            prd_varnish -> production_ingress_controller
+            deploymentNode "ingress-controler" {
+              tags "Kubernetes - svc"
+
+              nginx_prd = infrastructureNode "ingress-nginx" {
+                tags "Kubernetes - deploy, objstorage_ro"
+              }
+            }
+            nginx_prd -> production_objstorage_ro_ingress "https://objstorage.softwareheritage.org"
+            nginx_prd -> coarnotify_prd_ingress
+
+            prd_varnish -> nginx_prd
           }
 
       }
@@ -711,6 +783,7 @@ workspace {
           gloin001_winery_cleaner -> gloin002_postgresql "Cleans packed shards" "" "overlapped"
 
           gloin001_winery_packer -> gloin001_postgresql "Reads shard content"
+          gloin001_winery_packer -> gloin001_winery_packer "Locally builds winery shards"
           gloin001_winery_packer -> cea_ceph "Writes rbd image" "" "overlapped"
 
           gloin001_winery_rdb -> gloin001_postgresql "Gets shards ready list"
@@ -729,7 +802,6 @@ workspace {
     views {
 
       theme "https://static.structurizr.com/themes/kubernetes-v0.3/theme.json"
-
 
       deployment * cea_winery "CEA_Winery_" {
         title "CEA - winery deployment"
@@ -760,14 +832,12 @@ workspace {
           autolayout
       }
 
-
       deployment * production "production_objstorage_ro" {
           include "element.tag==objstorage_ro"
           autolayout lr
       }
 
-
-      systemContext swh {
+      systemContext swh "global_view" {
           include *
           autolayout
       }
@@ -776,6 +846,40 @@ workspace {
         include *
         autolayout
       }
+
+      container swh "coarnotify_infra" {
+        title "Coar Notify infrastructure"
+        include coarnotify_rpc
+        include coarnotify_db
+        include storage_rpc
+        include storage_db
+
+        include fairCorePartners
+        autoLayout
+      }
+      deployment * staging "staging_coarnotify_deployment" {
+          title "COAR notify Staging deployment"
+          include storage_rpc_stg
+          include coarnotify_rpc
+          include coarnotify_db
+          include coarnotify_stg_ingress
+          include nginx_stg
+          include rp0
+          autolayout
+      }
+
+      deployment * production "production_coarnotify_deployment" {
+          title "COAR notify Production deployment"
+          include storage_rpc_prd
+          include coarnotify_rpc
+          include coarnotify_db
+          include coarnotify_prd_ingress
+          include storage_rpc_prd
+          include nginx_prd
+          include moma
+          autolayout
+      }
+
 
       container swh "storage" {
         include "->storage_rpc->"
@@ -788,7 +892,7 @@ workspace {
         autoLayout
       }
 
-      component storage "storage_components" {
+      component storage_rpc "storage_components" {
         include *
         autoLayout
       }
@@ -911,8 +1015,6 @@ workspace {
 
         autolayout  lr
       }
-
-
 
       dynamic swh "add-forge-now" {
         title "Add forge now interactions"
