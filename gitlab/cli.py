@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
 import yaml
@@ -201,7 +201,7 @@ def update_project(
     global_settings: Dict[str, Any],
     namespace_settings: Dict[str, Any],
     project_settings: Dict[str, Any],
-) -> Tuple:
+) -> Tuple[Dict[str, Dict[str, Any]], Any, Optional[bool]]:
     """Given a project and settings configuration dicts, update the project.
 
     Returns:
@@ -221,11 +221,19 @@ def update_project(
     )
 
     updated = {}
+    archive_project: Optional[bool] = None
     # Iterate over the new settings to apply
     for attribute, value in config.items():
         existing_value = getattr(project, attribute)
         # If any changes is detected
         if existing_value != value:
+            if attribute == "archived":
+                if value:
+                    logger.debug("archive project")
+                else:
+                    logger.debug("unarchive project")
+                archive_project = value
+                continue
             # New settings is applied
             setattr(project, attribute, value)
             new_value = getattr(project, attribute)
@@ -235,9 +243,9 @@ def update_project(
                 existing_value,
                 new_value,
             )
-            updated[attribute] = dict(old=existing_value, new=new_value)
+            updated[attribute] = {"old": existing_value, "new": new_value}
 
-    return updated, project
+    return updated, project, archive_project
 
 
 def namespaces_from_path(path_with_namespace: str) -> Iterable[str]:
@@ -318,7 +326,7 @@ def projects(
 
         logger.debug("Project <%s> %s", path_with_namespace, project.id)
 
-        updates, project = update_project(
+        updates, project, archive_project = update_project(
             project, global_settings, namespace_config, project_config
         )
 
@@ -343,6 +351,16 @@ def projects(
 
         if updates:
             print(json.dumps({path_with_namespace: updates}))
+
+        if archive_project is not None:
+            if archive_project:
+                logger.info("Archiving project %s", path_with_namespace)
+                if do_it:
+                    project.archive()
+            else:
+                logger.info("Unarchiving project %s", path_with_namespace)
+                if do_it:
+                    project.unarchive()
 
     dry_run = not do_it
     prefix_msg = "(**DRY RUN**) " if dry_run else ""
