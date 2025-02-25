@@ -147,6 +147,30 @@ projects:
       issues_access_level: disabled
     infra-private:
       visibility: private
+    swh/devel/debian-packaging:
+      archived: true
+      emails_disabled: true
+      auto_devops_enabled: false
+      request_access_enabled: false
+      service_desk_enabled: false
+      pages_access_level: disabled
+      builds_access_level: disabled
+      releases_access_level: disabled
+      packages_enabled: false
+      model_experiments_access_level: disabled
+      model_registry_access_level: disabled
+      monitor_access_level: disabled
+      environments_access_level: disabled
+      feature_flags_access_level: disabled
+      infrastructure_access_level: disabled
+      analytics_access_level: disabled
+      container_registry_access_level: disabled
+      forking_access_level: disabled
+      issues_access_level: disabled
+      merge_requests_access_level: disabled
+      security_and_compliance_access_level: disabled
+      snippets_access_level: disabled
+      wiki_access_level: disabled
 
   # Dict[str, Any] of key the project with its path namespace, and value a dict of any of
   # the global settings keys above (e.g. visibility) and value, whatever we want to set
