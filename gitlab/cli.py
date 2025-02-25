@@ -307,7 +307,7 @@ def projects(
     # project override)
     for project in gl.projects.list(iterator=True):
         path_with_namespace = project.path_with_namespace
-        if project_list and path_with_namespace not in project_list:
+        if project_list and not path_with_namespace.startswith(project_list):
             continue
         # For the last print statement to explain how many got updated
         projects[path_with_namespace] = project
