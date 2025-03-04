@@ -1,6 +1,7 @@
 boto3
 chardet
 click
+humanize
 ndjson
 pyspark
 python-keycloak
