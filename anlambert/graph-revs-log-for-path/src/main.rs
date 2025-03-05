@@ -12,16 +12,16 @@ use swh_graph::NodeType;
 
 #[derive(Parser, Debug)]
 #[command(verbatim_doc_comment)]
-/// Revisions walker for the SWH graph starting from a given revision and 
-/// returning revisions where a specific path in the targeted source trees 
-/// was modified, in other terms it allows to get the commits history for a 
+/// Revisions walker for the SWH graph starting from a given revision and
+/// returning revisions where a specific path in the targeted source trees
+/// was modified, in other terms it allows to get the commits history for a
 /// specific file or directory in a repository.
-/// 
+///
 /// It has a behaviour similar to what "git log" offers by default,
-/// meaning the returned history is simplified in order to only show 
+/// meaning the returned history is simplified in order to only show
 /// relevant revisions.
-/// 
-/// See https://git-scm.com/docs/git-log#_history_simplification for 
+///
+/// See https://git-scm.com/docs/git-log#_history_simplification for
 /// more details.
 ///
 /// Please note that to avoid walking the entire history, the iteration
@@ -34,7 +34,11 @@ struct Args {
     path: String,
 }
 
-fn directory_entry_get_by_path<G: SwhFullGraph>(graph: &G, rev: &NodeId, path_parts: &Vec<&str>) -> NodeId {
+fn directory_entry_get_by_path<G: SwhFullGraph>(
+    graph: &G,
+    rev: &NodeId,
+    path_parts: &Vec<&str>,
+) -> NodeId {
     let props = graph.properties();
     let mut current_dir = 0;
     for succ in graph.successors(*rev) {
@@ -82,7 +86,7 @@ fn process_parent_revisions<G: SwhFullGraph>(
     rev: &NodeId,
     path_parts: &Vec<&str>,
     heap: &mut BinaryHeap<(i64, usize)>,
-) -> bool {
+) -> (bool, bool) {
     let rev_path_id = directory_entry_get_by_path(graph, rev, path_parts);
     let mut parents = Vec::new();
     for succ in graph.successors(*rev) {
@@ -92,7 +96,7 @@ fn process_parent_revisions<G: SwhFullGraph>(
     }
 
     if parents.is_empty() {
-        return rev_path_id != 0;
+        return (rev_path_id != 0, false);
     }
 
     let parent_rev_path_ids = parents
@@ -124,9 +128,14 @@ fn process_parent_revisions<G: SwhFullGraph>(
         }
     }
     if rev_path_id != parent_rev_path_ids[0] && different_path_ids {
-        return true;
+        return (
+            true,
+            parent_rev_path_ids
+                .into_iter()
+                .all(|parent_rev_path_id| parent_rev_path_id == 0),
+        );
     }
-    false
+    (false, false)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -160,8 +169,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         visited.insert(rev);
-        if process_parent_revisions(&graph, &rev, &path_parts, &mut heap) {
+        let (rev_with_path, stop_revs_walk) = process_parent_revisions(&graph, &rev, &path_parts, &mut heap);
+        if rev_with_path {
             println!("{}", graph.properties().swhid(rev));
+        }
+        if stop_revs_walk {
+            break;
         }
     }
 
