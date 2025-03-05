@@ -14,11 +14,11 @@ use chrono::Utc;
 #[command()]
 /// Iterate on SWH graph nodes and stream the following info for each origin
 /// matching some requirements:
-/// 
+///
 /// - latest full snapshot SWHID
-/// 
+///
 /// - most recent tip revision SWHID in that snapshot
-/// 
+///
 /// - SWHID of directory targeted by the revision
 struct Args {
     graph_path: PathBuf,
@@ -65,19 +65,14 @@ fn get_most_recent_tip_revision<G: SwhFullGraph>(
         }
     }
 
-    Some((
-        ret,
-        DateTime::from_timestamp(max_timestamp as i64, 0).unwrap(),
-    ))
+    Some((ret, DateTime::from_timestamp(max_timestamp, 0).unwrap()))
 }
 
 fn get_target_directory<G: SwhFullGraph>(graph: &G, revision_node: &NodeId) -> Option<NodeId> {
-    for succ in graph.successors(*revision_node) {
-        if graph.properties().node_type(succ) == NodeType::Directory {
-            return Some(succ);
-        }
-    }
-    None
+    graph
+        .successors(*revision_node)
+        .into_iter()
+        .find(|&succ| graph.properties().node_type(succ) == NodeType::Directory)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -108,14 +103,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!(
                             "- latest full snapshot (produced on {}): {}",
                             visit_date.format("%Y-%m-%d %H:%M:%S"),
-                            snapshot_swhid.to_string()
+                            snapshot_swhid
                         );
                         println!(
                             "- most recent revision ({}): {}",
                             commiter_date.format("%Y-%m-%d %H:%M:%S"),
-                            revision_swhid.to_string()
+                            revision_swhid
                         );
-                        println!("- directory targeted by revision: {}\n", directory_swhid.to_string());
+                        println!("- directory targeted by revision: {}\n", directory_swhid);
                     }
                 }
             }
