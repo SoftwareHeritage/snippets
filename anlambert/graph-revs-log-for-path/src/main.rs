@@ -36,7 +36,7 @@ struct Args {
 
 fn directory_entry_get_by_path<G: SwhFullGraph>(
     graph: &G,
-    rev: &NodeId,
+    rev: NodeId,
     path_parts: &[FilenameId],
 ) -> NodeId {
     let props = graph.properties();
@@ -81,13 +81,13 @@ fn process_revision<G: SwhFullGraph>(graph: &G, rev: &NodeId, heap: &mut BinaryH
 
 fn process_parent_revisions<G: SwhFullGraph>(
     graph: &G,
-    rev: &NodeId,
+    rev: NodeId,
     path_parts: &[FilenameId],
     heap: &mut BinaryHeap<(i64, usize)>,
 ) -> (bool, bool) {
     let rev_path_id = directory_entry_get_by_path(graph, rev, path_parts);
     let mut parents = Vec::new();
-    for succ in graph.successors(*rev) {
+    for succ in graph.successors(rev) {
         if graph.properties().node_type(succ) == NodeType::Revision {
             parents.push(succ);
         }
@@ -100,7 +100,7 @@ fn process_parent_revisions<G: SwhFullGraph>(
     let parent_rev_path_ids = parents
         .clone()
         .into_iter()
-        .map(|parent| directory_entry_get_by_path(graph, &parent, path_parts))
+        .map(|parent| directory_entry_get_by_path(graph, parent, path_parts))
         .collect::<Vec<usize>>();
     let different_path_ids = parent_rev_path_ids
         .clone()
@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         visited.insert(rev);
-        let (rev_with_path, stop_revs_walk) = process_parent_revisions(&graph, &rev, &path_parts, &mut heap);
+        let (rev_with_path, stop_revs_walk) = process_parent_revisions(&graph, rev, &path_parts, &mut heap)?;
         if rev_with_path {
             println!("{}", graph.properties().swhid(rev));
         }
