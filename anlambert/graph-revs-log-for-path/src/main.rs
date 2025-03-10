@@ -4,9 +4,9 @@ use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
-use swh_graph::labels::EdgeLabel;
-use swh_graph::SWHID;
 
+use swh_graph::labels::{EdgeLabel, FilenameId};
+use swh_graph::SWHID;
 use swh_graph::graph::*;
 use swh_graph::NodeType;
 
@@ -37,7 +37,7 @@ struct Args {
 fn directory_entry_get_by_path<G: SwhFullGraph>(
     graph: &G,
     rev: &NodeId,
-    path_parts: &Vec<&str>,
+    path_parts: &[FilenameId],
 ) -> NodeId {
     let props = graph.properties();
     let mut current_dir = 0;
@@ -51,14 +51,12 @@ fn directory_entry_get_by_path<G: SwhFullGraph>(
         return 0;
     }
 
-    for path_part in path_parts {
+    for &path_part in path_parts {
         let mut dir_entry_for_name = 0;
         for (succ, labels) in graph.labeled_successors(current_dir) {
             for label in labels {
                 if let EdgeLabel::DirEntry(dentry) = label {
-                    let filename = props.label_name(dentry.filename_id());
-                    let file_name = String::from_utf8_lossy(&filename);
-                    if file_name == *path_part {
+                    if dentry.filename_id() == path_part {
                         dir_entry_for_name = succ;
                     }
                 }
@@ -84,7 +82,7 @@ fn process_revision<G: SwhFullGraph>(graph: &G, rev: &NodeId, heap: &mut BinaryH
 fn process_parent_revisions<G: SwhFullGraph>(
     graph: &G,
     rev: &NodeId,
-    path_parts: &Vec<&str>,
+    path_parts: &[FilenameId],
     heap: &mut BinaryHeap<(i64, usize)>,
 ) -> (bool, bool) {
     let rev_path_id = directory_entry_get_by_path(graph, rev, path_parts);
@@ -155,7 +153,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let nodeid = graph.properties().node_id(start_rev_swhid)?;
 
-    let path_parts = args.path.trim().split("/").collect::<Vec<_>>();
+    let Ok(path_parts) = args
+        .path
+        .trim()
+        .split("/")
+        .map(|path_part| graph.properties().label_name_id(path_part))
+        .collect::<Result<Vec<_>, _>>() else {
+        // One of the path parts does not exist in the graph, which means there is no file with that name.
+        return Ok(());
+    };
 
     let mut heap = BinaryHeap::<(i64, usize)>::new();
 
