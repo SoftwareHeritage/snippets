@@ -2202,9 +2202,9 @@ dependencies = [
 
 [[package]]
 name = "swh-graph"
-version = "6.3.1"
+version = "6.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ab63827c0a7ad241578a3900856ce3068b737ffd7c159974a136ed0601fac0a"
+checksum = "c75ce3b24eec0f57c94eeb6fa83a44ea9036fa608633c9b31028b819dc347e6f"
 dependencies = [
  "anyhow",
  "base64-simd",
@@ -2228,6 +2228,7 @@ dependencies = [
  "mmap-rs",
  "nonmax",
  "num_cpus",
+ "once_cell",
  "pthash",
  "rand",
  "rayon",
@@ -2236,7 +2237,6 @@ dependencies = [
  "tempfile",
  "thiserror",
  "thread_local",
- "tikv-jemallocator",
  "webgraph",
  "zstd 0.12.4",
 ]

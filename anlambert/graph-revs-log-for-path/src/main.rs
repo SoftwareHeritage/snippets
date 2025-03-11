@@ -41,7 +41,7 @@ fn directory_entry_get_by_path<G: SwhFullGraph>(
 ) -> NodeId {
     let props = graph.properties();
     let mut current_dir = 0;
-    for succ in graph.successors(*rev) {
+    for succ in graph.successors(rev) {
         if props.node_type(succ) == NodeType::Directory {
             current_dir = succ;
             break;
@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
         visited.insert(rev);
-        let (rev_with_path, stop_revs_walk) = process_parent_revisions(&graph, rev, &path_parts, &mut heap)?;
+        let (rev_with_path, stop_revs_walk) = process_parent_revisions(&graph, rev, &path_parts, &mut heap);
         if rev_with_path {
             println!("{}", graph.properties().swhid(rev));
         }
