@@ -14,7 +14,7 @@ import humanize
 import swh.graph.grpc.swhgraph_pb2 as swhgraph
 import swh.graph.grpc.swhgraph_pb2_grpc as swhgraph_grpc
 
-GRAPH_GRPC_SERVER = "maxxi.internal.softwareheritage.org:50091"
+GRAPH_GRPC_SERVER = "graph-grpc.internal.softwareheritage.org:80"
 
 
 @click.command()
