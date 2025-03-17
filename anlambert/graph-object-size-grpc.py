@@ -5,9 +5,11 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
+import atexit
 import time
 
 import click
+from google.protobuf.field_mask_pb2 import FieldMask
 import grpc
 import humanize
 
@@ -51,6 +53,20 @@ def run(swh_graph_grpc_server, max_message_length, swhid):
     nb_skipped_contents = 0
     total_contents_size = 0
 
+    start = time.perf_counter()
+
+    def print_results():
+        end = time.perf_counter()
+        elapsed_time = humanize.naturaldelta(end - start, minimum_unit="microseconds")
+        print(f"BFS execution time = {elapsed_time}")
+        print(f"number of subgraph nodes: {nb_subgraph_nodes}")
+        print(f"number of contents: {nb_contents}")
+        print(f"number of skipped contents: {nb_skipped_contents}")
+        total_size = humanize.naturalsize(total_contents_size, binary=True)
+        print(f"total contents size in bytes: {total_size}")
+
+    atexit.register(print_results)
+
     with grpc.insecure_channel(
         swh_graph_grpc_server,
         options=[
@@ -59,9 +75,14 @@ def run(swh_graph_grpc_server, max_message_length, swhid):
             ("grpc.max_receive_message_length", max_message_length),
         ],
     ) as channel:
-        start = time.perf_counter()
+
         stub = swhgraph_grpc.TraversalServiceStub(channel)
-        response = stub.Traverse(swhgraph.TraversalRequest(src=[swhid]))
+        response = stub.Traverse(
+            swhgraph.TraversalRequest(
+                src=[swhid],
+                mask=FieldMask(paths=["swhid", "cnt.is_skipped", "cnt.length"]),
+            )
+        )
         for item in response:
             nb_subgraph_nodes += 1
             if item.swhid.startswith("swh:1:cnt:"):
@@ -70,15 +91,6 @@ def run(swh_graph_grpc_server, max_message_length, swhid):
                     total_contents_size += item.cnt.length
                 else:
                     nb_skipped_contents += 1
-        end = time.perf_counter()
-
-        elapsed_time = humanize.naturaldelta(end - start, minimum_unit="microseconds")
-        print(f"BFS execution time = {elapsed_time}")
-        print(f"number of subgraph nodes: {nb_subgraph_nodes}")
-        print(f"number of contents: {nb_contents}")
-        print(f"number of skipped contents: {nb_skipped_contents}")
-        total_size = humanize.naturalsize(total_contents_size, binary=True)
-        print(f"total contents size in bytes: {total_size}")
 
 
 if __name__ == "__main__":
