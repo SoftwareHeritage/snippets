@@ -92,7 +92,7 @@ def process_file(input_i):
         target,
         target_folder,
         format="parquet",
-        basename_template="ids-"+suffix+"-{i}",
+        basename_template="ids-"+suffix+"-{i}.parquet",
         existing_data_behavior='overwrite_or_ignore',
     )
     duration = perf_counter() - start

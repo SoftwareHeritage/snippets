@@ -7,6 +7,9 @@ This turns Parquet files from `the-stack-v2-train-full-files` into smaller Parqu
 file containing only 1 *sorted* column `sha1_git` using one row per file
 from the original dataset.
 Tune constants below before running.
+
+Initial version used pa.Table.sort_by but it seems faster to convert to bytes, then sort
+as list[bytes].
 """
 from time import perf_counter
 from datetime import datetime
