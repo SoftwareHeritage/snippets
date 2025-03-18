@@ -75,6 +75,7 @@ workspace {
             technology python
             tags "tdn"
           }
+
           graph_grpc = container "swh-graph grpc" {
             technology "java/rust"
             tags provenance,tdn
@@ -119,7 +120,7 @@ workspace {
 
               masking_proxy = component "masking-proxy" {
                 technology "python"
-                
+
                 description "Filters names and objects"
               }
 
@@ -515,7 +516,7 @@ workspace {
                   tags db
                 }
               }
-              
+
               deploymentNode "archive-webapp-ingress" {
                 tags "Kubernetes - ing"
                 url "http://webapp.staging.swh.network,http://webapp-cassandra.internal.staging.swh.network"
@@ -733,7 +734,7 @@ workspace {
           gloin001 = deploymentNode "gloin001" {
               gloin001_haproxy = infrastructureNode "HaProxy" {
                 description "LoadBalancer"
-              }        
+              }
               gloin001_patroni = infrastructureNode "Patroni" {
                 description "HA PG"
               }
@@ -754,7 +755,7 @@ workspace {
           gloin002 = deploymentNode "gloin002" {
               gloin002_haproxy = infrastructureNode "HaProxy" {
                 description "LoadBalancer"
-              }                
+              }
               gloin002_patroni = infrastructureNode "Patroni" {
                 description "HA PG"
               }
@@ -778,7 +779,7 @@ workspace {
           gloin002_patroni -> gloin002_postgresql "checks"
           gloin001_postgresql -> gloin002_postgresql "Replicates"
           gloin002_postgresql -> gloin001_postgresql "Replicates"
-          gloin001_haproxy -> gloin001_winery_reader "Reads contents" "http" 
+          gloin001_haproxy -> gloin001_winery_reader "Reads contents" "http"
           gloin001_haproxy -> gloin002_winery_reader "Reads contents (backup)" "http" "backup,overlapped"
           gloin002_haproxy -> gloin002_winery_writer "Reads/Writes contents" "http" "overlapped"
           gloin002_haproxy -> gloin001_winery_writer "Reads/Writes contents (backup)" "http" "backup,overlapped"
@@ -981,7 +982,7 @@ workspace {
 
       dynamic swh "winery-shards-writing" {
         title "Winery shard preparation steps"
-        
+
         winery_rpc -> winery_db "Creates a new shard (status WRITING)"
         winery_rpc -> winery_db "Adds contents to the shard"
         winery_rpc -> winery_db "Adds id -> shard reference"
@@ -992,7 +993,7 @@ workspace {
 
       dynamic swh "winery-shards-packing" {
         title "Winery shard preparation steps"
-        
+
         winery_shard_packer -> winery_db "updates FULL shards to PACKING"
         winery_shard_packer -> winery_db "Read shard contents"
         winery_shard_packer -> ceph "Save the shard into the rbd image"
@@ -1003,7 +1004,7 @@ workspace {
 
       dynamic swh "winery-shards-mounting" {
         title "Winery shard preparation steps"
-        
+
         winery_rbd -> winery_db "Waits for PACKED shards"
         winery_rbd -> winery_os "Mounts the rbd image"
         winery_rbd -> winery_db "Updates the shard mount status"
@@ -1013,7 +1014,7 @@ workspace {
 
       dynamic swh "winery-shards-cleaning" {
         title "Winery shard preparation steps"
-        
+
         winery_shard_cleaner -> winery_db "Waits for a PACKED and mounted shard"
         winery_shard_cleaner -> winery_db "Updates status to CLEANING"
         winery_shard_cleaner -> winery_db "Removes shard content"
@@ -1065,7 +1066,7 @@ workspace {
           shape RoundedBox
           background lightblue
         }
-        
+
         relationship overlapped {
           position 75
         }
