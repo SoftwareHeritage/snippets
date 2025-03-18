@@ -350,8 +350,8 @@ workspace {
         vault_rpc -> storage_rpc "???" "rpc" "to_check,vault"
         vault_cookers -> rabbitmq "Gets a cooking task" "" "vault"
         vault_cookers -> graph_rpc "Asks the swhid to cook" "rpc" "to_check,vault"
-        vault_cookers -> storage_rpc "???" "rpc" "to_check,vault"
-        vault_cookers -> vault_rpc "Sends the bundle" "" vault"
+        vault_cookers -> storage_rpc "Retrieves data to cook" "rpc" "to_check,vault"
+        vault_cookers -> vault_rpc "Sends the bundle" "" "vault"
         vault_rpc -> vaultAzureBucket "Stores the bundle" "" "vault"
 
         // search
