@@ -595,7 +595,7 @@ workspace {
             }
           }
 
-          deploymentNode "granet" {
+          deploymentNode "rancher-node-highmem0[1-2]" {
             containerInstance "graph_grpc" "cassandra,pg" "provenance"
           }
 
