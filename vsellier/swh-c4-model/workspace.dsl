@@ -39,7 +39,7 @@ workspace {
 
         swh = softwareSystem "SoftwareHeritage" {
           !decisions docs/coarnotify/adrs
-          keycloak = container "keycloak" "" """provenance"
+          keycloak = container "keycloak" "" "provenance,provenance_v2"
 
           gitlab = container "Gitlab" {
             tags  external,add-forge-now
@@ -78,7 +78,7 @@ workspace {
 
           graph_grpc = container "swh-graph grpc" {
             technology "java/rust"
-            tags provenance,tdn
+            tags "provenance_v2,tdn"
           }
 
           lister = container "listers"
@@ -89,7 +89,17 @@ workspace {
 
           provenance_rpc = container "swh-provenance-rpc" {
             technology python
-            tags provenance
+            tags provenance_v2
+          }
+
+          provenance_grpc = container "swh-provenance-grpc" {
+            technology rust
+            tags "provenance_v2,provenance"
+          }
+
+          provenance_parquet_files = container "swh-parquet-files" {
+            technology rust
+            tags provenance,parquet
           }
 
           rabbitmq = container "RabbitMQ" {
@@ -228,7 +238,7 @@ workspace {
           }
 
           webapp = container "Webapp" {
-            tags scn, vault, provenance, citation,search, add-forge-now
+            tags scn, vault, provenance, provenance_v2, citation,search, add-forge-now
           }
 
           group "winery" {
@@ -291,7 +301,7 @@ workspace {
         graph_rpc -> graph_grpc "Starts" "grpc" "graph"
 
         // indexer
-        indexer_storage_rpc -> indexer_db "reads and writes graph" "sql"
+        indexer_storage_rpc -> indexer_db "reads and writes content metadata" "sql"
 
         // mirrors
         mirrors -> kafka "follows objects stream" "kafka"
@@ -372,10 +382,12 @@ workspace {
               role "XXXXX"
             }
         }
-        webapp -> provenance_rpc "Sends requests" "grpc" "provenance,,overlapped" {
-        }
 
+        webapp -> provenance_rpc "Sends requests" "rpc" "provenance,,overlapped"
         provenance_rpc -> graph_grpc "Sends requests" "grpc" "provenance,overlapped"
+
+        webapp -> provenance_grpc "Sends requests" "grpc" "provenance,,overlapped"
+        provenance_grpc -> provenance_parquet_files "Queries files" "grpc" "provenance,overlapped"
 
         // alter/takedown
         codeOwner -> dpo "requests a takedown or a name change" "" "tdn"
@@ -464,7 +476,7 @@ workspace {
                 containerInstance "webapp" "pg" {
                   tags "Kubernetes - dep"
                   description "archive webapp"
-                  tags provenance
+                  tags provenance_v2,provenance
                 }
               }
             }
@@ -495,7 +507,7 @@ workspace {
                 tags "Kubernetes - ing"
                 url "http://provenance-local"
 
-                containerInstance "provenance_rpc" "cassandra,pg" {
+                containerInstance "provenance_grpc" "cassandra,pg" {
                   tags "Kubernetes - deploy"
                 }
               }
@@ -586,7 +598,7 @@ workspace {
           }
 
           deploymentNode "kelvingrove" {
-            containerInstance "keycloak" "cassandra,pg" "provenance"
+            containerInstance "keycloak" "cassandra,pg" "provenance,provenance_v2"
           }
 
           deploymentNode "search-esnodeX" {
@@ -596,7 +608,7 @@ workspace {
           }
 
           deploymentNode "rancher-node-highmem0[1-2]" {
-            containerInstance "graph_grpc" "cassandra,pg" "provenance"
+            containerInstance "graph_grpc" "cassandra,pg" "provenance_v2"
           }
 
           deploymentNode "kafkaX" {
@@ -819,12 +831,13 @@ workspace {
       deployment * staging "staging_provenance" {
           title "swh-provenance Staging deployment"
           include "element.tag==provenance"
-          autolayout
 
+          autolayout
       }
 
       deployment * production "production_provenance" {
-          include "element.tag==provenance"
+          include "element.tag==provenance_v2"
+
           autolayout
       }
 
@@ -852,6 +865,21 @@ workspace {
       container swh "global" {
         include *
         autolayout
+      }
+
+      container swh "provenance_pre_v3_infra" {
+        title "Provenance pre-v0.3 Infrastructure"
+        include provenance_rpc
+        include graph_grpc
+        autoLayout
+      }
+
+      container swh "provenance_v3_infra" {
+        title "Provenance v0.3 Infrastructure"
+        include provenance_grpc
+        include provenance_parquet_files
+
+        autoLayout
       }
 
       container swh "coarnotify_infra" {
