@@ -55,6 +55,15 @@ workspace {
               technology PostgreSQL
             }
           }
+
+          group swh-provenance {
+            provenance-grpc = container "provenance-grpc" {
+              !docs docs/provenance-v0.3
+              !decisions docs/provenance-v0.3/adrs
+              technology rust,parquet
+            }
+          }
+
           alter = container "swh-alter" {
             tags tdn,search
 
