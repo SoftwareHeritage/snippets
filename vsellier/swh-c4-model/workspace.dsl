@@ -99,8 +99,10 @@ workspace {
             tags scn
 
             scheduler_rpc = component "RPC API"
-            scheduler_runner = component "scheduler runner"
-            scheduler_listener = component "scheduler listerner"
+            scheduler_runner = component "scheduler runner (lister, addforgenow, cook, deposit)"
+            scheduler_runner_priority = component "scheduler runner priority (save-code-now)"
+            scheduler_schedule_recurrent = component "scheduler of recurrent origins to load"
+            scheduler_listener = component "scheduler listener"
             scheduler_journal_client = component "journal client"
 
             scheduler_db = component "Scheduler database" {
@@ -315,7 +317,11 @@ workspace {
 
         // scheduler
         scheduler_runner -> rabbitmq "posts tasks" "celery"
-        scheduler_runner -> scheduler_rpc "selects origins to schedule" "sql"
+        scheduler_runner -> scheduler_rpc "selects tasks to schedule" "sql"
+        scheduler_runner_priority -> rabbitmq "posts tasks" "celery"
+        scheduler_runner_priority -> scheduler_rpc "selects tasks to schedule" "sql"
+        scheduler_schedule_recurrent -> rabbitmq "posts tasks" "celery"
+        scheduler_schedule_recurrent -> scheduler_rpc "selects origins to schedule" "sql"
         scheduler_journal_client -> kafka "reads messages" "tcp"
         scheduler_rpc -> scheduler_db "reads and Writes" "sql"
         scheduler_listener -> scheduler_rpc "updates task status"
