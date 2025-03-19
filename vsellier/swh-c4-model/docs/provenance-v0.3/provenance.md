@@ -169,8 +169,9 @@ For provenance, users allows to manipulate the provenance have the role
 
 ### Red button
 
-*The procedure to stop the service in case of a red alarm (attack/ddos/wrong behavior)*
+As the service is only exposed through the webapp, we can simply deactivate
+the provenance configuration in the webapp deployment.
 
 ### Reaction to alerts
 
-*The procedures related to the monitoring alerts*
+TBD
