@@ -70,13 +70,16 @@ to limit.
 
 ### Timeout chain
 
-Top timeout shoud be greater than the sum of the dependent timeouts including the retries
+Top timeout should be greater than the sum of the dependent timeouts including
+the retries.
 
-| Id  | Origin  | Target           | Dependency | Retry count/Timeout (s) | Value (s) |
-| --- | ------- | ---------------- | :--------: | :---------------------: | :-------: |
-| 1   | client  | ingress          |     2      |            ?            |    TDB    |
-| 2   | ingress | rpc              |    3,4     |            0            |    TDB    |
-| 3   | grpc    | parquet files    |     X      |            0            |    TDB    |
+| Id  | Origin       | Target           | Dependency | Retry count/Timeout (s) | Value (s) |
+| --- | ------------ | ---------------- | :--------: | :---------------------: | :-------: |
+| 1   | client       | web-ingress      |     2      |            ?            |    TBD    |
+| 2   | web-ingress  | webapp           |     3      |            0            |    TBD    |
+| 3   | webapp       | grpc-ingress     |     4      |            0            |    TBD    |
+| 4   | grpc-ingress | grpc             |     5      |            0            |    TBD    |
+| 3   | grpc         | parquet files    |     X      |            0            |    TBD    |
 
 ### Side impacts
 
