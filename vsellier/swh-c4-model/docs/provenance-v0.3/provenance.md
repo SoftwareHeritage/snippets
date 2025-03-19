@@ -37,11 +37,14 @@ Through the standard web api authentication mechanism.
 
 ?
 
-## Public domains
+## Internal Domains
 
-The public hostnames will be:
-- staging: `provenance.staging.swh.network`
-- production: `provenance.softwareheritage.org`
+As the provenance will be used through the webapi, there is no public domain,
+only internal.
+
+The hostnames will be:
+- staging: `provenance.internal.staging.swh.network`
+- production: `provenance.internal.softwareheritage.org`
 
 ### Sentry
 
