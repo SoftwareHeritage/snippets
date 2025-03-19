@@ -155,8 +155,10 @@ TODO:
 
 ### Backup/Restore
 
-No backup exists.
-We'll need to restore the parquet files.
+The service is a read-only service. And the dataset files are stored in s3.
+
+As the service initializes its dataset from s3 (through an init-container), if
+any data loss occurs, we need to restart the dataset installation process.
 
 ### User management
 
