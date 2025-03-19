@@ -162,7 +162,10 @@ any data loss occurs, we need to restart the dataset installation process.
 
 ### User management
 
-Users are the ones references in keycloak, probably with a specific role.
+Users management happen with keycloak.
+
+For provenance, users allows to manipulate the provenance have the role
+`swh.web.api.provenance`.
 
 ### Red button
 
