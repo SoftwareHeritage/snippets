@@ -78,7 +78,7 @@ The hostnames will be:
 
 The sentry configuration is already defined from the previous version.
 
-### Rate limiting
+### Rate limit
 
 The standard web api rate limit mechanism will be used.  Actual rate limit for
 the provenance api remains to be defined.
