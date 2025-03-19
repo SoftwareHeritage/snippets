@@ -113,10 +113,15 @@ None
 
 ### Preliminary tasks
 
-- [ ] Adapt the swh-provenance docker image
-- [x] Create sentry project (if needed)
+- [ ] https://gitlab.softwareheritage.org/swh/infra/swh-apps/-/merge_requests/53: Adapt the swh-provenance docker image with rust tools
+- [x] ~~Create sentry project (if needed)~~
 - [ ] Update the deployment charts to readapt the swh-provenance application
+  - [ ] Allow type declaration of the server: rpc or grpc (as both exist)
+  - [ ] Grpc: Prepare graph and provenance datasets in pv
+  - [ ] Grpc: Allow to run service (behind ingress)
 - [ ] Prepare the `swh-next-version` and `staging` configurations
+  - [ ] Share the pvc/pv with the same dataset
+  - [ ] Expose service
 
 ### Staging deployment
 
