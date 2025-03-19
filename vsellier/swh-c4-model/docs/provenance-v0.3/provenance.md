@@ -56,12 +56,17 @@ ACTIONS:
 
 ### Rate limiting
 
-Any rate limit?
+The standard web api rate limit mechanism will be used.  Actual rate limit for
+the provenance api remains to be defined.
 
-Supposedly, this passes through the web api's rate limit mechanism.
+As this rate limit mechanism is per user though, this won't prevent burst of
+requests.
 
-Actual rate limit remains to be defined.
-
+The rpc service (from the previous implementation) was defacto limited by the
+number of (gunicorn) workers used. As the new implementation is a grpc rust
+process, we cannot limit the number of connections. In that regard, we'll be
+adding a max concurrent parallel connection configuration at the ingress level
+to limit.
 
 ### Timeout chain
 
