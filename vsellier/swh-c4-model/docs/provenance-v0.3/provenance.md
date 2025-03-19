@@ -76,11 +76,7 @@ The hostnames will be:
 
 ### Sentry
 
-*Sentry configuration not yet defined*
-
-ACTIONS:
-- Create a new project
-- Paste the information here
+The sentry configuration is already defined from the previous version.
 
 ### Rate limiting
 
