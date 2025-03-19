@@ -33,9 +33,37 @@ Its backend relies on parquet files.
 
 Through the standard web api authentication mechanism.
 
-## Volume
+# Volume
 
-?
+### datasets
+
+The provenance needs 2 datasets:
+- parquet files which is the main database queries by the provenance server
+- graph files:
+  - `graph.pthash`
+  - `graph.pthash.order`
+  - `graph.node2swhid.bin`
+  - `graph.node2type.bin`
+
+#### production (with the 2024-12-06 graph)
+
+- Memory consumption: at least 30GB, up to 70GB would be nice. More is better
+  (kernel cache of mmaped files) but has diminishing returns. Probably not
+  worth dedicating more than 200GB.
+- Disk (17.5TB):
+    - provenance database: 16TB [1]
+    - graph files: ~1.5TB
+
+[1] In the future, we could use remote files too [e.g. s3, minio] at the cost
+of performance
+
+#### staging (with the 2024-08-23-popular-500-python graph)
+
+- Memory consumption: TBD
+- Disk 32GB:
+  - provenance database: 30GB
+    (on `/srv/softwareheritage/ssd/data/vlorentz/provenance-all/2024-08-23-popular-500-python`)
+  - graph files: 1.5GB
 
 ## Internal Domains
 
