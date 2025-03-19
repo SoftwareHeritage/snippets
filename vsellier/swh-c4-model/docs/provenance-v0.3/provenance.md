@@ -3,6 +3,7 @@
 ## References
 
 - [Provenance v0.3.3 deployment spec](https://hedgedoc.softwareheritage.org/scsWvzQZRO2HW2gisANXBw?view)
+- [Source code](https://gitlab.softwareheritage.org/swh/devel/snippets/-/merge_requests/27)
 
 ## Communication
 
