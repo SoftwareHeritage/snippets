@@ -41,19 +41,27 @@ Through the standard web api authentication mechanism.
 The provenance needs 2 datasets:
 - parquet files which is the main database queries by the provenance server
 - graph files:
-  - `graph.pthash`
-  - `graph.pthash.order`
-  - `graph.node2swhid.bin`
-  - `graph.node2type.bin`
+  - graph.pthash
+  - graph.pthash.order
+  - graph.node2swhid.bin
+  - graph.node2type.bin
+  - graph.nodes.count.txt
+  - graph.property.message.bin
+  - graph.property.message.offset.bin
+  - graph.property.tag_name.bin
+  - graph.property.tag_name.offset.bin
+
+Note: the .bin files are stored compressed (.zst) in s3.
 
 #### production (with the 2024-12-06 graph)
 
 - Memory consumption: at least 30GB, up to 70GB would be nice. More is better
   (kernel cache of mmaped files) but has diminishing returns. Probably not
-  worth dedicating more than 200GB.
+  worth dedicating more than 200GB
 - Disk (17.5TB):
     - provenance database: 16TB [1]
-    - graph files: ~1.5TB
+    - needs some of the graph files locally (~2.7TB): from a matching graph
+      version
 
 [1] In the future, we could use remote files too [e.g. s3, minio] at the cost
 of performance
