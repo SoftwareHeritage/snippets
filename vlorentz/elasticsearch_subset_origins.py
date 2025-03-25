@@ -86,7 +86,7 @@ for result in elasticsearch.helpers.scan(client, index="origin-v0.11", query=que
     (jsonld,) = result["fields"]["jsonld"]
     (language,) = jsonld[LANGUAGE_PATH]
     (num_likes,) = jsonld[LIKES_PATH]
-    if language == "C":
+    if language != "C":
         # TODO: find a way to make Elasticsearch return only exact matches...
         continue
     writer.writerow(("swh:1:ori:" + result['_id'], url, num_likes))
