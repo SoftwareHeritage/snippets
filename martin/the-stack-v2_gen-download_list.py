@@ -9,7 +9,12 @@ and not in `the-stack-v2-train-full-files`, in order to create a "to-download" l
 
 See constants below
 
-One instance of `diff()` likely takes 20GB of RAM and 30 minutes.
+One instance of `diff()` likely takes 2GB of RAM and 30 minutes.
+
+note: to quickly check how many rows are in the dataset, use
+    import pyarrow.dataset as ds
+    d = ds.dataset(path)
+    sum(f.count_rows() for f in d.get_fragments())
 """
 
 from concurrent.futures import ProcessPoolExecutor
@@ -21,8 +26,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.dataset as ds
 
-# adapt this to the memory (seems to consume 16-20GB/worker)
-MAX_WORKERS = 10
+# adapt this to the memory (seems to consume 5GB/worker)
+MAX_WORKERS = 20
 
 BASEDIR = "/bettik/PROJECTS/pr-swh-codecommons/COMMON"
 
@@ -30,10 +35,10 @@ BASEDIR = "/bettik/PROJECTS/pr-swh-codecommons/COMMON"
 base = Path(f"{BASEDIR}/the-stack-v2/data")
 
 # path to parquet files resulting from `the-stack-v2-train-full-files_extractSortedIDs.py`
-minus_extractedIDs = Path(f"{BASEDIR}/the-stack-v2-train-sorted-IDs/part-0.parquet")
+minus_extractedIDs = Path(f"{BASEDIR}/the-stack-v2-train-sorted-IDs")
 
 # local copy because we're not supposed to transfer 21GB 900 times
-local_copy_extractedIDs = Path("/var/tmp/kirchgem/the-stack-v2-train-sorted-IDs.parquet")
+local_copy_extractedIDs = Path("/var/tmp/kirchgem/the-stack-v2-train-sorted-IDs")
 
 target_folder = Path(f"{BASEDIR}/sha1_to_download")
 
@@ -58,36 +63,38 @@ def read_sort_base(filename) -> list[bytes]:
     return base_hashes
 
 def read_sort_minus():
-    minus_list = ds.dataset(local_copy_extractedIDs, format="parquet").to_table(
-        columns=["sha1"]
-    )
-    print(datetime.now().isoformat(), "loaded sorted  minus list")
-    return minus_list
+    minus_list = ds.dataset(local_copy_extractedIDs, format="parquet")
+    previous = None
+    for f in minus_list.get_fragments():
+        fragment = f.to_table(
+            columns=["sha1"]
+        )
+        for i in range(len(fragment)):
+            c = fragment[0][i].as_py()
+            if previous is not None and previous > c:
+                raise Exception(f"i={i} previous={previous} c={c} unordered")
+            previous = c
+            yield c
+
+    yield None
 
 def diff(sorted_base, sorted_minus):
     print(datetime.now().isoformat(), "computing diff")
     max_base = len(sorted_base)
-    max_minus = len(sorted_minus)
-    # percent = max_minus // 100
     i_base = 0
-    i_minus = 0
-    parsed_minus = sorted_minus[0][i_minus].as_py()
+    parsed_minus = next(sorted_minus)
     diff = []
-    while i_base < max_base and i_minus < max_minus:
+    while i_base < max_base:
         if sorted_base[i_base] < parsed_minus:
             diff.append(sorted_base[i_base])
             i_base += 1
         elif sorted_base[i_base] > parsed_minus:
-            # should not happen... but we don't care because `minus` is the dataset
-            # with content included so we won't miss that content anyway.
-            i_minus += 1
-            parsed_minus = sorted_minus[0][i_minus].as_py()
+            if parsed_minus is not None:
+                parsed_minus = next(sorted_minus)
         else:
             i_base += 1
-            i_minus += 1
-            parsed_minus = sorted_minus[0][i_minus].as_py()
-        # if i_minus % percent == 1:
-        #     print(datetime.now().isoformat(), f"processed {(i_minus*100/max_minus):.2f}% rows")
+            if parsed_minus is not None:
+                parsed_minus = next(sorted_minus)
     return diff
 
 def process_file(filename):
@@ -129,7 +136,7 @@ if __name__ == "__main__":
     print(datetime.now().isoformat(), "starting")
 
     local_copy_extractedIDs.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(minus_extractedIDs, local_copy_extractedIDs)
+    shutil.copytree(minus_extractedIDs, local_copy_extractedIDs)
     print(datetime.now().isoformat(), f"copied locally: {local_copy_extractedIDs}")
 
     files = [str(f) for f in base.glob("**/*.parquet")]
@@ -146,7 +153,7 @@ if __name__ == "__main__":
                 )
 
     print(datetime.now().isoformat(), "cleaning")
-    shutil.rmtree(local_copy_extractedIDs.parent)
+    shutil.rmtree(local_copy_extractedIDs)
 
     print(
         datetime.now().isoformat(),

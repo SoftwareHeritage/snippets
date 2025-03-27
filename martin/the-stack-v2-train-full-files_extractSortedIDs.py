@@ -73,11 +73,7 @@ if __name__ == "__main__":
         schema=schema,
     )
 
-    ds.write_dataset(
-        target,
-        target_folder,
-        format="parquet",
-    )
+    ds.write_dataset(target, target_folder, format="parquet", use_threads=False, max_rows_per_file=10000000)
 
     print(
         datetime.now().isoformat(),
