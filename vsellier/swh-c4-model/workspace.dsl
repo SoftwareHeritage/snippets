@@ -96,11 +96,6 @@ workspace {
             tags scn
           }
 
-          provenance_rpc = container "swh-provenance-rpc" {
-            technology python
-            tags provenance_v2
-          }
-
           provenance_grpc = container "swh-provenance-grpc" {
             technology rust
             tags "provenance_v2,provenance"
@@ -392,9 +387,6 @@ workspace {
             }
         }
 
-        webapp -> provenance_rpc "Sends requests" "rpc" "provenance,,overlapped"
-        provenance_rpc -> graph_grpc "Sends requests" "grpc" "provenance,overlapped"
-
         webapp -> provenance_grpc "Sends requests" "grpc" "provenance,,overlapped"
         provenance_grpc -> provenance_parquet_files "Queries files" "grpc" "provenance,overlapped"
 
@@ -652,7 +644,7 @@ workspace {
                 url "http://provenance-local"
                 description "http://provenance-local"
 
-                containerInstance "provenance_rpc" "cassandra,pg"
+                containerInstance "provenance_grpc" "cassandra,pg"
               }
             }
 
@@ -874,13 +866,6 @@ workspace {
       container swh "global" {
         include *
         autolayout
-      }
-
-      container swh "provenance_pre_v3_infra" {
-        title "Provenance pre-v0.3 Infrastructure"
-        include provenance_rpc
-        include graph_grpc
-        autoLayout
       }
 
       container swh "provenance_v3_infra" {
