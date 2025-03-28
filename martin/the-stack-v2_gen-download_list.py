@@ -26,8 +26,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.dataset as ds
 
-# adapt this to the memory (seems to consume 5GB/worker)
-MAX_WORKERS = 20
+# adapt this to the CPU/memory (seems to consume less than 2GB/worker)
+MAX_WORKERS = 30
 
 BASEDIR = "/bettik/PROJECTS/pr-swh-codecommons/COMMON"
 
@@ -42,19 +42,14 @@ local_copy_extractedIDs = Path("/var/tmp/kirchgem/the-stack-v2-train-sorted-IDs"
 
 target_folder = Path(f"{BASEDIR}/sha1_to_download")
 
-def parse(string_scalar):
-    return bytes.fromhex(string_scalar.as_py())
 
 def read_sort_base(filename) -> list[bytes]:
-    complete_list = ds.dataset(filename, format="parquet").to_table(columns=["blob_id"])
-    # print(datetime.now().isoformat(), "loaded complete list")
     base_hashes = []
-    for i in range(len(complete_list)):
-        try:
-            base_hashes.append(parse(complete_list[0][i]))
-        except Exception as e:
-            print(f"in complete_list[{i}]: {e}")
-            continue
+    dataset = ds.dataset(filename, format="parquet")
+    scanner = ds.Scanner.from_dataset(dataset, columns=["blob_id"])
+    for batch in scanner.to_batches():
+        for item in batch.to_pylist():
+            base_hashes.append(bytes.fromhex(item['blob_id']))
     base_hashes.sort()
     print(
         datetime.now().isoformat(),
@@ -63,20 +58,30 @@ def read_sort_base(filename) -> list[bytes]:
     return base_hashes
 
 def read_sort_minus():
-    minus_list = ds.dataset(local_copy_extractedIDs, format="parquet")
+    """
+    We use a hacky method (use_threads=False) when reading/writing this file, to ensure
+    we find back hashes sorted as when they were written.
+    But we check the order just to be sure...
+    """
+    part_i = 0
     previous = None
-    for f in minus_list.get_fragments():
-        fragment = f.to_table(
-            columns=["sha1"]
-        )
-        for i in range(len(fragment)):
-            c = fragment[0][i].as_py()
-            if previous is not None and previous > c:
-                raise Exception(f"i={i} previous={previous} c={c} unordered")
-            previous = c
-            yield c
-
+    while True:
+        part_path = local_copy_extractedIDs / f"part-{part_i}.parquet"
+        if not part_path.exists():
+            break
+        dataset = ds.dataset(part_path, format="parquet")
+        scanner = ds.Scanner.from_dataset(dataset, columns=["sha1"], use_threads=False)
+        for batch in scanner.to_batches():
+            for item in batch.to_pylist():
+                c = item['sha1']
+                if previous is not None and previous > c:
+                    raise Exception(f"previous={previous} c={c} unordered")
+                previous = c
+                yield c
+        part_i += 1
     yield None
+
+
 
 def diff(sorted_base, sorted_minus):
     print(datetime.now().isoformat(), "computing diff")
@@ -85,7 +90,7 @@ def diff(sorted_base, sorted_minus):
     parsed_minus = next(sorted_minus)
     diff = []
     while i_base < max_base:
-        if sorted_base[i_base] < parsed_minus:
+        if parsed_minus is None or sorted_base[i_base] < parsed_minus:
             diff.append(sorted_base[i_base])
             i_base += 1
         elif sorted_base[i_base] > parsed_minus:
