@@ -273,7 +273,7 @@ workspace {
 
 
         // Global use cases
-        user -> swh "Browses an origin\nAsks to retreive an origin content"
+        user -> swh "Browses an origin\nAsks to retrieve an origin content"
         user -> keycloak "Creates and manage an account"
         systemAdministrator -> keycloak "Manages user permission"
 
@@ -291,7 +291,7 @@ workspace {
 
         // Coar notify
         fairCorePartners -> coarnotify_rpc "sends a notifications" "" "http"
-        coarnotify_rpc -> fairCorePartners "sends an acknoledgment and information" "" "http"
+        coarnotify_rpc -> fairCorePartners "sends an acknowledgment and information" "" "http"
         coarnotify_rpc -> coarnotify_db "Stores messages" "" "SQL"
         coarnotify_rpc -> storage_rpc "Stores raw_extrinsic_metadata" "" "http"
 
@@ -397,7 +397,7 @@ workspace {
         webapp -> masking_proxy_db "Refreshes masking and mailmap information"
 
         systemAdministrator -> swh "proceeds a take down request""" "tdn"
-        systemAdministrator -> alter_cli "launchs a takedown of an origin" "cli" "tdn"
+        systemAdministrator -> alter_cli "launches a takedown of an origin" "cli" "tdn"
         systemAdministrator -> blocking_proxy_cli "Manages blocked objects" "cli" "tdn"
         systemAdministrator -> masking_proxy_cli "Manages masked objects" "cli" "tdn"
         masking_proxy_cli -> masking_proxy_db "Manages masked objects" "python" "sql"
