@@ -136,21 +136,14 @@ None
 
 The staging deployment will be deployed with the new grpc server.
 
-![](https://hedgedoc.softwareheritage.org/uploads/c0d06aa7-6362-494c-b683-6778aed4a1f2.png)
+![](https://hedgedoc.softwareheritage.org/uploads/f79e7ad2-b8da-4b3a-8d31-2398b962ec04.svg)
 
 ### Production deployment
 
-The project is currently in MVP stage and planned to be only accessible in
-staging.
+After deploying the staging instance and testing it a bit, the production
+deployment got adapted accordingly.
 
-The production deployment will be adapted later once we tested the staging
-instance. We need to determine the test scenarios that will give a go to run
-the equivalent instance in production.
-
-In the mean time, production remains as-is (running the rpc service that hit
-the graph grpc):
-
-![](https://hedgedoc.softwareheritage.org/uploads/7654eefa-833e-4522-872d-025bcc284d41.png)
+![](https://hedgedoc.softwareheritage.org/uploads/2b36b87c-fabe-4e00-b1c5-66f4bf628ce2.svg)
 
 ## Monitoring
 

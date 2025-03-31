@@ -39,7 +39,7 @@ workspace {
 
         swh = softwareSystem "SoftwareHeritage" {
           !decisions docs/coarnotify/adrs
-          keycloak = container "keycloak" "" "provenance,provenance_v2"
+          keycloak = container "keycloak" "" "provenance"
 
           gitlab = container "Gitlab" {
             tags  external,add-forge-now
@@ -87,7 +87,7 @@ workspace {
 
           graph_grpc = container "swh-graph grpc" {
             technology "java/rust"
-            tags "provenance_v2,tdn"
+            tags "tdn"
           }
 
           lister = container "listers"
@@ -98,7 +98,7 @@ workspace {
 
           provenance_grpc = container "swh-provenance-grpc" {
             technology rust
-            tags "provenance_v2,provenance"
+            tags "provenance"
           }
 
           provenance_parquet_files = container "swh-parquet-files" {
@@ -242,7 +242,7 @@ workspace {
           }
 
           webapp = container "Webapp" {
-            tags scn, vault, provenance, provenance_v2, citation,search, add-forge-now
+            tags scn, vault, provenance, citation,search, add-forge-now
           }
 
           group "winery" {
@@ -387,7 +387,7 @@ workspace {
             }
         }
 
-        webapp -> provenance_grpc "Sends requests" "grpc" "provenance,,overlapped"
+        webapp -> provenance_grpc "Sends requests" "grpc" "provenance,overlapped"
         provenance_grpc -> provenance_parquet_files "Queries files" "grpc" "provenance,overlapped"
 
         // alter/takedown
@@ -477,7 +477,7 @@ workspace {
                 containerInstance "webapp" "pg" {
                   tags "Kubernetes - dep"
                   description "archive webapp"
-                  tags provenance_v2,provenance
+                  tags provenance
                 }
               }
             }
@@ -599,7 +599,7 @@ workspace {
           }
 
           deploymentNode "kelvingrove" {
-            containerInstance "keycloak" "cassandra,pg" "provenance,provenance_v2"
+            containerInstance "keycloak" "cassandra,pg" "provenance"
           }
 
           deploymentNode "search-esnodeX" {
@@ -609,7 +609,7 @@ workspace {
           }
 
           deploymentNode "rancher-node-highmem0[1-2]" {
-            containerInstance "graph_grpc" "cassandra,pg" "provenance_v2"
+            containerInstance "graph_grpc" "cassandra,pg" ""
           }
 
           deploymentNode "kafkaX" {
@@ -837,7 +837,8 @@ workspace {
       }
 
       deployment * production "production_provenance" {
-          include "element.tag==provenance_v2"
+          title "swh-provenance Production deployment"
+          include "element.tag==provenance"
 
           autolayout
       }
@@ -866,14 +867,6 @@ workspace {
       container swh "global" {
         include *
         autolayout
-      }
-
-      container swh "provenance_v3_infra" {
-        title "Provenance v0.3 Infrastructure"
-        include provenance_grpc
-        include provenance_parquet_files
-
-        autoLayout
       }
 
       container swh "coarnotify_infra" {
