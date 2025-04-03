@@ -1,3 +1,12 @@
+# This harass S3 to download objects listed in a parquet file having at least a
+# "sha1":pa.binary(20) column (like, built with the-stack-v2_gen-download_list.py)
+#
+# Requires:
+# - aiohttp
+# - certifi
+# - pyzstd
+# - pyarrow
+
 import asyncio
 from datetime import datetime
 from typing import Callable, Iterator
@@ -5,6 +14,8 @@ from urllib.parse import urljoin
 from pathlib import Path
 import zlib
 import aiohttp
+import certifi
+import ssl
 import pyzstd
 import tarfile
 import io
@@ -13,14 +24,24 @@ import os
 import pyarrow.dataset as ds
 from concurrent.futures import ProcessPoolExecutor
 import shutil
+import random
 # import aiomonitor
 
+##### adapt these constants to your local coaster 🎢
+# you might also have to adapt calls to shutil.move
 BASEDIR = Path("/bettik/PROJECTS/pr-swh-codecommons/COMMON")
-TMP_ROOT = Path("/scratch/cargo/kirchgem")
 TARGET_ROOT = BASEDIR / "the-stack-v2-pathsliced"
 INPUT = BASEDIR / "sha1_to_download"
+TMP_ROOT = Path("/silenus/PROJECTS/pr-swh-codecommons/COMMON")
 CONCURRENT_REQUESTS = 60
-CONCURRENT_PROCESSES = 8
+CONCURRENT_PROCESSES = 15
+
+# how many bytes of *input* (yes, Parquet files) are processed per second of execution ?
+# you'll need a few attempts to estimate this, then processes can estimate if they'll be
+# able to process a batch before $OAR_JOB_WALLTIME_SECONDS - or, don't provide an
+# env with $OAR_JOB_WALLTIME_SECONDS
+INPUT_RATE=7000
+##### 🚀
 
 ID_HASH_ALGO = "sha1"
 ID_HEXDIGEST_LENGTH = 40
@@ -30,7 +51,7 @@ MTIME = int(time.time())
 class PathSlicer:
     """
     yes this is copypasted from swh.objstorage.backends.pathslicing.PathSlicer
-    but this will be running in non-swh envs
+    because this will be running in non-swh envs
     """
 
     def __init__(self, root: str, slicing: str):
@@ -115,7 +136,8 @@ class PathSlicer:
 
 class AWSObjStorageDownloader():
     """
-    HTTPReadOnlyObjStorage hardcoded to AWS and without the whole SWH dependencies
+    HTTPReadOnlyObjStorage hardcoded to AWS, without the whole SWH dependencies, with
+    fancy counters and the ability to run concurrent queries
     """
     def __init__(self,
                  client: aiohttp.ClientSession,
@@ -135,6 +157,7 @@ class AWSObjStorageDownloader():
         self.on_content = on_content
         self.ids_generator = ids_generator
         self.total_bytes = 0
+        self.total_bytes_uncompressed = 0
         self.nb_objects = 0
 
     async def start(self):
@@ -147,9 +170,7 @@ class AWSObjStorageDownloader():
             new_task = asyncio.create_task(self._get(obj_id), name=task_id)
             new_task.add_done_callback(self.on_task_done)
             self.tasks[task_id] = new_task
-        while len(self.tasks) > 0:
-            await asyncio.sleep(0.01) # leave some time for tasks to .set() !
-            await self.can_push_task.wait()
+        await asyncio.gather(*self.tasks.values())
 
     def on_task_done(self, task):
         if task.exception():
@@ -176,9 +197,6 @@ class AWSObjStorageDownloader():
             content = await self._get_retry(self._path(obj_id))
         except Exception as e:
             raise ValueError(f"error: {obj_id.hex()} {e}")
-
-        self.total_bytes += len(content)
-        self.nb_objects += 1
         try:
             uncompressed = zlib.decompress(content, wbits=31)
         except (zlib.error):
@@ -187,6 +205,9 @@ class AWSObjStorageDownloader():
                 "compressed file"
             )
 
+        self.total_bytes += len(content)
+        self.total_bytes_uncompressed += len(uncompressed)
+        self.nb_objects += 1
         self.on_content(obj_id, uncompressed)
 
     def _path(self, obj_id:bytes) -> str:
@@ -205,20 +226,44 @@ def gen_hashes(parquet_file_path):
             yield item["sha1"]
 
 
-async def process_file(input: Path):
-    # loop = asyncio.get_running_loop()
+async def process_file(input: Path, max_timestamp: int):
+    """
+    This decides independantly to process input or not, if
+     * it would take too much time (ie. might end after max_timestamp, at INPUT_RATE)
+     * it is already processed, or being processed (in which case the empty target file is just a flag)
+    """
+
+    loop = asyncio.get_running_loop()
+    loop.slow_callback_duration = 10.
+
     # with aiomonitor.start_monitor(loop, hook_task_factory=True):
 
     target = TARGET_ROOT / input.name.replace(".parquet", ".tar.zst")
     if target.exists():
-        print(datetime.now().isoformat(), f"skipping existing {target}")
+        # print(datetime.now().isoformat(), f"skipping existing {target}")
         return
-    print(datetime.now().isoformat(), f"STARTING {input}")
 
-    tmp_target = TMP_ROOT / input.name.replace(".parquet", ".tar.zst")
+    estimated_end = time.time() + input.stat().st_size / INPUT_RATE
+    if estimated_end >= max_timestamp:
+        # eta = datetime.fromtimestamp(estimated_end).isoformat()
+        # print(
+        #     datetime.now().isoformat(),
+        #     f"skipping {target} because it might finish too late (ETA: {eta})",
+        # )
+        return
+
+    print(datetime.now().isoformat(), f"STARTING {input}")
+    target.touch(exist_ok=False)
+    tmp_target = TMP_ROOT / (target.name + ".writing")
     started = time.perf_counter()
 
-    with pyzstd.open(tmp_target, "wb") as file:
+    # SSL conf does not seem greatly bound to Python on cargo.ciment
+    # enable_cleanup_closed may avoid memory leaks in Python<3.12 (but we still have a leak somewhere - arrow maybe ?)
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    connector = aiohttp.TCPConnector(ssl=ssl_context, enable_cleanup_closed=True)
+
+    # 2MB writing buffer should be nicer to network storages we're targeting
+    with pyzstd.ZstdFile(tmp_target, "wb", write_size=2*1024*1024) as file:
         with tarfile.open(fileobj=file, mode="w") as tf:
 
             slicer = PathSlicer("", "0:2/0:5")
@@ -231,7 +276,7 @@ async def process_file(input: Path):
                 buffered = io.BytesIO(content)
                 tf.addfile(tarinfo, buffered)
 
-            async with aiohttp.ClientSession() as client:
+            async with aiohttp.ClientSession(connector=connector) as client:
                 downloader = AWSObjStorageDownloader(
                     client,
                     CONCURRENT_REQUESTS,
@@ -240,29 +285,51 @@ async def process_file(input: Path):
                     )
                 await downloader.start()
 
+    # transfer "file.writing" to bettik
+    transferred_tmp = TARGET_ROOT / tmp_target.name
+    shutil.move(tmp_target, transferred_tmp)
+    # rename on bettik to the final file name, marking that batch as completed
     shutil.move(tmp_target, target)
+
+    # flex those rates to the log
     done = time.perf_counter()
     spent = int(done - started)
     rate = downloader.total_bytes / (done-started) / 1024 / 1024
-
+    objrate = downloader.nb_objects / (done - started)
     print(
         datetime.now().isoformat(),
         f"DONE {input} downloaded {downloader.nb_objects} objects "
-        f"({downloader.total_bytes} bytes) in {spent}s ({rate:.2f} MB/s)",
+        f"({downloader.total_bytes} bytes compressed, "
+        f"{downloader.total_bytes_uncompressed} uncompressed) in {spent}s "
+        f"({objrate} objects/s, {rate:.2f} MB/s transferred)",
     )
 
 
-def main(input: str):
-    asyncio.run(process_file(Path(input)), debug=True)
+def main(param):
+    input, max_timestamp = param
+    asyncio.run(process_file(Path(input), max_timestamp), debug=True)
 
 
 
 if __name__ == "__main__":
     print(datetime.now().isoformat(), "starting")
+
+    try:
+        job_max_timestamp = int(os.environ["OAR_JOB_WALLTIME_SECONDS"]) + time.time() - 10
+    except KeyError:
+        job_max_timestamp = 9999999999
+        print("can't find environment variable OAR_JOB_WALLTIME_SECONDS, so batches "
+              "will not predict their runtime with INPUT_RATE. Hope you don't have a "
+              "time limit !")
+
     files = [str(f) for f in INPUT.glob("**/*.parquet")]
+    # we shuffle the files list so multiple machines running in parallel would very unlikely
+    # check that a flag file exist at the same time.
+    random.shuffle(files)
+    params = zip(files, [job_max_timestamp]*len(files))
+
     with ProcessPoolExecutor(max_workers=CONCURRENT_PROCESSES) as executor:
-        results = executor.map(main, files)
+        results = executor.map(main, params)
         for _ in results:
             pass
     print(datetime.now().isoformat(), "done")
-
