@@ -289,7 +289,7 @@ async def process_file(input: Path, max_timestamp: int):
     transferred_tmp = TARGET_ROOT / tmp_target.name
     shutil.move(tmp_target, transferred_tmp)
     # rename on bettik to the final file name, marking that batch as completed
-    shutil.move(tmp_target, target)
+    shutil.move(transferred_tmp, target)
 
     # flex those rates to the log
     done = time.perf_counter()
