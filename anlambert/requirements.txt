@@ -6,5 +6,7 @@ ndjson
 pyspark
 python-keycloak
 requests
+srcinfo
+swh-core
 swh-model
 swh-storage
