@@ -1,6 +1,7 @@
 boto3
 chardet
 click
+dulwich
 humanize
 ndjson
 pyspark
