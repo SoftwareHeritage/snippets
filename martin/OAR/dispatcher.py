@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -u
 
 #OAR -d /home/kirchgem/2025-06-15-testnodesdispatching
 #OAR -l /nodes=10/core=1,walltime=00:01:00
@@ -66,6 +66,7 @@ def node_driver(q, node_name):
             params = ["oarsh", node_name, __file__, p]
             run(params, stdout=stdout, stderr=stdout)
         except Empty:
+            log.info("No more jobs for %s", node_name)
             return
 
 def main_head():

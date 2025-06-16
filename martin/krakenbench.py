@@ -1,10 +1,43 @@
 #!/usr/bin/env -S python -u
+
+# OAR -d /home/kirchgem/2025-06-17-bench1
+# OAR -l /nodes=2,walltime=02:00:00
+# OAR --name swh-fuse-hyply1
+# OAR --project pr-swh-codecommons
+# OAR --stdout stdout.log
+# OAR --stderr stderr.log
+
+
 from time import perf_counter, sleep
 from pathlib import Path
 from subprocess import run, Popen, PIPE
 from tempfile import TemporaryDirectory
 from concurrent.futures import ProcessPoolExecutor
-import click
+import logging
+from sys import argv, stdout
+from os import environ
+from threading import Thread
+from queue import Queue, Empty
+import socket
+
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+
+HOSTNAME = socket.gethostname()
+
+PROCESS_PER_NODE = 200
+NB_DIR_PER_NODE=200
+
+# this concatenates 630MB worth of dir IDS, ie. 660000000 bytes, ie. 33 million IDs
+LISTING="/hoyt/pr-swh-codecommons/the-stack-v2-directoryIDs"
+
+def params_generator():
+    """
+    For each worker node, generate the offset in LISTING that it should start from
+    """
+    # TODO
+    yield 0
+    yield 1000000
 
 
 class SwhFuseContext:
@@ -12,12 +45,11 @@ class SwhFuseContext:
     Mounts the SWH archive as a context manager, in a namespace, over a temporary folder.
     We advise you configure `swh-fuse` with care, possibly via the `SWH_CONFIG_FILE`
     environment variable
-
-    TODO: example
     """
 
     def __init__(self, target_dir):
         self.mountpoint = TemporaryDirectory()
+        environ["SWH_CONFIG_FILE"] = "config.yml" # file created by graphjob.sh
         self.swhfuse = Popen(
             [
                 "unshare",
@@ -58,8 +90,11 @@ def python_sloc(directory: str) -> int:
 
     with SwhFuseContext(directory) as swhroot:
         for f in swhroot.glob("**/*.py"):
-            with open(f) as fp:
-                pysloc += sum(1 for line in fp)
+            try:
+                with open(f) as fp:
+                    pysloc += sum(1 for line in fp)
+            except Exception:
+                pass
 
     return pysloc
 
@@ -95,48 +130,96 @@ def hyply(directory: str) -> int:
     return 0
 
 
-def gen_paths(listfile, nb_jobs):
+def gen_paths(listfile, nb_jobs, offset):
     generated = 0
     with open(listfile, 'rb') as f:
+        f.seek(20*offset)
         while generated < nb_jobs:
             p = f"archive/swh:1:dir:{f.read(20).hex()}"
             yield p
             generated += 1
 
-@click.command()
-@click.argument("case")
-@click.argument("listing")
-@click.argument("nb_jobs", type=int)
-@click.argument("nb_workers", type=int)
-def main(case:str, listing: str, nb_jobs:int, nb_workers:int):
-    """
-    launch nb_workers for nb_jobs of given case over listing (should be a binary file
-    where directories' 20 bytes sha1_git are concatenated).
+CASE=hyply
 
-    archive_mount should be swh-fuse's mountpoint
-
-    Valid case names are: PythonSLOC, PythonFiles, sancode, hyply
-    """
-    match case.lower():
-        case "pythonsloc":
-            case_function = python_sloc
-        case "pythonfiles":
-            case_function = python_files
-        case "scancode":
-            case_function = scancode
-        case "hyply":
-            case_function = hyply
-
+def worker_function(param):
+    log.info("starting worker node(%s)", param)
     start = perf_counter()
     counted = 0
 
-    with ProcessPoolExecutor(max_workers=nb_workers) as executor:
-        results = executor.map(case_function, gen_paths(listing, nb_jobs))
-        for _ in results:
-            counted += 1
+    storage_server = Popen("swh storage -C config_storage.yml rpc-serve".split(),
+            stderr=PIPE,
+            stdin=PIPE,
+            stdout=PIPE,
+        )
 
-    print(f"{counted} jobs done in {perf_counter() - start}s over {nb_workers} workers")
+    try:
+        with ProcessPoolExecutor(max_workers=PROCESS_PER_NODE) as executor:
+            results = executor.map(CASE, gen_paths(LISTING, NB_DIR_PER_NODE, int(param)))
+            for _ in results:
+                counted += 1
+    finally:
+        if not storage_server.poll():
+            storage_server.terminate()
+
+    log.info(
+        "%d dirs scanned in %f seconds over %d workers",
+        counted,
+        perf_counter() - start,
+        PROCESS_PER_NODE,
+    )
+    log.info("stopping  worker node(%s)", param)
+
+
+########## wrappers
+
+
+def setup_logging(hostname):
+    ch = logging.StreamHandler(stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s - " + hostname + " - %(levelname)s - %(message)s"
+    )
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+
+
+def node_driver(q, node_name):
+    while True:
+        try:
+            p = q.get_nowait()
+            params = ["oarsh", node_name, __file__, p]
+            run(params, stdout=stdout, stderr=stdout)
+        except Empty:
+            log.info("No more jobs for %s", node_name)
+            return
+
+
+def main_head():
+    node_file = environ.get("OAR_NODE_FILE")
+    with open(node_file) as f:
+        nodes = set(f.readlines())
+    q = Queue()
+    for i in params_generator():
+        q.put(i)
+    log.info("Loaded nodes list and parameters queue")
+    driver_threads = []
+    for node in nodes:
+        driver_thread = Thread(target=node_driver, args=(q, node.strip()))
+        driver_threads.append(driver_thread)
+        driver_thread.start()
+    for t in driver_threads:
+        t.join()
 
 
 if __name__ == "__main__":
-    main()
+    global_start = perf_counter()
+    if len(argv) == 1:
+        HOSTNAME += "(head)"
+    setup_logging(HOSTNAME)
+
+    if len(argv) > 1:
+        worker_function(argv[1])
+    else:
+        log.info("Hello")
+        main_head()
+        log.info("Finished in %fs", perf_counter() - global_start)
