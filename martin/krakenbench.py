@@ -1,44 +1,48 @@
-#!/usr/bin/env -S python -u
+#!/home/kirchgem/nixedpython.sh
 
-# OAR -d /home/kirchgem/2025-06-17-bench1
-# OAR -l /nodes=2,walltime=02:00:00
-# OAR --name swh-fuse-hyply1
-# OAR --project pr-swh-codecommons
-# OAR --stdout stdout.log
-# OAR --stderr stderr.log
+#OAR -d /home/kirchgem/2025-06-17-bench1
+#OAR -l /nodes=2,walltime=04:00:00
+#OAR --name swh-fuse-hyply1
+#OAR --project pr-swh-codecommons
+#OAR --stdout stdout.log
+#OAR --stderr stderr.log
 
 
 from time import perf_counter, sleep
 from pathlib import Path
-from subprocess import run, Popen, PIPE
+from subprocess import run, Popen, DEVNULL
 from tempfile import TemporaryDirectory
 from concurrent.futures import ProcessPoolExecutor
 import logging
-from sys import argv, stdout
+from sys import argv, stdout, exit
 from os import environ
 from threading import Thread
 from queue import Queue, Empty
 import socket
+import signal
+from os import getpid
+from random import randint
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
 HOSTNAME = socket.gethostname()
 
-PROCESS_PER_NODE = 200
-NB_DIR_PER_NODE=200
+PROCESS_PER_NODE = 1
+NB_DIR_PER_NODE=2
 
 # this concatenates 630MB worth of dir IDS, ie. 660000000 bytes, ie. 33 million IDs
 LISTING="/hoyt/pr-swh-codecommons/the-stack-v2-directoryIDs"
 
-def params_generator():
+def params_generator(how_many):
     """
     For each worker node, generate the offset in LISTING that it should start from
     """
-    # TODO
-    yield 0
-    yield 1000000
-
+    interval = 33000000 // how_many
+    offset = randint(0, interval - NB_DIR_PER_NODE)
+    for i in range(how_many):
+        yield str(offset)
+        offset += interval
 
 class SwhFuseContext:
     """
@@ -49,7 +53,6 @@ class SwhFuseContext:
 
     def __init__(self, target_dir):
         self.mountpoint = TemporaryDirectory()
-        environ["SWH_CONFIG_FILE"] = "config.yml" # file created by graphjob.sh
         self.swhfuse = Popen(
             [
                 "unshare",
@@ -64,9 +67,14 @@ class SwhFuseContext:
                 "-f",
                 self.mountpoint.name,
             ],
-            stderr=PIPE,
-            stdin=PIPE,
-            stdout=PIPE,
+            stderr=DEVNULL,
+            stdin=DEVNULL,
+            stdout=DEVNULL,
+            text=True,
+            env={
+                "SWH_CONFIG_FILE": "./config.yml", # file created by graphjob.sh
+                "PATH": environ["PATH"],
+            },
         )
         self.target = target_dir
 
@@ -81,8 +89,7 @@ class SwhFuseContext:
         return Path(f"/proc/{self.swhfuse.pid}/root{self.mountpoint.name}/{self.target}")
 
     def __exit__(self, type, value, traceback):
-        if not self.swhfuse.poll():
-            self.swhfuse.terminate()
+        self.swhfuse.kill()
         self.mountpoint.cleanup()
 
 def python_sloc(directory: str) -> int:
@@ -108,9 +115,11 @@ def python_files(directory: str) -> int:
     return nbfiles
 
 
+# FIXME scancode tries to write in its source folders, which is not permitted by Nix
 def scancode(directory: str) -> int:
+    tmptarget = f"/var/tmp/kirchgem-tmp-scancode{getpid()}"
     with SwhFuseContext(directory) as swhroot:
-        run(
+        result = run(
             [
                 "scancode",
                 "--license",
@@ -118,15 +127,26 @@ def scancode(directory: str) -> int:
                 "-n",
                 "6",
                 "--json-pp",
-                "/dev/null",
+                tmptarget,
                 swhroot.absolute(),
             ]
         )
+        log.info(result.stdout)
+        log.info(result.stderr)
+    Path(tmptarget).unlink()
     return 0
 
 def hyply(directory: str) -> int:
     with SwhFuseContext(directory) as swhroot:
-        _ = run(["hyply", swhroot.absolute()], capture_output=True, text=True)
+        result = run(
+            ["hyply", swhroot.absolute()],
+            capture_output=True,
+            text=True,
+            env={
+                "HYPLY_THREADS": "1",
+                "PATH": environ["PATH"],
+            },
+        )
     return 0
 
 
@@ -139,18 +159,27 @@ def gen_paths(listfile, nb_jobs, offset):
             yield p
             generated += 1
 
-CASE=hyply
+CASE=scancode
 
 def worker_function(param):
     log.info("starting worker node(%s)", param)
     start = perf_counter()
     counted = 0
 
-    storage_server = Popen("swh storage -C config_storage.yml rpc-serve".split(),
-            stderr=PIPE,
-            stdin=PIPE,
-            stdout=PIPE,
+    storage_server = Popen("swh storage -C ./config_storage.yml rpc-serve".split(),
+            stderr=DEVNULL,
+            stdin=DEVNULL,
+            stdout=DEVNULL,
         )
+
+    OAR_JOB_ID = environ["OAR_JOB_ID"]
+    metricsFolder = f"/hoyt/pr-swh-codecommons/metrics/{OAR_JOB_ID}/{HOSTNAME}"
+    metrics_server = Popen(
+        f"/home/martin/statsdreceiver -q -p swhfuse {metricsFolder}".split(),
+        stderr=DEVNULL,
+        stdin=DEVNULL,
+        stdout=DEVNULL,
+    )
 
     try:
         with ProcessPoolExecutor(max_workers=PROCESS_PER_NODE) as executor:
@@ -160,6 +189,8 @@ def worker_function(param):
     finally:
         if not storage_server.poll():
             storage_server.terminate()
+        if not metrics_server.poll():
+            metrics_server.terminate()
 
     log.info(
         "%d dirs scanned in %f seconds over %d workers",
@@ -199,7 +230,7 @@ def main_head():
     with open(node_file) as f:
         nodes = set(f.readlines())
     q = Queue()
-    for i in params_generator():
+    for i in params_generator(len(nodes)):
         q.put(i)
     log.info("Loaded nodes list and parameters queue")
     driver_threads = []
@@ -210,6 +241,11 @@ def main_head():
     for t in driver_threads:
         t.join()
 
+def sighup_handler(sig, frame):
+    """
+    workers are remotely launched by SSH, who sends a SIGHUP when it turns off
+    """
+    exit(1)
 
 if __name__ == "__main__":
     global_start = perf_counter()
@@ -218,6 +254,7 @@ if __name__ == "__main__":
     setup_logging(HOSTNAME)
 
     if len(argv) > 1:
+        signal.signal(signal.SIGHUP, sighup_handler)
         worker_function(argv[1])
     else:
         log.info("Hello")

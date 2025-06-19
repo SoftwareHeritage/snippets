@@ -1,0 +1,195 @@
+#!/usr/bin/env python
+
+from collections import defaultdict
+import logging
+from os.path import dirname
+from pathlib import Path
+import signal
+import socket
+import sys
+from threading import Thread
+import time
+
+import click
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+log = logging.getLogger(__name__)
+
+WRITER_TIMEOUT = 60 # when closing, wait at most WRITER_TIMEOUT seconds to write a Parquet file
+
+def _parquet_writer(parent, file_path, metrics):
+    target_dir = Path(dirname(file_path))
+    if not target_dir.exists():
+        target_dir.mkdir(parents=True)
+    df = pd.DataFrame.from_dict(metrics, orient="index")
+    df.sort_index(inplace=True)
+    table = pa.Table.from_pandas(df)
+    pq.write_table(table, file_path)
+    del parent.writing[file_path]
+
+class MetricsAggragator:
+    """
+    This object writes and aggregate metrics per timestamp. It can also write metrics
+    to Parquet file(s) in a separate thread.
+    """
+
+    def __init__(self, dataset_path:str):
+        self.metrics = defaultdict(lambda: defaultdict(float))
+        self.dataset_path = dataset_path
+        self.file_counter = 0
+        self.writing = {}
+        self.gauges = {}
+
+    def push(self, timestamp:int, name:str, value:str, gauge=False):
+        if gauge:
+            if value[0] == '+':
+                previous = self.gauges.get(name, 0.)
+                value = previous + float(value[1:])
+            elif value[0] == '-':
+                previous = self.gauges.get(name, 0.0)
+                value = previous - float(value[1:])
+            else:
+                value = float(value)
+
+            self.gauges[name] = value
+            self.metrics[timestamp][name] = value
+
+        else:
+            self.metrics[timestamp][name] += float(value)
+
+    def write_to_parquet(self, blocking=False):
+        if self.metrics:
+            file_path = f"{self.dataset_path}-{self.file_counter}.parquet"
+            log.info("writing to %s...", file_path)
+            t = Thread(target=_parquet_writer, args=(self, file_path, self.metrics))
+            self.writing[file_path] = t
+            t.run()
+
+            self.file_counter += 1
+            self.metrics = defaultdict(lambda: defaultdict(float))
+
+        if blocking:
+            for t in self.writing.values():
+                if t.is_alive():
+                    t.join(timeout=WRITER_TIMEOUT)
+
+
+def statsd_parse(data:bytes, filter_prefix:str|None) -> tuple[str, str, str]:
+    """
+    Try to parse the message, return a triple (metric_name,metric_raw_value,metric_type)
+    or (None, None, None) if the metric does not start by filter_prefix
+    """
+    try:
+        message = data.decode("utf-8")
+
+        if filter_prefix and not message.startswith(filter_prefix):
+            raise ValueError()
+
+        entry_type = message.split("|")
+        if len(entry_type) < 2:
+            raise ValueError()
+
+        name_value = entry_type[0].split(":")
+        metric_name = name_value[0]
+        metric_value = name_value[1]
+        if not metric_value:
+            raise ValueError()
+
+        return (metric_name, metric_value, entry_type[1])
+    except:
+        return (None, None, None)
+
+
+def statsd_to_parquet(
+    aggregator: MetricsAggragator,
+    host: str,
+    port: int,
+    filter_prefix: str | None,
+    dataset_period: int,
+):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((host, port))
+    log.info("Collecting statsd timers/counters on UDP port %d...", port)
+
+    last_write_time = int(time.time())
+
+    try:
+        while True:
+            data, addr = sock.recvfrom(1024)
+            (metric_name, metric_raw_value, metric_type) = statsd_parse(data, filter_prefix)
+            if metric_name:
+                current_time = int(time.time())
+
+                if current_time - last_write_time >= dataset_period:
+                    aggregator.write_to_parquet()
+                    last_write_time = current_time
+
+                aggregator.push(current_time, metric_name, metric_raw_value, metric_type[0]=='g')
+
+            # TODO
+            # tmp = {metric_name: str(metric_value).replace(".", ",")}
+            # print(
+            #     f"{current_time};{tmp.get('swh_fuse_graph_waiting_time', 0)};"
+            #     f"{tmp.get('swh_fuse_storage_waiting_time', 0)};{tmp.get('swh_fuse_objstorage_waiting_time', 0)};"
+            #     f"{metrics[current_time].get('swh_fuse_graph_waiting_time', 0)};"
+            #     f"{metrics[current_time].get('swh_fuse_storage_waiting_time', 0)};{metrics[current_time].get('swh_fuse_objstorage_waiting_time', 0)};"
+            # )
+
+    except Exception as e:
+        log.exception(e)
+    finally:
+        aggregator.write_to_parquet(blocking=True)
+        sock.close()
+
+
+
+@click.command()
+@click.argument("dataset_path")
+@click.option("-h", "--host", default="localhost", help="Listen on given host/IP")
+@click.option("-p", "--port", default=8125, help="Listen on localhost UDP port n°")
+@click.option("-f", "--filter-prefix", default=None, help="Keep only metrics starting with given prefix")
+@click.option("-t", "--dataset-period", default=300, help="Number of seconds after we dump metrics to a new parquet file")
+@click.option("-q", "--quiet", is_flag=True, help="Quiet mode: do not log anything at all")
+def main(dataset_path:str, host:str, port:int, filter_prefix:str, dataset_period:int, quiet:bool):
+    """
+    This listens for statsd events on localhost's UDP port and accumulates events per
+    second to a parquet dataset. This will run indefinitely: it will write the dataset
+    and shut down upon receiving SIGINT, SIGTERM, SIGHUP or KeyboardInterrupt.
+
+    The resulting frames are indexed by the UNIX timestamp
+    they were recorded. Typical Jupyter use afterwards::
+
+        import pandas as pd
+        metrics = pd.read_parquet("/path/to/dataset", engine="pyarrow")
+        print(metrics["app_counter_metric"].sum())
+        # plot the first 100 seconds:
+        metrics[1750315400:1750315500]["app_gauge"].plot()
+    """
+    level = logging.INFO
+    if quiet:
+        level = logging.CRITICAL
+    handler = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    handler.setLevel(level)
+    log.addHandler(handler)
+    log.setLevel(level)
+
+    aggregator = MetricsAggragator(dataset_path)
+
+    def signal_handler(sig, frame):
+        log.warning("Signal received, writing metrics to Parquet before exiting...")
+        aggregator.write_to_parquet(blocking=True)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
+
+    statsd_to_parquet(aggregator, host, port, filter_prefix, dataset_period)
+
+
+if __name__ == "__main__":
+    main()
