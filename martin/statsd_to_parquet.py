@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+"""
+cf. main.__doc__
+
+requires:
+ - pyarrow
+ - pandas
+ - click
+
+"""
+
+
 from collections import defaultdict
 import logging
 from os.path import dirname
@@ -20,9 +31,6 @@ log = logging.getLogger(__name__)
 WRITER_TIMEOUT = 60 # when closing, wait at most WRITER_TIMEOUT seconds to write a Parquet file
 
 def _parquet_writer(parent, file_path, metrics):
-    target_dir = Path(dirname(file_path))
-    if not target_dir.exists():
-        target_dir.mkdir(parents=True)
     df = pd.DataFrame.from_dict(metrics, orient="index")
     df.sort_index(inplace=True)
     table = pa.Table.from_pandas(df)
@@ -41,6 +49,15 @@ class MetricsAggragator:
         self.file_counter = 0
         self.writing = {}
         self.gauges = {}
+
+        target_dir = Path(dirname(dataset_path))
+        if not target_dir.exists():
+            target_dir.mkdir(parents=True)
+        while Path(self.next_filename()).exists():
+            self.file_counter += 1
+
+    def next_filename(self):
+        return f"{self.dataset_path}-{self.file_counter}.parquet"
 
     def push(self, timestamp:int, name:str, value:str, gauge=False):
         if gauge:
@@ -61,8 +78,8 @@ class MetricsAggragator:
 
     def write_to_parquet(self, blocking=False):
         if self.metrics:
-            file_path = f"{self.dataset_path}-{self.file_counter}.parquet"
-            log.info("writing to %s...", file_path)
+            file_path = self.next_filename()
+            log.info("writing to %s", file_path)
             t = Thread(target=_parquet_writer, args=(self, file_path, self.metrics))
             self.writing[file_path] = t
             t.run()
@@ -128,15 +145,6 @@ def statsd_to_parquet(
 
                 aggregator.push(current_time, metric_name, metric_raw_value, metric_type[0]=='g')
 
-            # TODO
-            # tmp = {metric_name: str(metric_value).replace(".", ",")}
-            # print(
-            #     f"{current_time};{tmp.get('swh_fuse_graph_waiting_time', 0)};"
-            #     f"{tmp.get('swh_fuse_storage_waiting_time', 0)};{tmp.get('swh_fuse_objstorage_waiting_time', 0)};"
-            #     f"{metrics[current_time].get('swh_fuse_graph_waiting_time', 0)};"
-            #     f"{metrics[current_time].get('swh_fuse_storage_waiting_time', 0)};{metrics[current_time].get('swh_fuse_objstorage_waiting_time', 0)};"
-            # )
-
     except Exception as e:
         log.exception(e)
     finally:
@@ -163,9 +171,12 @@ def main(dataset_path:str, host:str, port:int, filter_prefix:str, dataset_period
 
         import pandas as pd
         metrics = pd.read_parquet("/path/to/dataset", engine="pyarrow")
-        print(metrics["app_counter_metric"].sum())
-        # plot the first 100 seconds:
-        metrics[1750315400:1750315500]["app_gauge"].plot()
+        for c in metrics.columns:
+            print(f"total {c}: "+str(metrics[c].sum()))
+        # plot the first 100 seconds of two columns:
+        metrics[:100][["app_gauge", "app_counter"]].plot()
+        # cumulative sum area :
+        metrics.cumsum().plot.area()
     """
     level = logging.INFO
     if quiet:
