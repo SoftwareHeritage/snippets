@@ -93,7 +93,7 @@ class MetricsAggragator:
                     t.join(timeout=WRITER_TIMEOUT)
 
 
-def statsd_parse(data:bytes, filter_prefix:str|None) -> tuple[str, str, str]:
+def statsd_parse(data:bytes, filter_prefix:list[str]) -> tuple[str, str, str]:
     """
     Try to parse the message, return a triple (metric_name,metric_raw_value,metric_type)
     or (None, None, None) if the metric does not start by filter_prefix
@@ -101,7 +101,7 @@ def statsd_parse(data:bytes, filter_prefix:str|None) -> tuple[str, str, str]:
     try:
         message = data.decode("utf-8")
 
-        if filter_prefix and not message.startswith(filter_prefix):
+        if filter_prefix and not any(message.startswith(f) for f in filter_prefix):
             raise ValueError()
 
         entry_type = message.split("|")
@@ -123,7 +123,7 @@ def statsd_to_parquet(
     aggregator: MetricsAggragator,
     host: str,
     port: int,
-    filter_prefix: str | None,
+    filter_prefix: list[str],
     dataset_period: int,
 ):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -157,10 +157,10 @@ def statsd_to_parquet(
 @click.argument("dataset_path")
 @click.option("-h", "--host", default="localhost", help="Listen on given host/IP")
 @click.option("-p", "--port", default=8125, help="Listen on localhost UDP port n°")
-@click.option("-f", "--filter-prefix", default=None, help="Keep only metrics starting with given prefix")
+@click.option("-f", "--filter-prefix", default=None, multiple=True, help="Keep only metrics starting with given prefix")
 @click.option("-t", "--dataset-period", default=300, help="Number of seconds after we dump metrics to a new parquet file")
 @click.option("-q", "--quiet", is_flag=True, help="Quiet mode: do not log anything at all")
-def main(dataset_path:str, host:str, port:int, filter_prefix:str, dataset_period:int, quiet:bool):
+def main(dataset_path:str, host:str, port:int, filter_prefix:list[str], dataset_period:int, quiet:bool):
     """
     This listens for statsd events on localhost's UDP port and accumulates events per
     second to a parquet dataset. This will run indefinitely: it will write the dataset
