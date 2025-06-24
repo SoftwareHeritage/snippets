@@ -176,7 +176,7 @@ def main(dataset_path:str, host:str, port:int, filter_prefix:list[str], dataset_
         # plot the first 100 seconds of two columns:
         metrics[:100][["app_gauge", "app_counter"]].plot()
         # cumulative sum area :
-        metrics.cumsum().plot.area()
+        metrics.sort_index().fillna(0.).cumsum().plot.area()
     """
     level = logging.INFO
     if quiet:
