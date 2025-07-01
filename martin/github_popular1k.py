@@ -9,7 +9,7 @@ Generate "popular1k.json" by
  * copy-paste the resulting JSON
  * start this script, redirect it somewhere.
 
-the query:
+the query (source: https://www.reddit.com/r/github/comments/1hx7iej/comment/m67yp2o/)
 
     query {
         search(query: "stars:>10000", type: REPOSITORY, first: 100) {
