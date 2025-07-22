@@ -173,10 +173,15 @@ def main(dataset_path:str, host:str, port:int, filter_prefix:list[str], dataset_
         metrics = pd.read_parquet("/path/to/dataset", engine="pyarrow")
         for c in metrics.columns:
             print(f"total {c}: "+str(metrics[c].sum()))
-        # plot the first 100 seconds of two columns:
-        metrics[:100][["app_gauge", "app_counter"]].plot()
         # cumulative sum area :
         metrics.sort_index().fillna(0.).cumsum().plot.area()
+
+    In a distributed environment, every machine will produce its parquet files: do not
+    forget to group by index::
+
+        over_time = metrics[["app_gauge", "app_counter"]].groupby(metrics.index).sum()
+        # plot the first 100 seconds of two columns:
+        over_time[:100][["app_gauge", "app_counter"]].plot()
     """
     level = logging.INFO
     if quiet:
