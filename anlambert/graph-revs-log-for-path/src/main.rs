@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use swh_graph::labels::{EdgeLabel, FilenameId};
+use swh_graph::labels::{EdgeLabel, LabelNameId};
 use swh_graph::SWHID;
 use swh_graph::graph::*;
 use swh_graph::NodeType;
@@ -37,7 +37,7 @@ struct Args {
 fn directory_entry_get_by_path<G: SwhFullGraph>(
     graph: &G,
     rev: NodeId,
-    path_parts: &[FilenameId],
+    path_parts: &[LabelNameId],
 ) -> Result<Option<NodeId>> {
     let props = graph.properties();
     let mut current_dir = graph
@@ -51,7 +51,7 @@ fn directory_entry_get_by_path<G: SwhFullGraph>(
         for (succ, labels) in graph.labeled_successors(current_dir) {
             for label in labels {
                 if let EdgeLabel::DirEntry(dentry) = label {
-                    if dentry.filename_id() == path_part {
+                    if dentry.label_name_id() == path_part {
                         dir_entry_for_name = Some(succ);
                     }
                 }
@@ -76,7 +76,7 @@ fn process_revision<G: SwhFullGraph>(graph: &G, rev: &NodeId, heap: &mut BinaryH
 fn process_parent_revisions<G: SwhFullGraph>(
     graph: &G,
     rev: NodeId,
-    path_parts: &[FilenameId],
+    path_parts: &[LabelNameId],
     heap: &mut BinaryHeap<(i64, usize)>,
 ) -> Result<(bool, bool)> {
     let rev_path_id = directory_entry_get_by_path(graph, rev, path_parts)?;
