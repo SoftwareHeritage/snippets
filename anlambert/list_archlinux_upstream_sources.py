@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 
 import click
+from dulwich.porcelain import tag_list, checkout
 import requests
 from srcinfo.parse import parse_srcinfo
 
@@ -33,39 +34,51 @@ ARCHLINUX_PACKAGE_FILE_URL = string.Template(
     "repository/files/$file/raw?ref=$ref"
 )
 
+ARCHLINUX_PACKAGE_TAGS_URL = string.Template(
+    f"{ARCHLINUX_GITLAB_API_URL}/projects/$project_id/" "repository/tags"
+)
+
 
 def get_package_srcinfo_from_gitlab_api(package):
-    srcinfo_url = ARCHLINUX_PACKAGE_FILE_URL.substitute(
-        project_id=package["id"], file=".SRCINFO", ref="HEAD"
-    )
-    try:
-        srcinfo_src = url_get(srcinfo_url).text
-    except requests.HTTPError:
-        pkgbuild_url = ARCHLINUX_PACKAGE_FILE_URL.substitute(
-            project_id=package["id"], file="PKGBUILD", ref="HEAD"
+    tags_url = ARCHLINUX_PACKAGE_TAGS_URL.substitute(project_id=package["id"])
+
+    tags = url_get(tags_url).json()
+
+    for tag in tags:
+        srcinfo_url = ARCHLINUX_PACKAGE_FILE_URL.substitute(
+            project_id=package["id"], file=".SRCINFO", ref=tag["name"]
         )
         try:
-            pkgbuild_response = url_get(pkgbuild_url)
+            srcinfo_src = url_get(srcinfo_url).text
         except requests.HTTPError:
-            srcinfo_src = ""
-        else:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                pkgbuild_path = os.path.join(tmpdir, "PKGBUILD")
-                with open(pkgbuild_path, "w") as pkgbuild:
-                    # remove 'install=<package>.install' variable in PKGBUILD file
-                    # or makepkg will fail otherwise
-                    clean_pkgbuild = re.sub(
-                        r"^[ \t]*install=.*\.install.*$",
-                        "",
-                        pkgbuild_response.text,
-                        flags=re.MULTILINE,
-                    )
-                    pkgbuild.write(clean_pkgbuild)
-                # requires pacman-package-manager package installed on debian
-                srcinfo_src = subprocess.check_output(
-                    ["makepkg", "--printsrcinfo"], cwd=tmpdir
-                ).decode()
-    return srcinfo_src
+            pkgbuild_url = ARCHLINUX_PACKAGE_FILE_URL.substitute(
+                project_id=package["id"], file="PKGBUILD", ref=tag["name"]
+            )
+            try:
+                pkgbuild_response = url_get(pkgbuild_url)
+            except requests.HTTPError:
+                srcinfo_src = ""
+            else:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    pkgbuild_path = os.path.join(tmpdir, "PKGBUILD")
+                    with open(pkgbuild_path, "w") as pkgbuild:
+                        # remove 'install=<package>.install' variable in PKGBUILD file
+                        # or makepkg will fail otherwise
+                        clean_pkgbuild = re.sub(
+                            r"^[ \t]*install=.*\.install.*$",
+                            "",
+                            pkgbuild_response.text,
+                            flags=re.MULTILINE,
+                        )
+                        pkgbuild.write(clean_pkgbuild)
+                    try:
+                        # requires pacman-package-manager package installed on debian
+                        srcinfo_src = subprocess.check_output(
+                            ["makepkg", "--printsrcinfo"], cwd=tmpdir
+                        ).decode()
+                    except subprocess.CalledProcessError:
+                        srcinfo_src = ""
+        yield srcinfo_src
 
 
 def get_package_srcinfo_from_git(package):
@@ -75,18 +88,23 @@ def get_package_srcinfo_from_git(package):
         except ValueError:
             # empty repository
             return ""
-        srcinfo_path = os.path.join(tmpdir, ".SRCINFO")
-        pkgbuild_path = os.path.join(tmpdir, "PKGBUILD")
-        if os.path.exists(srcinfo_path):
-            with open(srcinfo_path, "r") as srcinfo_src:
-                return srcinfo_src.read()
-        elif os.path.exists(pkgbuild_path):
-            # requires pacman-package-manager package installed on debian
-            return subprocess.check_output(
-                ["makepkg", "--printsrcinfo"], cwd=tmpdir, text=True, encoding="utf-8"
-            )
-        else:
-            return ""
+        for tag in tag_list(tmpdir):
+            checkout(tmpdir, tag.decode())
+            srcinfo_path = os.path.join(tmpdir, ".SRCINFO")
+            pkgbuild_path = os.path.join(tmpdir, "PKGBUILD")
+            if os.path.exists(srcinfo_path):
+                with open(srcinfo_path, "r") as srcinfo_src:
+                    yield srcinfo_src.read()
+            elif os.path.exists(pkgbuild_path):
+                try:
+                    # requires pacman-package-manager package installed on debian
+                    yield subprocess.check_output(
+                        ["makepkg", "--printsrcinfo"], cwd=tmpdir, text=True, encoding="utf-8"
+                    )
+                except subprocess.CalledProcessError:
+                    yield ""
+            else:
+                yield ""
 
 
 @click.command()
@@ -120,28 +138,30 @@ def run(srcinfo_from_git, start_after_name):
             if package["name"] < start_after_name:
                 continue
             if srcinfo_from_git:
-                srcinfo_src = get_package_srcinfo_from_git(package)
+                srcinfo_gen = get_package_srcinfo_from_git(package)
             else:
-                srcinfo_src = get_package_srcinfo_from_gitlab_api(package)
+                srcinfo_gen = get_package_srcinfo_from_gitlab_api(package)
 
-            if not srcinfo_src:
-                continue
+            for srcinfo_src in srcinfo_gen:
 
-            srcinfo = parse_srcinfo(srcinfo_src)[0]
-            if "source" not in srcinfo:
-                continue
+                if not srcinfo_src:
+                    continue
 
-            package_srcinfo = {
-                "origin_url": package["web_url"],
-                "source": srcinfo["source"],
-            }
-            # recipes for computing source checksums according to its type (bzr, hg,
-            # git or file) can be found in the pacman repository:
-            # https://gitlab.archlinux.org/pacman/pacman/-/tree/master/scripts/libmakepkg/source
-            for checksums in ("sha256sums", "sha512sums", "b2sums", "md5sums"):
-                if checksums in srcinfo:
-                    package_srcinfo[checksums] = srcinfo[checksums]
-            print(json.dumps(package_srcinfo))
+                srcinfo = parse_srcinfo(srcinfo_src)[0]
+                if "source" not in srcinfo:
+                    continue
+
+                package_srcinfo = {
+                    "origin_url": package["web_url"],
+                    "source": srcinfo["source"],
+                }
+                # recipes for computing source checksums according to its type (bzr, hg,
+                # git or file) can be found in the pacman repository:
+                # https://gitlab.archlinux.org/pacman/pacman/-/tree/master/scripts/libmakepkg/source
+                for checksums in ("sha256sums", "sha512sums", "b2sums", "md5sums"):
+                    if checksums in srcinfo:
+                        package_srcinfo[checksums] = srcinfo[checksums]
+                print(json.dumps(package_srcinfo))
 
         if "next" in page_response.links:
             page_response = url_get(page_response.links["next"]["url"])
