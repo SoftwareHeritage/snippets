@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 
 import click
+from dulwich.porcelain import checkout, open_repo_closing
 from srcinfo.parse import parse_srcinfo
 
 from anlambert_utils import url_get, clone_repository
@@ -30,10 +31,16 @@ def get_package_srcinfo(package_path):
         with open(srcinfo_path, "r") as srcinfo_src:
             return srcinfo_src.read()
     elif os.path.exists(pkgbuild_path):
-        # requires pacman-package-manager package installed on debian
-        return subprocess.check_output(
-            ["makepkg", "--printsrcinfo"], cwd=package_path, text=True, encoding="utf-8"
-        )
+        try:
+            # requires pacman-package-manager package installed on debian
+            return subprocess.check_output(
+                ["makepkg", "--printsrcinfo"],
+                cwd=package_path,
+                text=True,
+                encoding="utf-8",
+            )
+        except subprocess.CalledProcessError:
+            return ""
     else:
         return ""
 
@@ -59,8 +66,11 @@ def get_package_srcinfo_from_git(package):
             clone_repository(repo_url, tmpdir)
         except ValueError:
             # empty repository
-            return ""
-        return get_package_srcinfo(tmpdir)
+            yield ""
+        with open_repo_closing(tmpdir) as repo:
+            for entry in repo.get_walker():
+                checkout(tmpdir, entry.commit, force=True)
+                yield get_package_srcinfo(tmpdir)
 
 
 @click.command()
@@ -100,28 +110,29 @@ def run(srcinfo_from_git, start_after_name):
         processed_packages.add(package["PackageBase"])
 
         if srcinfo_from_git:
-            srcinfo_src = get_package_srcinfo_from_git(package)
+            srcinfo_gen = get_package_srcinfo_from_git(package)
         else:
-            srcinfo_src = get_package_srcinfo_from_snapshot(package)
+            srcinfo_gen = get_package_srcinfo_from_snapshot(package)
 
-        if not srcinfo_src:
-            continue
+        for srcinfo_src in srcinfo_gen:
+            if not srcinfo_src:
+                continue
 
-        srcinfo = parse_srcinfo(srcinfo_src)[0]
-        if "source" not in srcinfo:
-            continue
+            srcinfo = parse_srcinfo(srcinfo_src)[0]
+            if "source" not in srcinfo:
+                continue
 
-        package_srcinfo = {
-            "origin_url": f"{AUR_BASE_URL}/packages/{package['PackageBase']}",
-            "source": srcinfo["source"],
-        }
-        # recipes for computing source checksums according to its type (bzr, hg,
-        # git or file) can be found in the pacman repository:
-        # https://gitlab.archlinux.org/pacman/pacman/-/tree/master/scripts/libmakepkg/source
-        for checksums in ("sha256sums", "sha512sums", "b2sums", "md5sums"):
-            if checksums in srcinfo:
-                package_srcinfo[checksums] = srcinfo[checksums]
-        print(json.dumps(package_srcinfo))
+            package_srcinfo = {
+                "origin_url": f"{AUR_BASE_URL}/packages/{package['PackageBase']}",
+                "source": srcinfo["source"],
+            }
+            # recipes for computing source checksums according to its type (bzr, hg,
+            # git or file) can be found in the pacman repository:
+            # https://gitlab.archlinux.org/pacman/pacman/-/tree/master/scripts/libmakepkg/source
+            for checksums in ("sha256sums", "sha512sums", "b2sums", "md5sums"):
+                if checksums in srcinfo:
+                    package_srcinfo[checksums] = srcinfo[checksums]
+            print(json.dumps(package_srcinfo))
 
 
 if __name__ == "__main__":
