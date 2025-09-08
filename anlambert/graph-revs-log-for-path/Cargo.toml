@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.99"
-chrono = "0.4.41"
-clap = "4.5.45"
+chrono = "0.4.42"
+clap = "4.5.47"
 dsi-progress-logger = "0.8.2"
 env_logger = "0.11.8"
-log = "0.4.27"
-swh-graph = "7.0.0"
+log = "0.4.28"
+swh-graph = "8.0.4"
