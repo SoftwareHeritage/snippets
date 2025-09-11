@@ -78,10 +78,11 @@ groups:
     remove_extra_memberships: true
   teams/management:
     users:
+      AMorin: Maintainer
       bchauvet: Owner
       douardda: Maintainer
-      lcruse: Maintainer
       moranegg: Maintainer
+      nico_mar: Maintainer
       rdicosmo: Owner
       taynaud: Owner
       vsellier: Maintainer
