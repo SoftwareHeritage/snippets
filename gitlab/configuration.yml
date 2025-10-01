@@ -24,6 +24,7 @@ groups:
       rdicosmo: Owner
       sgranger: Maintainer
       taynaud: Owner
+      thibaultd: Maintainer
       varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
@@ -46,6 +47,7 @@ groups:
       rdicosmo: Maintainer
       swh-sentry-integration: Maintainer
       taynaud: Maintainer
+      thibaultd: Maintainer
       varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
@@ -59,6 +61,7 @@ groups:
       jenkins: Maintainer
       olasd: Owner
       swh-sentry-integration: Maintainer
+      thibaultd: Maintainer
       vsellier: Owner
     remove_extra_memberships: true
   teams/interns:
@@ -105,6 +108,7 @@ groups:
       vsellier: Owner
       ardumont: Owner
       guillaume: Owner
+      thibaultd: Owner
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
