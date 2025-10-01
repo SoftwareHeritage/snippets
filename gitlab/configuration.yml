@@ -12,7 +12,6 @@ groups:
       ardumont: Maintainer
       bchauvet: Owner
       douardda: Maintainer
-      guillaume: Maintainer
       lindangulopez_swh: Maintainer
       marla.dasilva: Maintainer
       martin: Maintainer
@@ -37,7 +36,6 @@ groups:
       ardumont: Maintainer
       bchauvet: Maintainer
       douardda: Maintainer
-      guillaume: Maintainer
       hjonin: Maintainer
       jenkins: Maintainer
       martin: Maintainer
@@ -57,7 +55,6 @@ groups:
     users:
       phabricator-migration: Owner
       ardumont: Owner
-      guillaume: Owner
       jenkins: Maintainer
       olasd: Owner
       swh-sentry-integration: Maintainer
@@ -107,7 +104,6 @@ groups:
       olasd: Owner
       vsellier: Owner
       ardumont: Owner
-      guillaume: Owner
       thibaultd: Owner
     remove_extra_memberships: true
     share_with_groups:
