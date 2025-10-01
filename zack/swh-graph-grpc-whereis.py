@@ -34,11 +34,11 @@ def whereis(stub, swhid):
             src=[swhid],
             target=swhgraph.NodeFilter(types="ori"),
             direction=swhgraph.GraphDirection.BACKWARD,
-            mask=FieldMask(paths=["node.swhid"]),
+            mask=FieldMask(paths=["swhid", "node.ori.url"]),
         )
     )
     *_, ori = response.node  # last node in the path is the target, i.e., origin
-    return resolve_origin(stub, ori.swhid)
+    return ori.ori.url
 
 
 @click.command()
