@@ -8,9 +8,11 @@ groups:
   teams/staff:
     users:
       phabricator-migration: Owner
+      AMorin: Maintainer
       anlambert: Maintainer
       ardumont: Maintainer
       bchauvet: Owner
+      bzg: Owner
       douardda: Maintainer
       lindangulopez_swh: Maintainer
       marla.dasilva: Maintainer
@@ -35,6 +37,7 @@ groups:
       anlambert: Maintainer
       ardumont: Maintainer
       bchauvet: Maintainer
+      bzg: Maintainer
       douardda: Maintainer
       hjonin: Maintainer
       jenkins: Maintainer
@@ -80,6 +83,7 @@ groups:
     users:
       AMorin: Maintainer
       bchauvet: Owner
+      bzg: Maintainer
       douardda: Maintainer
       moranegg: Maintainer
       nico_mar: Maintainer
