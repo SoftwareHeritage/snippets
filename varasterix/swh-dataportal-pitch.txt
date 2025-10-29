@@ -1,0 +1,5 @@
+The Software Heritage team regularly produces datasets from the archive, known as the Software Heritage Graph Dataset, as well as various derived datasets. These datasets are available to the public (provided one would respect the terms of use), but were previously not so easy to find.
+
+As the number of datasets will keep increasing with time, it felt necessary for both users and the team to have a central place where they can all be listed. Thus, one can now visit https://datasets.softwareheritage.org to discover, read about and find downloading instructions for all the Software Heritage datasets. It contains the list of all the datasets produced periodically by the team, as well as one-off datasets used for specific use cases.
+
+Disclaimer: this is currently a work in progress, so don't hesitate to report bugs, missing features or any other inconveniences you encounter while using it.
