@@ -24,19 +24,21 @@ def build_deanonymization_table(
 
 
 def build_id_list(csv_zst_file: Path, persons_function: Path, output_file: Path):
-    csv_file = csv_zst_file.parent / f"{'.'.join(csv_zst_file.name.split('.')[:-1])}"
+    csv_file = csv_zst_file.parent / f"{csv_zst_file.name.split('.')[0]}.csv"
     # TODO: add pv
     (Command.zstdcat(csv_zst_file) > AtomicFileSink(csv_file)).run()
+    trim_csv_file = csv_zst_file.parent / f"{csv_zst_file.name.split('.')[0]}.trim.csv"
 
-    with open(csv_file, "r") as file:
-        reader = csv.reader(file)
-        writer = csv.writer(sys.stdout)
-        next(reader, None)  # skip the header
-        for sha256_base64, base64, escaped in reader:
-            writer.writerow((b64decode(sha256_base64)))
+    with open(csv_file, "r") as read_file:
+        with open(trim_csv_file, "w") as write_file:
+            reader = csv.reader(read_file)
+            writer = csv.writer(write_file)
+            next(reader, None)  # skip the header
+            for sha256_base64, base64, escaped in reader:
+                writer.writerow((b64decode(sha256_base64)))
 
     return (
-        Command.cat(csv_file)
+        Command.cat(trim_csv_file)
         | Rust(
             "swh-graph-hash",
             "persons",
