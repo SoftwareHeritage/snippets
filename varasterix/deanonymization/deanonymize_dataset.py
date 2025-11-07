@@ -1,44 +1,18 @@
 import csv
-import subprocess
 import sys
-from base64 import b64decode
 from pathlib import Path
 
 from swh.graph.shell import AtomicFileSink, Command, Rust
 
 
-def build_deanonymization_table(
-    base_directory: Path, base_sensitive_directory: Path, dataset_name: str
+def build_hashes_table(
+    persons_table: Path, persons_function: Path, persons_id_table: Path
 ):
-    # TODO: use Command.swh()?
-    subprocess.run(
-        f"swh datasets luigi \
-        --base-directory {base_directory} \
-        --base-sensitive-directory {base_sensitive_directory} \
-        --dataset-name {dataset_name} \
-        ExportDeanonymizationTable \
-        -- \
-        --local-scheduler \
-        --LocalExport-export-task-type ExportGraph"
-    )
+    persons_csv = persons_table.parent / "graph.persons.csv"
+    (Command.zstdmt("-d", persons_table, "-o", persons_csv)).run()
 
-
-def build_id_list(csv_zst_file: Path, persons_function: Path, output_file: Path):
-    csv_file = csv_zst_file.parent / f"{csv_zst_file.name.split('.')[0]}.csv"
-    # TODO: add pv
-    (Command.zstdcat(csv_zst_file) > AtomicFileSink(csv_file)).run()
-    trim_csv_file = csv_zst_file.parent / f"{csv_zst_file.name.split('.')[0]}.trim.csv"
-
-    with open(csv_file, "r") as read_file:
-        with open(trim_csv_file, "w") as write_file:
-            reader = csv.reader(read_file)
-            writer = csv.writer(write_file)
-            next(reader, None)  # skip the header
-            for sha256_base64, base64, escaped in reader:
-                writer.writerow((b64decode(sha256_base64)))
-
-    return (
-        Command.cat(trim_csv_file)
+    (
+        Command.cat(persons_csv)
         | Rust(
             "swh-graph-hash",
             "persons",
@@ -47,56 +21,91 @@ def build_id_list(csv_zst_file: Path, persons_function: Path, output_file: Path)
             "--mph",
             persons_function,
         )
-        > AtomicFileSink(output_file)
+        > AtomicFileSink(persons_id_table)
     ).run()
+
+
+def build_names_table(
+    deanonymization_table: Path, persons_id_table: Path, persons_name_table: Path
+):
+    persons_csv = deanonymization_table.parent / "persons_sha256_to_name.csv"
+    (Command.zstdmt("-d", deanonymization_table, "-o", persons_csv)).run()
+
+    with open(persons_id_table, "r") as ids_file:
+        with open(persons_csv, "r") as persons_file:
+            with open(persons_name_table, "w") as names_file:
+                ids_reader = csv.reader(ids_file)
+                persons_reader = csv.reader(persons_file)
+                writer = csv.writer(names_file)
+                for (_, base64, escaped), [id] in zip(persons_reader, ids_reader):
+                    writer.writerow((id, base64, escaped))
 
 
 def main(
     base_directory: str | Path,
     base_sensitive_directory: str | Path,
     dataset_name: str,
-    output_file: str | Path,
+    output_dir: str | Path,
+    query: str | None = None,
 ):
     base_directory = Path(base_directory)
     base_sensitive_directory = Path(base_sensitive_directory)
-    output_file = Path(output_file)
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     assert base_directory.is_dir()
     assert base_sensitive_directory.is_dir()
 
-    # build_deanonymization_table(base_directory, base_sensitive_directory, dataset_name)
-
-    csv_file = (
-        base_sensitive_directory / dataset_name / "persons_sha256_to_name.csv.zst"
+    persons_table = (
+        base_directory / dataset_name / "compressed" / "graph.persons.csv.zst"
     )
-    assert csv_file.is_file()
+    if not persons_table.is_file():
+        print(f"{persons_table} not found...")
+        print("Run the following to generate it:")
+        print(
+            f"swh graph compress \
+                --input-dataset {base_directory / dataset_name / 'orc'} \
+                --sensitive-input-dataset {base_sensitive_directory / dataset_name / 'orc'} \
+                --output-directory {base_directory / dataset_name / 'compressed'} \
+                --sensitive-output-directory {base_directory / dataset_name / 'compressed'} \
+                --steps EXTRACT_PERSONS \
+                --check-flavor none"
+        )
+        raise FileNotFoundError
 
     persons_function = (
         base_directory / dataset_name / "compressed" / "graph.persons.pthash"
     )
-    assert persons_function.is_file()
+    assert persons_function.is_file(), f"{persons_function} not found..."
 
-    build_id_list(csv_file, persons_function, output_file)
+    deanonymization_table = (
+        base_sensitive_directory / dataset_name / "persons_sha256_to_name.csv.zst"
+    )
+
+    if not deanonymization_table.is_file():
+        print(f"{deanonymization_table} not found...")
+        print("Run the following to generate it:")
+        print(
+            f"swh datasets luigi \
+                --base-directory {base_directory} \
+                --base-sensitive-directory {base_sensitive_directory} \
+                --dataset-name {dataset_name} \
+                ExportDeanonymizationTable \
+                -- \
+                --local-scheduler \
+                --LocalExport-export-task-type ExportGraph"
+        )
+        raise FileNotFoundError
+
+    persons_id_table = output_dir / "persons_sha256_to_id.csv"
+
+    build_hashes_table(persons_table, persons_function, persons_id_table)
+    assert persons_id_table.is_file(), f"{persons_id_table} not found..."
+
+    persons_name_table = output_dir / "persons_id_to_name.csv"
+
+    build_names_table(deanonymization_table, persons_id_table, persons_name_table)
 
 
 if __name__ == "__main__":
-    # swh datasets luigi \
-    # --base-directory /srv/softwareheritage/ssd/data/varasterix/datasets/ \
-    # --base-sensitive-directory /srv/softwareheritage/ssd/data/varasterix/datasets-sensitive/ \
-    # --dataset-name 2025-05-18-history-hosting \
-    # ExportDeanonymizationTable \
-    # -- \
-    # --local-scheduler \
-    # --LocalExport-export-task-type ExportGraph
-
-    # main(
-    #     base_directory="/srv/softwareheritage/ssd/data/varasterix/datasets/",
-    #     base_sensitive_directory="/srv/softwareheritage/ssd/data/varasterix/datasets-sensitive/",
-    #     dataset_name="2025-05-18-history-hosting",
-    #     output_file="deanonymized-persons.csv",
-    # )
-
-    # deanonymization_table_path=/srv/softwareheritage/ssd/data/varasterix/datasets-sensitive/2025-05-18-history-hosting/persons_sha256_to_name.csv.zst
-
     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
