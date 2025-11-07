@@ -11,18 +11,13 @@ def build_hashes_table(
     persons_csv = persons_table.parent / "graph.persons.csv"
     (Command.zstdmt("-d", persons_table, "-o", persons_csv)).run()
 
+    # fmt: off
     (
         Command.cat(persons_csv)
-        | Rust(
-            "swh-graph-hash",
-            "persons",
-            "--mph-algo",
-            "pthash",
-            "--mph",
-            persons_function,
-        )
+        | Rust("swh-graph-hash", "persons", "--mph-algo", "pthash", "--mph", persons_function)
         > AtomicFileSink(persons_id_table)
     ).run()
+    # fmt: on
 
 
 def build_names_table(
