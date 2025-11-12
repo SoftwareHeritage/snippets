@@ -67,9 +67,6 @@ groups:
   teams/interns:
     users:
       phabricator-migration: Owner
-      zom: Maintainer
-      AdeleDesmazieres: Maintainer
-      Karimour: Maintainer
     remove_extra_memberships: true
     share_with_groups:
       teams/staff: Owner
