@@ -18,9 +18,9 @@ private_token = <your token>
 - Adapt the `configuration.yml` file
 - Test it
 ```
-python3 cli.py -g swh-admin  [groups|projects] configuration.yml                                                                                                                                                       15:07:28
+python3 cli.py -g swh-admin  [groups|projects] configuration.yml
 ```
 - If the changes are ok, apply with
 - ```
-python3 cli.py -g swh-admin --do-it  [groups|projects] configuration.yml                                                                                                                                                       15:07:28
+python3 cli.py -g swh-admin --do-it  [groups|projects] configuration.yml
 ```
