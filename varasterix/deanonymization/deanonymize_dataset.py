@@ -9,7 +9,7 @@ def build_hashes_table(
     persons_table: Path, persons_function: Path, persons_id_table: Path
 ):
     persons_csv = persons_table.parent / "graph.persons.csv"
-    (Command.zstdmt("-d", persons_table, "-o", persons_csv)).run()
+    (Command.zstdcat(persons_table) > AtomicFileSink(persons_csv)).run()
 
     # fmt: off
     (
@@ -24,7 +24,7 @@ def build_names_table(
     deanonymization_table: Path, persons_id_table: Path, persons_name_table: Path
 ):
     persons_csv = deanonymization_table.parent / "persons_sha256_to_name.csv"
-    (Command.zstdmt("-d", deanonymization_table, "-o", persons_csv)).run()
+    (Command.zstdcat(deanonymization_table) > AtomicFileSink(persons_csv)).run()
 
     with open(persons_id_table, "r") as ids_file:
         with open(persons_csv, "r") as persons_file:
