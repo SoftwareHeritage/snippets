@@ -8,6 +8,7 @@ groups:
   teams/staff:
     users:
       phabricator-migration: Owner
+      amadouth6: Maintainer
       AMorin: Maintainer
       anlambert: Maintainer
       ardumont: Maintainer
