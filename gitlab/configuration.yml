@@ -12,14 +12,12 @@ groups:
       AMorin: Maintainer
       anlambert: Maintainer
       ardumont: Maintainer
-      bchauvet: Owner
       bzg: Owner
       douardda: Maintainer
       lindangulopez_swh: Maintainer
       marla.dasilva: Maintainer
       martin: Maintainer
       mathfichen: Maintainer
-      mlanguedoc: Maintainer
       moranegg: Maintainer
       nico_mar: Maintainer
       olasd: Maintainer
@@ -39,7 +37,6 @@ groups:
       phabricator-migration: Owner
       anlambert: Maintainer
       ardumont: Maintainer
-      bchauvet: Maintainer
       bzg: Maintainer
       douardda: Maintainer
       hjonin: Maintainer
@@ -60,6 +57,7 @@ groups:
   teams/sysadmin:
     users:
       phabricator-migration: Owner
+      amadouth6: Maintainer
       ardumont: Owner
       jenkins: Maintainer
       olasd: Owner
@@ -82,7 +80,6 @@ groups:
   teams/management:
     users:
       AMorin: Maintainer
-      bchauvet: Owner
       bzg: Maintainer
       douardda: Maintainer
       moranegg: Maintainer
@@ -101,7 +98,7 @@ groups:
   teams/codecommons:
     name: CodeCommons
     users:
-      bchauvet: Owner
+      taynaud: Owner
   infra-private:
     users:
       phabricator-migration: Owner
@@ -109,6 +106,7 @@ groups:
       vsellier: Owner
       ardumont: Owner
       thibaultd: Owner
+      amadouth6: Owner
     remove_extra_memberships: true
     share_with_groups:
       teams/sysadmin: Owner
