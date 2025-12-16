@@ -35,11 +35,11 @@ groups:
   teams/developers:
     users:
       phabricator-migration: Owner
+      amadouth6: Maintainer
       anlambert: Maintainer
       ardumont: Maintainer
       bzg: Maintainer
       douardda: Maintainer
-      hjonin: Maintainer
       jenkins: Maintainer
       martin: Maintainer
       moranegg: Maintainer
@@ -49,6 +49,7 @@ groups:
       swh-sentry-integration: Maintainer
       taynaud: Maintainer
       thibaultd: Maintainer
+      ukuchler: Maintainer
       varasterix: Maintainer
       vlorentz: Maintainer
       vsellier: Maintainer
