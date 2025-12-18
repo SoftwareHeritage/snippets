@@ -29,7 +29,6 @@ groups:
       ukuchler: Maintainer
       varasterix: Maintainer
       vlorentz: Maintainer
-      vsellier: Maintainer
       zack: Owner
     remove_extra_memberships: true
   teams/developers:
@@ -52,7 +51,6 @@ groups:
       ukuchler: Maintainer
       varasterix: Maintainer
       vlorentz: Maintainer
-      vsellier: Maintainer
       zack: Maintainer
     remove_extra_memberships: true
   teams/sysadmin:
@@ -64,7 +62,6 @@ groups:
       olasd: Owner
       swh-sentry-integration: Maintainer
       thibaultd: Maintainer
-      vsellier: Owner
     remove_extra_memberships: true
   teams/interns:
     users:
@@ -87,7 +84,6 @@ groups:
       nico_mar: Maintainer
       rdicosmo: Owner
       taynaud: Owner
-      vsellier: Maintainer
       zack: Owner
     remove_extra_memberships: true
   teams/octobus:
@@ -104,7 +100,6 @@ groups:
     users:
       phabricator-migration: Owner
       olasd: Owner
-      vsellier: Owner
       ardumont: Owner
       thibaultd: Owner
       amadouth6: Owner
