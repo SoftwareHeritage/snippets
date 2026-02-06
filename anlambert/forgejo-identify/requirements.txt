@@ -1,0 +1,3 @@
+anubis-solver @ git+https://github.com/anlambert/anubis_solver_pypi@robustify-pow-handling
+certifi
+pycurl
