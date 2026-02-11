@@ -4,7 +4,18 @@
 # License: GNU General Public License version 3, or any later version
 # See top-level LICENSE file for more information
 
-# Script to disambiguate between instances of Gitea forges and Forgejo forges
+# Script to disambiguate between instances of Gitea forges and Forgejo forges.
+#
+# With a file holding the necessary information:
+# psql service=staging-swh-web -At \
+#   -c "select forge_url from add_forge_request where forge_type = 'gitea'
+#       order by forge_url" > gitea-forges.staging.txt
+#
+# Then:
+# cat gitea-forges.staging.txt | ./identify_forgejo_instances.py --environment staging
+# Or for production
+# cat gitea-forges.production.txt | \
+#   ./identify_forgejo_instances.py --environment production
 
 import json
 import os
@@ -94,11 +105,15 @@ def fetch_url(url: str, forge_url: str | None = None) -> tuple[str, int]:
 @click.option(
     "-e",
     "--environment",
+    "environment_dir",
     default="staging",
-    help="Environment to generate data to",
+    type=click.Choice(["staging", "production"]),
+    help="Environment and eponym directory to generate the output data to.",
 )
-def main(environment):
-    os.makedirs(environment, exist_ok=True)
+def main(environment_dir):
+    # Create the local environment directory where we will write the output data files
+    os.makedirs(environment_dir, exist_ok=True)
+
     # iterate on forge URLs to disambiguate between gitea and forgejo
     for forge_url in map(lambda s: s.rstrip("\n/"), sys.stdin):
         api_url = forge_url + "/api/v1/version"
@@ -148,22 +163,23 @@ def main(environment):
             http_error_urls.add(f"{forge_url}, {status_code}")
             print(f"Error when fetching {forge_url}: {status_code}", file=sys.stderr)
 
-    with open(environment + "/forgejo_urls", "w") as f:
+    # Start writing the data output files
+    with open(environment_dir + "/forgejo_urls", "w") as f:
         f.write("\n".join(sorted(forgejo_urls)))
 
-    with open(environment + "/gitea_urls", "w") as f:
+    with open(environment_dir + "/gitea_urls", "w") as f:
         f.write("\n".join(sorted(gitea_urls)))
 
-    with open(environment + "/dead_forge_urls", "w") as f:
+    with open(environment_dir + "/dead_forge_urls", "w") as f:
         f.write("\n".join(sorted(dead_urls)))
 
-    with open(environment + "/http_error_forge_urls", "w") as f:
+    with open(environment_dir + "/http_error_forge_urls", "w") as f:
         f.write("\n".join(sorted(http_error_urls)))
 
-    with open(environment + "/auth_needed_forge_urls", "w") as f:
+    with open(environment_dir + "/auth_needed_forge_urls", "w") as f:
         f.write("\n".join(sorted(auth_needed_forge_urls)))
 
-    with open(environment + "/anubis_protected_forge_urls", "w") as f:
+    with open(environment_dir + "/anubis_protected_forge_urls", "w") as f:
         f.write("\n".join(sorted(anubis_protected_forge_urls)))
 
 
