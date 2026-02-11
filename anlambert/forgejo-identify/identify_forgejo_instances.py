@@ -6,14 +6,16 @@
 
 # Script to disambiguate between instances of Gitea forges and Forgejo forges
 
-from io import BytesIO
 import json
+import os
 import sys
+from io import BytesIO
 from urllib.parse import urlparse
 
-from anubis_solver import solve
 import certifi
+import click
 import pycurl
+from anubis_solver import solve
 
 forgejo_urls = set()
 gitea_urls = set()
@@ -88,8 +90,15 @@ def fetch_url(url: str, forge_url: str | None = None) -> tuple[str, int]:
     return response, status_code
 
 
-if __name__ == "__main__":
-
+@click.command()
+@click.option(
+    "-e",
+    "--environment",
+    default="staging",
+    help="Environment to generate data to",
+)
+def main(environment):
+    os.makedirs(environment, exist_ok=True)
     # iterate on forge URLs to disambiguate between gitea and forgejo
     for forge_url in map(lambda s: s.rstrip("\n/"), sys.stdin):
         api_url = forge_url + "/api/v1/version"
@@ -139,20 +148,24 @@ if __name__ == "__main__":
             http_error_urls.add(f"{forge_url}, {status_code}")
             print(f"Error when fetching {forge_url}: {status_code}", file=sys.stderr)
 
-    with open("forgejo_urls", "w") as f:
+    with open(environment + "/forgejo_urls", "w") as f:
         f.write("\n".join(sorted(forgejo_urls)))
 
-    with open("gitea_urls", "w") as f:
+    with open(environment + "/gitea_urls", "w") as f:
         f.write("\n".join(sorted(gitea_urls)))
 
-    with open("dead_forge_urls", "w") as f:
+    with open(environment + "/dead_forge_urls", "w") as f:
         f.write("\n".join(sorted(dead_urls)))
 
-    with open("http_error_forge_urls", "w") as f:
+    with open(environment + "/http_error_forge_urls", "w") as f:
         f.write("\n".join(sorted(http_error_urls)))
 
-    with open("auth_needed_forge_urls", "w") as f:
+    with open(environment + "/auth_needed_forge_urls", "w") as f:
         f.write("\n".join(sorted(auth_needed_forge_urls)))
 
-    with open("anubis_protected_forge_urls", "w") as f:
+    with open(environment + "/anubis_protected_forge_urls", "w") as f:
         f.write("\n".join(sorted(anubis_protected_forge_urls)))
+
+
+if __name__ == "__main__":
+    main()
