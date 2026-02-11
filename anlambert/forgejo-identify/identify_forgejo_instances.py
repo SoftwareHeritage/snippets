@@ -244,9 +244,13 @@ where name='gitea' and instance_name='%s';
 
 update task set type='list-forgejo-full'
 where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='%s' or arguments#>>'{kwargs,url}'='%s');
+      (
+        arguments#>>'{kwargs,instance}'='%s' or
+        arguments#>>'{kwargs,url}'='%s/' or
+        arguments#>>'{kwargs,url}' ~ '%s.*/.*api/v1/'
+      );
 """
-                sql_sched_f.write(row_sql_update % (instance, instance, url))
+                sql_sched_f.write(row_sql_update % (instance, instance, url, url))
 
     if with_sql_update_web:
         if not forgejo_urls:
