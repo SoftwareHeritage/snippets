@@ -91,7 +91,7 @@ def fetch_url(url: str, forge_url: str | None = None) -> tuple[str, int]:
 if __name__ == "__main__":
 
     # iterate on forge URLs to disambiguate between gitea and forgejo
-    for forge_url in map(lambda s: s.rstrip("\n/"), open("gitea_forges", "r")):
+    for forge_url in map(lambda s: s.rstrip("\n/"), sys.stdin):
         api_url = forge_url + "/api/v1/version"
 
         # try using forge version from REST API first
