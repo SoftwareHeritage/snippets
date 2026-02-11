@@ -245,7 +245,6 @@ where name='gitea' and instance_name='%s';
 update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='%s' or arguments#>>'{kwargs,url}'='%s');
-
 """
                 sql_sched_f.write(row_sql_update % (instance, instance, url))
 
@@ -259,7 +258,6 @@ where type='list-gitea-full' and
 update add_forge_request
 set forge_type='forgejo'
 where forge_type='gitea' and forge_url='{url}/';
-
 """
                 sql_web_f.write(row_sql_update)
 

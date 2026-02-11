@@ -7,15 +7,13 @@ update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='git.koha-community.org' or arguments#>>'{kwargs,url}'='https://git.koha-community.org');
 
-
 update listers
 set name='forgejo'
-where name='gitea' and instance_name='git.asgardius.company';
+where name='gitea' and instance_name='git.g3la.de';
 
 update task set type='list-forgejo-full'
 where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='git.asgardius.company' or arguments#>>'{kwargs,url}'='https://git.asgardius.company');
-
+      (arguments#>>'{kwargs,instance}'='git.g3la.de' or arguments#>>'{kwargs,url}'='https://git.g3la.de');
 
 update listers
 set name='forgejo'
@@ -25,6 +23,13 @@ update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='git.rjp.is' or arguments#>>'{kwargs,url}'='https://git.rjp.is');
 
+update listers
+set name='forgejo'
+where name='gitea' and instance_name='git.0x90.space';
+
+update task set type='list-forgejo-full'
+where type='list-gitea-full' and
+      (arguments#>>'{kwargs,instance}'='git.0x90.space' or arguments#>>'{kwargs,url}'='https://git.0x90.space');
 
 update listers
 set name='forgejo'
@@ -34,34 +39,6 @@ update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='git.disroot.org' or arguments#>>'{kwargs,url}'='https://git.disroot.org');
 
-
-update listers
-set name='forgejo'
-where name='gitea' and instance_name='code.blicky.net';
-
-update task set type='list-forgejo-full'
-where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='code.blicky.net' or arguments#>>'{kwargs,url}'='https://code.blicky.net');
-
-
-update listers
-set name='forgejo'
-where name='gitea' and instance_name='git.bobc.io';
-
-update task set type='list-forgejo-full'
-where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='git.bobc.io' or arguments#>>'{kwargs,url}'='https://git.bobc.io');
-
-
-update listers
-set name='forgejo'
-where name='gitea' and instance_name='git.g3la.de';
-
-update task set type='list-forgejo-full'
-where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='git.g3la.de' or arguments#>>'{kwargs,url}'='https://git.g3la.de');
-
-
 update listers
 set name='forgejo'
 where name='gitea' and instance_name='git.imirhil.fr';
@@ -69,25 +46,6 @@ where name='gitea' and instance_name='git.imirhil.fr';
 update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='git.imirhil.fr' or arguments#>>'{kwargs,url}'='https://git.imirhil.fr');
-
-
-update listers
-set name='forgejo'
-where name='gitea' and instance_name='git.0x90.space';
-
-update task set type='list-forgejo-full'
-where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='git.0x90.space' or arguments#>>'{kwargs,url}'='https://git.0x90.space');
-
-
-update listers
-set name='forgejo'
-where name='gitea' and instance_name='git.data.coop';
-
-update task set type='list-forgejo-full'
-where type='list-gitea-full' and
-      (arguments#>>'{kwargs,instance}'='git.data.coop' or arguments#>>'{kwargs,url}'='https://git.data.coop');
-
 
 update listers
 set name='forgejo'
@@ -97,6 +55,13 @@ update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='gitea.angry.im' or arguments#>>'{kwargs,url}'='https://gitea.angry.im');
 
+update listers
+set name='forgejo'
+where name='gitea' and instance_name='git.data.coop';
+
+update task set type='list-forgejo-full'
+where type='list-gitea-full' and
+      (arguments#>>'{kwargs,instance}'='git.data.coop' or arguments#>>'{kwargs,url}'='https://git.data.coop');
 
 update listers
 set name='forgejo'
@@ -106,3 +71,26 @@ update task set type='list-forgejo-full'
 where type='list-gitea-full' and
       (arguments#>>'{kwargs,instance}'='git.froggi.es' or arguments#>>'{kwargs,url}'='https://git.froggi.es');
 
+update listers
+set name='forgejo'
+where name='gitea' and instance_name='code.blicky.net';
+
+update task set type='list-forgejo-full'
+where type='list-gitea-full' and
+      (arguments#>>'{kwargs,instance}'='code.blicky.net' or arguments#>>'{kwargs,url}'='https://code.blicky.net');
+
+update listers
+set name='forgejo'
+where name='gitea' and instance_name='git.asgardius.company';
+
+update task set type='list-forgejo-full'
+where type='list-gitea-full' and
+      (arguments#>>'{kwargs,instance}'='git.asgardius.company' or arguments#>>'{kwargs,url}'='https://git.asgardius.company');
+
+update listers
+set name='forgejo'
+where name='gitea' and instance_name='git.bobc.io';
+
+update task set type='list-forgejo-full'
+where type='list-gitea-full' and
+      (arguments#>>'{kwargs,instance}'='git.bobc.io' or arguments#>>'{kwargs,url}'='https://git.bobc.io');
