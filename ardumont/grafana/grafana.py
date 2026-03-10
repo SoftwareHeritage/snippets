@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 from time import time
-from typing import Optional
+from typing import List, Optional
 
 import click
 import requests
@@ -51,20 +51,23 @@ class ApiClient:
         return resp
 
 
-class GrafanaApiClient(ApiClient):
-    """Grafana api client."""
+class GrafanaApiClient:
+    """Grafana api api_client."""
 
-    def get_annotation(self, annotation_id):
-        return self.get(f"/api/annotations/{annotation_id}").json()
+    def __init__(self, base_url, token=None):
+        self.api_client = ApiClient(base_url, token=token)
+
+    def get_annotation(self, annotation_id: str):
+        return self.api_client.get(f"/api/annotations/{annotation_id}").json()
 
     def get_annotations(self):
-        yield from (t for t in self.get("/api/annotations").json())
+        yield from (t for t in self.api_client.get("/api/annotations").json())
 
-    def post_annotations(self, text, tags):
+    def post_annotations(self, text: str, tags: List[str]):
         # Create an epoch timestamp of the time of the call (ms)
         now = int(time() * 1000)
         payload = dict(text=text, tags=tags, time=now, timeEnd=now)
-        return self.post("/api/annotations", json=payload)
+        return self.api_client.post("/api/annotations", json=payload)
 
 
 @click.group()
@@ -74,7 +77,7 @@ class GrafanaApiClient(ApiClient):
 )
 @click.pass_context
 def cli(ctx, url, token):
-    """Default client to manipulate grafana annotations"""
+    """Default api_client to manipulate grafana annotations"""
 
     ctx.ensure_object(dict)
 
@@ -101,24 +104,42 @@ def cli(ctx, url, token):
 
 
 @cli.command()
+@click.option(
+    "-m",
+    "--message",
+    help="Message description for the annotation",
+)
+@click.option(
+    "-t",
+    "--tag",
+    "tags",
+    multiple=True,
+    help="Tag(s) to install in the grafana instance",
+)
 @click.pass_context
-def main(ctx):
-    """Manipulate grafana to install tags"""
-    from pprint import pprint
+def set_annotation(ctx, message, tags):
+    """Install tags in grafana (output the annotation installed as output)."""
+    from json import dumps
 
-    client = ctx.obj["client"]
+    grafana_client = ctx.obj["client"]
 
-    result = client.post_annotations(
-        "This is a scripted test", tags=["deployment", "test", "ok"]
-    )
+    result = grafana_client.post_annotations(message, tags=tags)
 
     if result.ok:
         annotation_id = result.json()["id"]
-        annotation = client.get_annotation(annotation_id)
-        pprint(annotation)
-    else:
-        for annotation in client.get_annotations():
-            pprint(annotation)
+        annotation = grafana_client.get_annotation(annotation_id)
+        print(dumps(annotation))
+
+
+@cli.command()
+@click.pass_context
+def list_annotations(ctx):
+    """List current annotations installed in the grafana instance (json output)."""
+    from json import dumps
+
+    grafana_client = ctx.obj["client"]
+    for annotation in grafana_client.get_annotations():
+        print(dumps(annotation))
 
 
 if __name__ == "__main__":
