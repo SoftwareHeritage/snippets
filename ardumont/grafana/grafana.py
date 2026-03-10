@@ -1,5 +1,59 @@
 #!/usr/bin/env python3
 
+# This exposes a grafana cli to allow scripting tag edition on a grafana instance.
+
+# This can either use the --url and --token flag to set the necessary authentication. If
+# not provided, the cli fallbacks to use a specific configuration file with the
+# following format.
+#
+# $ cat ~/.config/swh/grafana/config.yaml
+# grafana:
+#   url: https://grafana.softwareheritage.org
+#   sa-token: your-grafana-service-account-token
+#
+# code::
+#    ./grafana.py --help
+#    Usage: grafana.py [OPTIONS] COMMAND [ARGS]...
+#
+#      Default api client to manipulate grafana annotations
+#
+#    Options:
+#      --url TEXT    Grafana URL
+#      --token TEXT  Grafana service account token
+#      --help        Show this message and exit.
+#
+#    Commands:
+#      list-annotations  List current annotations installed in the grafana...
+#      set-annotation    Install tags in grafana (output the annotation...
+#
+# code::
+#    $ ./grafana.py set-annotation --message "This is a test" \
+#         --tag deployment --tag "environment=test-staging-rke2" | jq .
+#    {
+#      "id": 30390,
+#      "alertId": 0,
+#      "alertName": "",
+#      "dashboardId": 0,
+#      "dashboardUID": null,
+#      "panelId": 0,
+#      "userId": 0,
+#      "newState": "",
+#      "prevState": "",
+#      "created": 1773136011737,
+#      "updated": 1773136011737,
+#      "time": 1773136011687,
+#      "timeEnd": 1773136011687,
+#      "text": "This is a test",
+#      "tags": [
+#        "deployment",
+#        "environment=test-staging-rke2"
+#      ],
+#      "login": "sa-bot-api-write-for-tags",
+#      "email": "sa-bot-api-write-for-tags",
+#      "avatarUrl": "/avatar/a486aac9f0f7ed204db66d780505e3b6",
+#      "data": {}
+#    }
+
 import os
 from pathlib import Path
 from time import time
@@ -77,7 +131,7 @@ class GrafanaApiClient:
 )
 @click.pass_context
 def cli(ctx, url, token):
-    """Default api_client to manipulate grafana annotations"""
+    """Default api client to manipulate grafana annotations"""
 
     ctx.ensure_object(dict)
 
