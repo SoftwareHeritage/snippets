@@ -152,7 +152,7 @@ def cli(ctx, url, token):
         raise ValueError("Grafana url must be set.")
 
     if not token:
-        raise ValueError("Grafana url must be set.")
+        raise ValueError("Grafana token must be set.")
 
     ctx.obj["client"] = GrafanaApiClient(url, token=token)
 
