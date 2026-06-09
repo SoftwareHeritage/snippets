@@ -18,6 +18,8 @@ total = 0
 for year, count in rows:
     year = int(year)
     count = int(count)
+    if year <= 1970:
+        continue
     total += count
     if MIN_YEAR <= year <= MAX_YEAR:
         years.append(year)
@@ -58,6 +60,7 @@ ax2.bar(years, total_contents)
 # hand-picked coefficients
 regression(
     ax2,
+    min_year=1980,  # extend the regression in the past. not very useful but we have the room for it
     base_year=2000,
     base_count=7.3,  # start with 10**7.3 in 2000
     yearly_increase_rate=0.14,
