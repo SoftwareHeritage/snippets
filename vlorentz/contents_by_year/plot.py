@@ -26,6 +26,15 @@ for year, count in rows:
         new_contents.append(count)
         total_contents.append(total)
 
+projection_base_year = 2022
+projection_total_contents = [total_contents[projection_base_year - 1970 - 1]]
+projection_new_contents = [int(new_contents[projection_base_year - 1970 - 1])]
+projection_years = list(range(projection_base_year, 2031))
+for _ in projection_years[1:]:
+    # 1.38: hand-picked
+    projection_total_contents.append(int(projection_total_contents[-1] * 1.38))
+    projection_new_contents.append(int(projection_new_contents[-1] * 1.38))
+
 
 def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate):
     min_year = min_year or base_year
@@ -39,7 +48,7 @@ def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate
         [min_count, max_count],
         color="red",
         linewidth=1,  # thinner
-        label=f"+{int((10**(yearly_increase_rate) - 1)*100)}%/year",
+        label=f"+{int((10 ** (yearly_increase_rate) - 1) * 100)}%/year",
     )
     ax.legend()
 
@@ -51,11 +60,13 @@ fig.suptitle("Contents creation date, according to commit date")
 ax1.set_ylabel("total contents")
 ax1.set_xlabel("year")
 ax1.bar(years, total_contents)
+ax1.bar(projection_years, projection_total_contents, color="#ffa40688")
 
 ax2.set_yscale("log")
 ax2.set_ylabel("total contents (log scale)")
 ax2.set_xlabel("year")
 ax2.bar(years, total_contents)
+ax2.bar(projection_years, projection_total_contents, color="#ffa40688")
 
 # hand-picked coefficients
 regression(
@@ -69,11 +80,13 @@ regression(
 ax3.set_ylabel("new contents per year")
 ax3.set_xlabel("year")
 ax3.bar(years, new_contents)
+ax3.bar(projection_years, projection_new_contents, color="#ffa40688")
 
 ax4.set_yscale("log")
 ax4.set_ylabel("new contents per year (log scale)")
 ax4.set_xlabel("year")
 ax4.bar(years, new_contents)
+ax4.bar(projection_years, projection_new_contents, color="#ffa40688")
 
 # hand-picked coefficients
 regression(
