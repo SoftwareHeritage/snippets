@@ -27,16 +27,16 @@ for year, count in rows:
 
 def regression(ax, *, base_year, base_count, yearly_increase_rate):
     regression_year = MAX_YEAR  # regression line up to current year
-    min_count = 10 ** (base_count - (base_year - base_year) ** (1-yearly_increase_rate))
+    min_count = 10 ** (base_count)
     max_count = 10 ** (
-        base_count + (regression_year - base_year) ** yearly_increase_rate
+        base_count * (regression_year - base_year) ** yearly_increase_rate
     )
     ax.plot(
         [base_year, regression_year],
         [min_count, max_count],
         color="red",
         linewidth=1,  # thinner
-        label=f"+{int(yearly_increase_rate*100)}%/year"
+        label=f"+{int(yearly_increase_rate*100)}%/year",
     )
     ax.legend()
 
@@ -58,7 +58,7 @@ ax2.bar(years, total_contents)
 regression(
     ax2,
     base_year=2000,
-    base_count=7.3,  # start with 10**7.3 in 1998
+    base_count=7.3,  # start with 10**7.3 in 2000
     yearly_increase_rate=0.40,  # +40% every year
 )
 
@@ -75,7 +75,7 @@ ax4.bar(years, new_contents)
 regression(
     ax4,
     base_year=2000,
-    base_count=6.7,  # start with 10**7.3 in 1998
+    base_count=6.7,  # start with 10**6.7 in 2000
     yearly_increase_rate=0.40,  # +40% every year
 )
 
