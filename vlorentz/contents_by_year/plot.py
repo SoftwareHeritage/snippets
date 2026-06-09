@@ -28,7 +28,7 @@ for year, count in rows:
 def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate):
     min_year = min_year or base_year
     regression_year = MAX_YEAR  # regression line up to current year
-    min_count = 10 ** (base_count+ (min_year - base_year) * yearly_increase_rate)
+    min_count = 10 ** (base_count + (min_year - base_year) * yearly_increase_rate)
     max_count = 10 ** (
         base_count + (regression_year - base_year) * yearly_increase_rate
     )
@@ -37,7 +37,7 @@ def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate
         [min_count, max_count],
         color="red",
         linewidth=1,  # thinner
-        label=f"+{int(yearly_increase_rate*100)}%/year",
+        label=f"+{int((10**(yearly_increase_rate) - 1)*100)}%/year",
     )
     ax.legend()
 
@@ -60,7 +60,7 @@ regression(
     ax2,
     base_year=2000,
     base_count=7.3,  # start with 10**7.3 in 2000
-    yearly_increase_rate=0.14,  # +40% every year
+    yearly_increase_rate=0.14,
 )
 
 ax3.set_ylabel("new contents per year")
@@ -78,7 +78,7 @@ regression(
     min_year=1985,  # extend the regression in the past. not very useful but we have the room for it
     base_year=2000,
     base_count=6.7,  # start with 10**6.7 in 2000
-    yearly_increase_rate=0.14,  # +40% every year
+    yearly_increase_rate=0.14,
 )
 
 fig.savefig(f"{GRAPH_NAME}.svg")
