@@ -25,14 +25,15 @@ for year, count in rows:
         total_contents.append(total)
 
 
-def regression(ax, *, base_year, base_count, yearly_increase_rate):
+def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate):
+    min_year = min_year or base_year
     regression_year = MAX_YEAR  # regression line up to current year
-    min_count = 10 ** (base_count)
+    min_count = 10 ** (base_count+ (min_year - base_year) * yearly_increase_rate)
     max_count = 10 ** (
-        base_count * (regression_year - base_year) ** yearly_increase_rate
+        base_count + (regression_year - base_year) * yearly_increase_rate
     )
     ax.plot(
-        [base_year, regression_year],
+        [min_year, regression_year],
         [min_count, max_count],
         color="red",
         linewidth=1,  # thinner
@@ -59,7 +60,7 @@ regression(
     ax2,
     base_year=2000,
     base_count=7.3,  # start with 10**7.3 in 2000
-    yearly_increase_rate=0.40,  # +40% every year
+    yearly_increase_rate=0.14,  # +40% every year
 )
 
 ax3.set_ylabel("new contents per year")
@@ -74,9 +75,10 @@ ax4.bar(years, new_contents)
 # hand-picked coefficients
 regression(
     ax4,
+    min_year=1985,  # extend the regression in the past. not very useful but we have the room for it
     base_year=2000,
     base_count=6.7,  # start with 10**6.7 in 2000
-    yearly_increase_rate=0.40,  # +40% every year
+    yearly_increase_rate=0.14,  # +40% every year
 )
 
 fig.savefig(f"{GRAPH_NAME}.svg")
