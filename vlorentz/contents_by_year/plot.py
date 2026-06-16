@@ -29,11 +29,83 @@ for year, count in rows:
 projection_base_year = 2022
 projection_total_contents = [total_contents[projection_base_year - 1970 - 1]]
 projection_new_contents = [int(new_contents[projection_base_year - 1970 - 1])]
-projection_years = list(range(projection_base_year, 2031))
+projection_years = list(range(projection_base_year, 2036))
 for _ in projection_years[1:]:
     # 1.38: hand-picked
     projection_total_contents.append(int(projection_total_contents[-1] * 1.38))
     projection_new_contents.append(int(projection_new_contents[-1] * 1.38))
+
+projection_years_plot = projection_years[:9]
+projection_total_contents_plot = projection_total_contents[:9]
+projection_new_contents_plot = projection_new_contents[:9]
+
+
+def print_table():
+    YEARS = [2026, 2027, 2028, 2029, 2030, 2035]
+    AVG_CONTENT = 100 * 1024
+    PiB = 1024**5
+    indices = [y - 2022 for y in YEARS]
+
+    def _format_list(lst):
+        def _fmt_one(x):
+            if isinstance(x, float):
+                return f"{x:.01f}"
+            return str(x)
+
+        return "| " + " | ".join(map(_fmt_one, lst)) + " |"
+
+    print("| Year " + _format_list(YEARS))
+    print(_format_list(["--------"] * (len(YEARS) + 1)))
+
+    proj_total_contents_G = [projection_total_contents[i] / 1e9 for i in indices]
+    print("| # contents total (×10⁹) " + _format_list(proj_total_contents_G))
+
+    proj_new_contents_G = [projection_new_contents[i] / 1e9 for i in indices]
+    print("| # contents added (×10⁹) " + _format_list(proj_new_contents_G))
+
+    proj_total_weight_PiB = [
+        projection_total_contents[i] * AVG_CONTENT / PiB for i in indices
+    ]
+    print("| Total weight (PiB) " + _format_list(proj_total_weight_PiB))
+
+    proj_added_weight_PiB = [
+        projection_new_contents[i] * AVG_CONTENT / PiB for i in indices
+    ]
+    print("| Weight added (PiB) " + _format_list(proj_added_weight_PiB))
+
+    # Erasure-coding: *7/5 ; max capacity at 80%: /.8
+    proj_ceph_weight_PiB = [weight * (7 / 5) / 0.8 for weight in proj_total_weight_PiB]
+    print("| Total Ceph capacity needed (PiB) " + _format_list(proj_ceph_weight_PiB))
+
+    proj_ceph_added_weight_PiB = [
+        weight * (7 / 5) / 0.8 for weight in proj_added_weight_PiB
+    ]
+    print(
+        "| Ceph capacity increase needed (PiB) "
+        + _format_list(proj_ceph_added_weight_PiB)
+    )
+
+    proj_ingestion_rate_cps = [
+        projection_new_contents[i] / 3600 / 24 / 365 for i in indices
+    ]
+    print("| Min ingestion rate (content/s) " + _format_list(proj_ingestion_rate_cps))
+
+    proj_ingestion_rate_bps = [
+        rate * AVG_CONTENT * 8 for rate in proj_ingestion_rate_cps
+    ]  # Note: bits, not bytes
+    proj_net_throughput_inbound_Gbps = [rate / 1e9 for rate in proj_ingestion_rate_bps]
+    # Note: Gbps = 1e9 bps, not 1024**3 bps
+    print(
+        "| Ingestion network inbound traffic (Gbps) "
+        + _format_list(proj_net_throughput_inbound_Gbps)
+    )
+    proj_net_throughput_outbound_Gbps = [
+        2 * rate / 1e9 for rate in proj_ingestion_rate_bps
+    ]
+    print(
+        "| Ingestion network outbound traffic (Azure + S3, Gbps) "
+        + _format_list(proj_net_throughput_outbound_Gbps)
+    )
 
 
 def regression(ax, *, min_year=None, base_year, base_count, yearly_increase_rate):
@@ -60,13 +132,13 @@ fig.suptitle("Contents creation date, according to commit date")
 ax1.set_ylabel("total contents")
 ax1.set_xlabel("year")
 ax1.bar(years, total_contents)
-ax1.bar(projection_years, projection_total_contents, color="#ffa40688")
+ax1.bar(projection_years_plot, projection_total_contents_plot, color="#ffa40688")
 
 ax2.set_yscale("log")
 ax2.set_ylabel("total contents (log scale)")
 ax2.set_xlabel("year")
 ax2.bar(years, total_contents)
-ax2.bar(projection_years, projection_total_contents, color="#ffa40688")
+ax2.bar(projection_years_plot, projection_total_contents_plot, color="#ffa40688")
 
 # hand-picked coefficients
 regression(
@@ -80,13 +152,13 @@ regression(
 ax3.set_ylabel("new contents per year")
 ax3.set_xlabel("year")
 ax3.bar(years, new_contents)
-ax3.bar(projection_years, projection_new_contents, color="#ffa40688")
+ax3.bar(projection_years_plot, projection_new_contents_plot, color="#ffa40688")
 
 ax4.set_yscale("log")
 ax4.set_ylabel("new contents per year (log scale)")
 ax4.set_xlabel("year")
 ax4.bar(years, new_contents)
-ax4.bar(projection_years, projection_new_contents, color="#ffa40688")
+ax4.bar(projection_years_plot, projection_new_contents_plot, color="#ffa40688")
 
 # hand-picked coefficients
 regression(
@@ -98,3 +170,5 @@ regression(
 )
 
 fig.savefig(f"{GRAPH_NAME}.svg")
+
+print_table()
