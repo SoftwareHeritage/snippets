@@ -1,7 +1,5 @@
-version: '3'
-
 services:
-  structurizr-lite:
+  structurizr:
     build:
       context: docker
       args:
@@ -10,4 +8,5 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - $PWD:/usr/local/structurizr
+      - ${PWD}:/usr/local/structurizr
+    command: local
