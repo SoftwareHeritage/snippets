@@ -42,7 +42,7 @@ workspace {
           keycloak = container "keycloak" "" "provenance"
 
           gitlab = container "Gitlab" {
-            tags  external,add-forge-now
+            tags external,add-forge-now
           }
 
           group swh-coarnotify {
@@ -104,6 +104,21 @@ workspace {
           provenance_parquet_files = container "swh-parquet-files" {
             technology rust
             tags provenance,parquet
+          }
+
+          vulns_grpc = container "swh-vulns-grpc" {
+            technology rust
+            tags vulns
+          }
+
+          vulns_parquet_files = container "swh-vulns-files" {
+            technology rust
+            tags vulns,parquet
+          }
+
+          graph_parquet_files = container "swh-graph-files" {
+            technology rust
+            tags vulns,graph,parquet
           }
 
           rabbitmq = container "RabbitMQ" {
@@ -242,7 +257,7 @@ workspace {
           }
 
           webapp = container "Webapp" {
-            tags scn, vault, provenance, citation,search, add-forge-now
+            tags scn, vault, provenance, citation, search, add-forge-now, graph, keycloak, vulns
           }
 
           group "winery" {
@@ -390,6 +405,11 @@ workspace {
         webapp -> provenance_grpc "Sends requests" "grpc" "provenance,overlapped"
         provenance_grpc -> provenance_parquet_files "Queries files" "grpc" "provenance,overlapped"
 
+        // vulnerabilities
+        webapp -> vulns_grpc "Sends requests" "grpc" "vulns,overlapped"
+        vulns_grpc -> vulns_parquet_files "Queries files" "grpc" "vulns,overlapped"
+        vulns_grpc -> graph_parquet_files "Queries files" "grpc" "vulns,overlapped"
+
         // alter/takedown
         codeOwner -> dpo "requests a takedown or a name change" "" "tdn"
         dpo -> systemAdministrator "notifies of a takedown to proceed" "" "tdn"
@@ -458,6 +478,7 @@ workspace {
               }
             }
 
+            // namespace: swh
             deploymentNode "swh" {
               tags "Kubernetes - ns"
 
@@ -469,6 +490,7 @@ workspace {
                   description "ro-storage"
                 }
               }
+
               deploymentNode "archive-webapp-ingress" {
                 tags "Kubernetes - ing"
 
@@ -482,6 +504,7 @@ workspace {
               }
             }
 
+            // namespace: swh-cassandra
             deploymentNode "swh-cassandra" {
               tags "Kubernetes - ns"
 
@@ -509,6 +532,16 @@ workspace {
                 url "http://provenance-local"
 
                 containerInstance "provenance_grpc" "cassandra,pg" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
+              deploymentNode "vulns-ingress" {
+                tags "Kubernetes - ing"
+                url "https://vulns.internal.staging.swh.network"
+                description "Vulns ingress access"
+
+                containerInstance "vulns_grpc" "vulns" {
                   tags "Kubernetes - deploy"
                 }
               }
@@ -632,8 +665,9 @@ workspace {
                   description "rw-storage"
                 }
               }
+
               deploymentNode "webapp_ingress" {
-              tags "Kubernetes - ing"
+                tags "Kubernetes - ing"
                 containerInstance "webapp" "pg" {
                   description "archive webapp"
                 }
@@ -687,6 +721,16 @@ workspace {
                 }
               }
 
+              deploymentNode "vulns-ingress" {
+                tags "Kubernetes - ing"
+                url "https://vulns.internal.softwareheritage.org"
+                description "Vulns ingress access"
+
+                containerInstance "vulns_grpc" "vulns" {
+                  tags "Kubernetes - deploy"
+                }
+              }
+
               production_objstorage_ro_ingress = deploymentNode "objstorage_ro_ingress" {
                 tags "Kubernetes - ing"
                 url "https://objstorage.softwareheritage.org"
@@ -736,7 +780,6 @@ workspace {
           }
 
       }
-
 
       cea = deploymentEnvironment "cea_winery" {
           bastion = deploymentNode "angrenost" {
@@ -836,6 +879,13 @@ workspace {
           autolayout
       }
 
+      deployment * staging "staging_vulns" {
+          title "Vulns Staging deployment"
+          include "element.tag==vulns"
+
+          autolayout lr
+      }
+
       deployment * production "production_provenance" {
           title "swh-provenance Production deployment"
           include "element.tag==provenance"
@@ -843,6 +893,12 @@ workspace {
           autolayout
       }
 
+      deployment * production "production_vulns" {
+          title "Vulns Production deployment"
+          include "element.tag==vulns"
+
+          autolayout
+      }
 
       deployment * staging "global_staging_view"{
           include "*"
@@ -979,6 +1035,12 @@ workspace {
       container swh "provenance" {
         include "element.tag==provenance"
         exclude "relationship.tag!=provenance"
+        autolayout lr
+      }
+
+      container swh "vulns" {
+        include "element.tag==vulns"
+        exclude "relationship.tag!=vulns"
         autolayout lr
       }
 
